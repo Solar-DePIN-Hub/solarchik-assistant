@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sr_label">Official Season rules</string>
+    <string name="sr_updated">Rules updated</string>
+    <string name="sr_none">No official rule notes yet. Tap “Check for rule updates” to read Solana Mobile\'s blog and docs now.</string>
+    <string name="sr_source_line">%1$s · %2$s · open the source</string>
+    <string name="sr_applied">What the Season Agent changed</string>
+    <string name="sr_would_apply">What the Season Agent would change (adapting is off)</string>
+    <string name="sr_pending">Needs your OK</string>
+    <string name="sr_noted">Also in the official sources</string>
+    <string name="sr_no_change">Nothing in the latest official sources changes your plan.</string>
+    <string name="sr_status">Version %1$d · checked %2$s · solanamobile.com blog + docs (X is not read)</string>
+    <string name="sr_adapt">Adapt the plan to official updates automatically</string>
+    <string name="sr_check">Check for rule updates</string>
+    <string name="sr_checking">Checking official sources…</string>
+    <string name="sr_seen">Got it</string>
+    <string name="sr_honest">Only Solana Mobile\'s own pages are read, and only what they say word for word is used. Your caps never go up by themselves: anything that would mean more spending waits for your OK. Points are never guaranteed.</string>
+    <string name="sr_approve">Approve</string>
+    <string name="sr_ignore">Ignore</string>
+    <string name="sr_up">Suggests %1$s first</string>
+    <string name="sr_up_swap">Suggest %1$s more often (within your swap caps)</string>
+    <string name="sr_down">Suggests %1$s less often</string>
+    <string name="sr_fewer">Suggests fewer actions a day (score-gaming activity counts less)</string>
+    <string name="sr_everyday">Puts everyday actions first (check-in, opening dApps), at most 2 suggestions a day</string>
+    <string name="sr_featured">Puts %1$s first among dApp suggestions</string>
+    <string name="sr_campaign">%1$s (%2$s)</string>
+    <string name="sr_k_checkin">the check-in</string>
+    <string name="sr_k_swap">small swaps</string>
+    <string name="sr_k_dapp">dApps to open</string>
+    <string name="sr_k_staking">SKR staking</string>
+    <string name="sr_checked">Checked. Latest official source: %1$s</string>
+    <string name="sr_checked_recent">Checked a few minutes ago; showing that result.</string>
+    <string name="sr_check_failed">Couldn\'t reach the rules service. Try again later.</string>
+</resources>

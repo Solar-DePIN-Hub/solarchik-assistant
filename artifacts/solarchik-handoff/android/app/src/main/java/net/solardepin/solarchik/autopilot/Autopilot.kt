@@ -87,6 +87,7 @@ object AutopilotPlanner {
         checkedInToday: Boolean,
         notBefore: Long,
         rnd: Random,
+        tuning: net.solardepin.solarchik.season.RuleTuning = net.solardepin.solarchik.season.RuleTuning.NONE,
     ): List<AutoAction> {
         val p = policy.clamped()
         val dayStr = day.toString()
@@ -106,8 +107,11 @@ object AutopilotPlanner {
         candidates.shuffle(rnd)
         // variety: yesterday's first kind goes to the back
         lastFirst?.let { k -> if (candidates.size > 1 && candidates.first() == k) { candidates.remove(k); candidates.add(k) } }
+        // 1.1.0 Season rules watcher: official "counts more / less" signals reorder the suggestions (stable sort keeps
+        // the random order inside a weight). Caps and amounts never change here.
+        if (!tuning.isNone) candidates.sortByDescending { tuning.weights[it] ?: 1.0 }
 
-        val n = minOf(1 + rnd.nextInt(p.perDay), candidates.size)
+        val n = minOf(1 + rnd.nextInt(p.perDay), candidates.size, tuning.maxPerDay.coerceAtLeast(1))
         val kinds = candidates.take(n)
         val times = times(from, end, n, rnd)
         var room = swapRoomLamports
@@ -122,7 +126,9 @@ object AutopilotPlanner {
                 }
                 AutoKind.DAPP -> {
                     val used = recent.filter { it.kind == AutoKind.DAPP }.takeLast(3).map { it.dapp }.toSet()
-                    val pick = SeasonDapps.all.filter { it.name !in used }.ifEmpty { SeasonDapps.all }.let { it[rnd.nextInt(it.size)] }
+                    val pool = SeasonDapps.all.filter { it.name !in used }.ifEmpty { SeasonDapps.all }
+                    val featured = pool.filter { it.name in tuning.featured }
+                    val pick = (featured.ifEmpty { pool }).let { it[rnd.nextInt(it.size)] }
                     AutoAction(id, dayStr, at, k, dapp = pick.name)
                 }
                 else -> AutoAction(id, dayStr, at, k)

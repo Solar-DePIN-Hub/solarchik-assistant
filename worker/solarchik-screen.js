@@ -1,5 +1,6 @@
 import { MINT_CLUSTER, MINT_TREASURY, PRO_LAMPORTS, mintConfig, mintCosign, verifyMint } from "./agent-mint.js";
 import { briefingRoute, callActionsRoute } from "./assistant-extras.js";
+import { checkRules, seasonRulesRoute } from "./season-rules.js";
 
 const SESSION_USD = 0.2;
 
@@ -1793,6 +1794,11 @@ export default {
     if (request.method === "POST" && url.pathname === "/sol/briefing") return briefingRoute(env, request, solRateOk, json);
     if (request.method === "POST" && url.pathname === "/call/actions") return callActionsRoute(env, request, solRateOk, json);
     if (request.method === "GET" && url.pathname === "/sol/tts") return solTtsRoute(env, request, ctx);
+    // 1.1.0 Season rules watcher: official Solana Mobile sources -> versioned scoring signals (KV).
+    if (url.pathname === "/season/rules" || url.pathname === "/season/rules/check") {
+      const r = await seasonRulesRoute(env, request, solRateOk, json);
+      if (r) return r;
+    }
 
     if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/sip")) {
       return json({ ok: true, where: "cloudflare", sip: "/sip" });
@@ -2033,5 +2039,11 @@ export default {
     }
 
     return json({ error: "not found" }, 404);
+  },
+
+  // 1.1.0: cron (wrangler.screen.toml [triggers]) re-reads the official Season sources every 6 hours.
+  async scheduled(event, env, ctx) {
+    if (!env.OPENAI_API_KEY) return;
+    ctx.waitUntil(checkRules(env).then((r) => console.log(JSON.stringify({ event: "season_rules", version: r.rules.version, changed: r.changed, extracted: r.extracted, errors: r.errors }))).catch((e) => console.log(JSON.stringify({ event: "season_rules_fail", error: String(e) }))));
   },
 };

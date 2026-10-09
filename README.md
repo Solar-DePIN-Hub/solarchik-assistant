@@ -6,7 +6,7 @@ I'm Vadym, and I build Solarchik on my own under Solar DePIN. Solarchik Assistan
 
 I built this repo for the Colosseum Crypto World's Fair (Solana track, AI / agents). Submissions close 12 Oct 2026, 11:59pm PT (13 Oct, 09:59 Kyiv). My older game build, CLOCK IN, lives in [Solar-DePIN-Hub/Solarchik](https://github.com/Solar-DePIN-Hub/Solarchik), and I didn't change it for this. In this app the game is only a small "Play" tile.
 
-**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.0/solarchik-assistant.apk) (v1.1.0, Android 8+, sha256 `3c8d40f3b3815d3c289162149871725a3e61dd5003a432100a542fc2078daf42`)
+**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.0/solarchik-assistant.apk) (v1.1.0, Android 8+, sha256 `42caf41fc7000e3633503034efcc813efc157c6838ef8ac06e2ec7aec0c999ce`)
 
 > **Mainnet, real funds.** 1.1.0 talks to Solana mainnet. Anything you approve in your wallet moves real SOL or tokens and can't be undone. The app never signs for your wallet by itself. Real swaps, the Saver and the experimental delegated limit are all off until you turn them on, and they have small caps. Read [What's real on mainnet](#whats-real-on-mainnet-and-what-isnt) first.
 
@@ -45,6 +45,7 @@ I get a lot of calls from numbers I don't know, and most AI apps I tried were ju
   - A **payment** becomes a prepared SOL or USDC transfer that you approve in your wallet. The recipient field starts empty. If the caller said an address, it's shown in full in a red card with a scam warning, and you have to tap "Use this address" and tick "I checked the address myself". Nothing is ever signed automatically.
 - **Three agents** (Agents tab), all off by default:
   - **Season Agent.** The daily Season plan, an optional autopilot that sends you 1–2 varied, real actions a day as notifications (you tap, the wallet signs), and the experimental delegated limit (below).
+    - **Official rules watcher.** Every 6 hours (and when you tap "Check for rule updates") the worker reads Solana Mobile's own blog (newest posts from the sitemap; there's no RSS) and the SKR docs, notices new or changed pages and pulls out "scoring signals": what counts more or less, campaigns with dates, featured dApps. Each one keeps the source link and a quote, and it's kept only if that quote really appears on the page. The Season Agent then adapts its plan by itself only in safe ways (the order of suggestions, fewer actions a day, featured dApps first). Anything that would mean more spending waits for your OK, and your caps never go up. X (@solanamobile) isn't read, because there's no free way to read it without logging in. A "Rules updated" card shows the source, a short summary and what changed.
   - **Saver.** Moves small amounts of SOL into USDC or SKR, either on a schedule or as a share (0–25 %) of the "change" from a swap you made. Each save is a real Jupiter swap that goes through the normal review (quote, price impact, fees) and your wallet. Your daily swap cap still applies.
   - **Watcher.** Watches SOL/SKR/JUP prices (Jupiter Price API) and your wallet balance and tells you when something moves past your threshold, as a notification and in Sol's context. It has no transaction code and never trades.
 - **Real swaps (Jupiter).** Off until you accept the risk note. Only SOL, USDC, SKR and JUP. A daily cap (0.05 SOL by default, up to 0.5), a max slippage (0.5 % by default, up to 3 %) and a 1 % price-impact limit. You see the quote, the impact and the fees before the wallet opens. Paper mode is still there.
@@ -89,6 +90,7 @@ Android app (Kotlin, no WebView)
  │                        /sol/chat      OpenAI gpt-4.1-mini (assistant persona)
  │                        /sol/briefing  morning briefing text from facts the phone sends
  │                        /call/actions  payment / callback / reminder extraction (structured output)
+ │                        /season/rules  official Season scoring signals (cron every 6 h + /check)
  │                        /sol/tts       OpenAI gpt-4o-mini-tts
  │                        /agent/*       mainnet agent NFT mint config / co-sign / verify (not live yet)
  ├─ calls inbox / block / claim ──> same Cloudflare Worker (/inbox, /call, /block, /call-claim)
@@ -148,6 +150,7 @@ cd artifacts/solarchik-handoff/android
 | Actions from calls | Extraction is real (worker LLM). Payments are prepared transfers you approve in the wallet, with an empty recipient field you fill yourself. Callbacks open the dialer; reminders are local notifications. |
 | Morning briefing | Real: local facts (calls, follow-ups, mainnet balance change, Season plan) → worker text → system/worker voice. Offline: a local template. |
 | Agent NFTs | **Coming soon on mainnet.** Free / Pro (0.1 SOL to the treasury) per agent; mint routes are deployed but return MINT_NOT_READY until the collection exists. Tested end to end on devnet. |
+| Season rules watcher | Real: official solanamobile.com pages only, every 6 h + on demand; model extraction with verbatim-quote check; safe changes apply automatically, spending-related ones need your approval; can be switched off. X is not read. |
 | Seeker Season plan | Counts real actions on the phone. It doesn't know or show your points; only Solana Mobile has those. No points are promised. |
 | SKR balance | Real, read-only mainnet data. Staking is a link to stake.solanamobile.com. |
 | Sol chat, voice, secretary | Real (Cloudflare Worker + OpenAI; Zadarma SIP line, shared demo number). |

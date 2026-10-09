@@ -56,7 +56,7 @@ object AutoRunner {
         val swaps = SwapStore(ctx)
         val sp = swaps.policy()
         val room = AutopilotPlanner.swapRoom(pol, swaps.records(), day.toString(), SwapGuard.remaining(sp, swaps.records(), day.toString()), sp.live && SolanaWallet(ctx).mainnet)
-        val plan = AutopilotPlanner.plan(day, zone, pol, all, room, GameSave(ctx).signedToday(), now + 10 * 60_000L, rnd)
+        val plan = AutopilotPlanner.plan(day, zone, pol, all, room, GameSave(ctx).signedToday(), now + 10 * 60_000L, rnd, net.solardepin.solarchik.season.SeasonRulesStore(ctx).tuning())
         store.save(all + plan)
         return plan
     }
@@ -180,6 +180,8 @@ object AutoRunner {
 
 class AutoWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result {
+        // 1.1.0: the official Season rules (at most hourly; read-only GET) before planning
+        runCatching { if (AutopilotStore(applicationContext).policy().enabled) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { net.solardepin.solarchik.season.SeasonRulesSync.refresh(applicationContext) } }
         runCatching { AutoRunner.tick(applicationContext) }
         return Result.success()
     }

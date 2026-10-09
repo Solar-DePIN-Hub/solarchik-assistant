@@ -253,6 +253,9 @@ object AssistantExtras {
         out += "Agents on: " + (if (on.isEmpty()) "none." else on.joinToString(", ") + ".")
         val alerts = net.solardepin.solarchik.agents.WatcherStore(ctx).recent(now).take(3)
         if (alerts.isNotEmpty()) out += "Watcher alerts (24h): " + alerts.joinToString("; ") { it.line() } + "."
+        net.solardepin.solarchik.season.SeasonRulesStore(ctx).doc()?.latest?.takeIf { it.relevant && it.summary.isNotBlank() }?.let {
+            out += "Latest official Seeker Season note (${it.published}, ${it.url}): ${it.summary.take(200)}"
+        }
         val acts = net.solardepin.solarchik.screen.CallActionStore(ctx).open().take(3)
         if (acts.isNotEmpty()) out += "Actions from calls waiting for the user's confirmation: " + acts.joinToString("; ") { actionLine(it) } + "."
         return out

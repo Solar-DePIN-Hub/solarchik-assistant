@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sr_label">Офіційні правила сезону</string>
+    <string name="sr_updated">Правила оновлено</string>
+    <string name="sr_none">Офіційних нотаток про правила ще немає. Натисни «Перевірити оновлення правил», щоб прочитати блог і документацію Solana Mobile зараз.</string>
+    <string name="sr_source_line">%1$s · %2$s · відкрити джерело</string>
+    <string name="sr_applied">Що змінив Агент сезону</string>
+    <string name="sr_would_apply">Що змінив би Агент сезону (адаптацію вимкнено)</string>
+    <string name="sr_pending">Потрібна твоя згода</string>
+    <string name="sr_noted">Ще в офіційних джерелах</string>
+    <string name="sr_no_change">Останні офіційні джерела не змінюють твій план.</string>
+    <string name="sr_status">Версія %1$d · перевірено %2$s · блог і документація solanamobile.com (X не читаємо)</string>
+    <string name="sr_adapt">Автоматично адаптувати план до офіційних оновлень</string>
+    <string name="sr_check">Перевірити оновлення правил</string>
+    <string name="sr_checking">Перевіряю офіційні джерела…</string>
+    <string name="sr_seen">Зрозуміло</string>
+    <string name="sr_honest">Читаємо лише сторінки самої Solana Mobile і беремо тільки те, що там написано дослівно. Твої ліміти самі не ростуть: усе, що означає більші витрати, чекає на твою згоду. Бали ніхто не гарантує.</string>
+    <string name="sr_approve">Схвалити</string>
+    <string name="sr_ignore">Ігнорувати</string>
+    <string name="sr_up">Першими пропонує %1$s</string>
+    <string name="sr_up_swap">Частіше пропонувати %1$s (у межах твоїх лімітів обміну)</string>
+    <string name="sr_down">Рідше пропонує %1$s</string>
+    <string name="sr_fewer">Пропонує менше дій на день (активність заради балів важить менше)</string>
+    <string name="sr_everyday">Першими ставить буденні дії (відмітка, відкриття dApp), не більше 2 підказок на день</string>
+    <string name="sr_featured">Ставить %1$s першим серед dApp-підказок</string>
+    <string name="sr_campaign">%1$s (%2$s)</string>
+    <string name="sr_k_checkin">відмітку</string>
+    <string name="sr_k_swap">невеликі обміни</string>
+    <string name="sr_k_dapp">dApp-и для відкриття</string>
+    <string name="sr_k_staking">стейкінг SKR</string>
+    <string name="sr_checked">Перевірено. Найновіше офіційне джерело: %1$s</string>
+    <string name="sr_checked_recent">Перевіряли кілька хвилин тому; показую той результат.</string>
+    <string name="sr_check_failed">Не вдалося зв\'язатися зі службою правил. Спробуй пізніше.</string>
+</resources>

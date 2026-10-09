@@ -77,6 +77,7 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
     internal val swapPanel by lazy { SwapPanel(host) { render() } }
     internal val delegatePanel by lazy { DelegatePanel(host) { render() } }
     internal val autopilotPanel by lazy { AutopilotPanel(host) { render() } }
+    internal val rulesPanel by lazy { SeasonRulesPanel(host) { render() } }
     internal val saverPanel by lazy { SaverPanel(host) { render() } }
     internal val watcherPanel by lazy { WatcherPanel(host) { render() } }
     private lateinit var swapBox: LinearLayout
@@ -208,6 +209,7 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
         when (agent) {
             AssistantAgent.SEASON -> {
                 agentBox.addView(seasonPlanCard())
+                agentBox.addView(rulesPanel.card())
                 agentBox.addView(autopilotPanel.card())
                 delegatePanel.render(agentBox)
             }

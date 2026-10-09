@@ -38,7 +38,7 @@ object AppData {
         "solarchik.followups", "solarchik.season",
         // 1.1.0 Season autopilot, experimental delegated limit (+ its sealed agent key)
         "solarchik.autopilot", "solarchik.delegate", "solarchik-agent-key",
-        "solarchik.saver", "solarchik.watcher", "solarchik.briefing", "solarchik.callactions",
+        "solarchik.saver", "solarchik.watcher", "solarchik.briefing", "solarchik.callactions", "solarchik.seasonrules",
     )
 
     /** Background jobs that would otherwise keep ticking with old state. */

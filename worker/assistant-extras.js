@@ -71,7 +71,7 @@ export function briefingSystem(lang) {
   ].join("\n");
 }
 
-async function chat(env, body, timeoutMs) {
+export async function chat(env, body, timeoutMs) {
   const tried = [];
   for (const model of MODELS) {
     const s = Date.now();
