@@ -6,26 +6,24 @@ I'm Vadym, and I build Solarchik on my own under Solar DePIN. Solarchik Assistan
 
 I built this repo for the Colosseum Crypto World's Fair (Solana track, AI / agents). Submissions close 12 Oct 2026, 11:59pm PT (13 Oct, 09:59 Kyiv). My older game build, CLOCK IN, lives in [Solar-DePIN-Hub/Solarchik](https://github.com/Solar-DePIN-Hub/Solarchik), and I didn't change it for this. In this app the game is only a small "Play" tile.
 
-**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.1/solarchik-assistant.apk) (v1.1.1, Android 8+, sha256 `d892219d596535dfc79161eb462a16ba8d7cfc0febbc9d1083cbb89593c13adc`)
+**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.2/solarchik-assistant.apk) (v1.1.2, Android 8+, sha256 `292a5c057ef15b742381d74c11cba5c07ca36c878637405742233e4e9af3e0a8`)
 
-> **Mainnet, real funds.** 1.1.0 talks to Solana mainnet. Anything you approve in your wallet moves real SOL or tokens and can't be undone. The app never signs for your wallet by itself. Real swaps, the Saver and the experimental delegated limit are all off until you turn them on, and they have small caps. Read [What's real on mainnet](#whats-real-on-mainnet-and-what-isnt) first.
+> **Mainnet, real funds.** Since 1.1.0 the app talks to Solana mainnet. Anything you approve in your wallet moves real SOL or tokens and can't be undone. The app never signs for your wallet by itself. Real swaps, the Saver and the experimental delegated limit are all off until you turn them on, and they have small caps. Read [What's real on mainnet](#whats-real-on-mainnet-and-what-isnt) first.
 
-| Today | Sol answers from the phone | Call inbox |
+| Today | Sol answers | Call inbox |
 | --- | --- | --- |
-| ![Today](docs/screens/01-today.png) | ![Sol](docs/screens/02-sol-calls.png) | ![Calls](docs/screens/03-call-inbox.png) |
-| **Agent wallet + Season card** | **Seeker Season plan** | **SKR (read-only) + staking link** |
-| ![Wallet](docs/screens/04-wallet-season-card.png) | ![Season](docs/screens/05-seeker-season.png) | ![SKR](docs/screens/06-skr-staking.png) |
+| ![Today](docs/screens/1.1.x/01-today.png) | ![Sol](docs/screens/1.1.x/02-sol.png) | ![Calls](docs/screens/1.1.x/03-calls.png) |
+| **Three agents** | **Seeker Season plan (one-tap check-in)** | **Official Season rules watcher** |
+| ![Agents](docs/screens/1.1.x/04-agents.png) | ![Season](docs/screens/1.1.x/05-seeker-season.png) | ![Rules](docs/screens/1.1.x/06-season-rules.png) |
 
-| **Three agents** | **Morning briefing** | **Actions from calls** |
+| **Season Agent** | **Morning briefing** | **Actions from calls** |
 | ![Agents](docs/screens/1.1.0/15_agents_season.png) | ![Briefing](docs/screens/1.1.0/18_today_briefing.png) | ![Actions](docs/screens/1.1.0/19_today_call_actions.png) |
 | **Saver** | **Watcher** | **Payment from a call: scam warning** |
 | ![Saver](docs/screens/1.1.0/16_agents_saver.png) | ![Watcher](docs/screens/1.1.0/17_agents_watcher.png) | ![Payment](docs/screens/1.1.0/20_payment_sheet_scam_warning.png) |
 
-More 1.1.0 renders and the Firebase Test Lab screenshots are in [docs/screens/1.1.0](docs/screens/1.1.0) and [docs/evidence/1.1.0.md](docs/evidence/1.1.0.md).
+The first table is from Firebase Test Lab (robo crawl of the v1.1.1 release APK on a MediumPhone, Android 14), except the Calls inbox; that one and the second table are Robolectric renders of the real app views. More: [docs/screens/1.1.x](docs/screens/1.1.x) (onboarding, Ukrainian Settings and Calls, tablet), [docs/screens/1.1.0](docs/screens/1.1.0) and [docs/evidence/1.1.0.md](docs/evidence/1.1.0.md).
 
-Also in the folder: the first-launch screen (`docs/screens/00-onboarding.png`) and Today in Ukrainian (`docs/screens/01-today-uk.png`).
-
-The screenshots are renders of the real app views from the Robolectric tests, not mockups. The calls in them are sample data with made-up numbers. The 1.8425 SOL balance is a value I set in the test, so the render doesn't depend on the network.
+None of the screenshots are mockups. The calls in the Robolectric renders are sample data with made-up numbers.
 
 ## Why I built it
 
@@ -119,7 +117,7 @@ These are from the devnet builds before 1.1.0. I checked every signature below w
 
 ## Install
 
-1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.1/solarchik-assistant.apk) from the [v1.1.0 release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.1).
+1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.2/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.2).
 2. Allow installs from your browser or file manager when Android asks.
 3. Open the app. It installs as **Solarchik Assistant** (`net.solardepin.solarchik.assistant`), next to the CLOCK IN game if you have it.
 4. To connect a wallet, tap "Set up wallet" on Today. You need Phantom, Solflare or Seed Vault; it's a mainnet wallet with real funds. Without a wallet app you can still use Sol, the secretary, the briefing and the Watcher's prices.
@@ -173,7 +171,7 @@ What I couldn't verify myself, because it needs a real wallet with real money: t
 | Item | URL |
 | --- | --- |
 | This repo | https://github.com/Solar-DePIN-Hub/solarchik-assistant |
-| Release v1.1.1 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.1 |
+| Release v1.1.2 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.2 |
 | Game repo (CLOCK IN, unchanged) | https://github.com/Solar-DePIN-Hub/Solarchik |
 | API / market (devnet) | https://solarchik-market.vercel.app |
 | Demo video (CLOCK IN cut, an Assistant cut is coming) | https://youtu.be/oAxoliLwUXo |
@@ -184,6 +182,10 @@ What I couldn't verify myself, because it needs a real wallet with real money: t
 ## Timeline
 
 I started Solarchik on 19 Sep 2026. An older Telegram prototype I made in July is unrelated and isn't part of this. Before this, I used the game-shaped build for MunichTech (Sep 2026) and CLOCK IN / Radiants (Oct 2026). This repo is the assistant version for Colosseum.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
 
 ## Contact
 

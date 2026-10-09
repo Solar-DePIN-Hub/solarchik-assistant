@@ -697,3 +697,15 @@ Owner feedback from the 0.21.7 phone test (9 items) plus the secretary's duplica
 ## 1.1.1 (versionCode 111, 9 Oct 2026): one-tap check-in
 - In the assistant the daily check-in no longer needs a 1200 m run in Play: `SolarchikConfig.CHECKIN_NEEDS_RUN = false`, `GameSave.checkInOpen()` is used by ClockIn.ready, Today, Season plan, the Season Agent card, autopilot CHECKIN, Sol's state and the check-in screen. `clockedToday()` (the game's own run gate) and the streak rules are unchanged; a run is an optional bonus. Season plan texts EN/UK updated. New CheckIn111Test.
 - Full suite: 430 tests, 18 skipped; the only failure was the version-name assertion (1.1.0 → 1.1.1), fixed and rerun green. APK sha256 d892219d596535dfc79161eb462a16ba8d7cfc0febbc9d1083cbb89593c13adc (same signer).
+
+## 1.1.2 (versionCode 112, 9-10 Oct 2026): pre-publish audit fixes
+
+- Audit of v1.1.1 (Test Lab robo: MediumPhone.arm v34 en + uk, MediumTablet.arm v34 en; tablet uk hit TEST_QUOTA_EXCEEDED). Found and fixed game leftovers in the assistant:
+  - Settings "Fees & tiers" card (Pro/Free fee %, fee-free windows, treasury) hidden in the assistant.
+  - Settings reminders: only the check-in reminder is left; reward / fee-window / daily game note / trading-desk notes are off in the assistant (`GameSave.assistantOff`), so they can no longer fire (a "Desk closes (background)" notification was seen in the robo crawl). Reminder copy rewritten (EN+UK).
+  - Chat: removed the "Sol · game rules" tag under local replies.
+  - "Player ID" → "Account ID" / "ID акаунта" in Calls and Secretary settings (EN+UK).
+  - Secretary language buttons: "Українсь…" was clipped; labels now Ukrainian / Укр. / Англ.
+- Flaky test fixed (`briefingFactsTimingAndLocalText` used `indexOf` on a freshly built list). New `Audit112Test` (EN+UK Settings + Calls, no leftovers).
+- Repo: LICENSE (MIT) added, README screenshots replaced with 1.1.x Test Lab / Robolectric shots (`docs/screens/1.1.x`), PRIVACY notification line updated.
+- Full suite: 433 tests, 18 skipped, 0 failures. Worker tests 58/58. MainnetLiveIT 6/6 (read-only). APK sha256 292a5c057ef15b742381d74c11cba5c07ca36c878637405742233e4e9af3e0a8 (same signer 91102f8f…a01e).

@@ -28,6 +28,8 @@ import net.solardepin.solarchik.screen.ScreenApi
 import net.solardepin.solarchik.screen.Secretary
 import net.solardepin.solarchik.ui.Ui.dp
 
+private const val ASSISTANT = net.solardepin.solarchik.core.SolarchikConfig.SOL_APP == "assistant"
+
 class SettingsScreen(host: MainActivity) : Screen(host) {
     private lateinit var walletBox: LinearLayout
     private lateinit var networkBody: TextView
@@ -60,7 +62,8 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             addView(devBox)
         })
 
-        addView(section(R.string.settings_fees, R.drawable.ic_gift, Ui.GOLD).apply {
+        // 1.1.2 assistant: the game's fee tiers / fee-free windows are not part of the assistant
+        if (!ASSISTANT) addView(section(R.string.settings_fees, R.drawable.ic_gift, Ui.GOLD).apply {
             addView(Ui.top(Ui.body(ctx, ctx.getString(
                 R.string.settings_fees_body,
                 Fmt.sol(SolarchikConfig.PRO_PRICE_SOL),
@@ -82,11 +85,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             addView(Ui.top(notesState, 8))
             listOf(
                 "noteStreak" to R.string.note_streak_toggle,
-                "noteReward" to R.string.note_reward_toggle,
-                "noteWindow" to R.string.note_window_toggle,
-                "noteReport" to R.string.note_report_toggle,
-                "noteDesk" to R.string.note_desk_toggle,
-            ).forEach { (key, label) ->
+            ).filter { (key, _) -> !net.solardepin.solarchik.game.GameSave.assistantOff(key) }.forEach { (key, label) ->
                 addView(Ui.top(switchRow(ctx.getString(label), host.save.noteOn(key)) { _, on ->
                     host.save.setNote(key, on)
                     if (on) host.requestNotifications(fromUser = false)

@@ -246,7 +246,7 @@ class SolScreen(host: MainActivity) : Screen(host) {
         }
         col.addView(tv)
         if (t.fallback) col.addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.chat_fallback), 10f, Ui.MUTED, 700), 2))
-        if (t.local) col.addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.chat_rules), 10f, Ui.GOLD, 700), 2))
+        // 1.1.2: no "game rules" tag in the assistant (local answers are the assistant's own)
         if (t.link.isNotBlank()) col.addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.sol_act_explorer), 12f, Ui.CYAN, 800).apply {
             isClickable = true
             setPadding(0, dp(6), 0, dp(6))

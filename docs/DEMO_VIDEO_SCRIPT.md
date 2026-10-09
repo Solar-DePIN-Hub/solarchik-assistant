@@ -1,12 +1,12 @@
-# Solarchik Assistant 1.1.1: 2:30 demo video (shot list)
+# Solarchik Assistant 1.1.2: 2:30 demo video (shot list)
 
 You record this on your own Android phone with the built-in screen recorder (sound on, "media + mic").
 Language: **English** (the app's default). Times are targets; the full take is about 2:30.
 
 ## Pre-flight (the evening before or the morning of 10 Oct, before 12:00 Kyiv)
 
-1. **Install** `solarchik-assistant.apk` from the v1.1.1 release:
-   https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.1
+1. **Install** `solarchik-assistant.apk` from the v1.1.2 release:
+   https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.2
    (Allow "install unknown apps" for the browser. sha256 is in the release notes and README.)
 2. Open the app once and finish onboarding. Allow **notifications** and the **microphone**.
 3. **Wallet:** Phantom, Solflare or Seed Vault on **mainnet** with about **0.05 SOL** (fees are ~0.000005 SOL; nothing in

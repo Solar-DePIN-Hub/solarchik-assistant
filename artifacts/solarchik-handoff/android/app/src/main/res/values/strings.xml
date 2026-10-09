@@ -186,15 +186,15 @@
 
     <!-- Notifications (copy from the Grok export, scheduling lands in milestone B) -->
     <string name="note_channel">Solarchik</string>
-    <string name="note_streak_title">Streak</string>
-    <string name="note_streak_body">Sign today or the streak ends in about 3 hours.</string>
+    <string name="note_streak_title">Daily check-in</string>
+    <string name="note_streak_body">Today\'s check-in isn\'t signed yet. One tap in your wallet keeps the streak; the day ends in about 3 hours.</string>
     <string name="note_reward_title">Fee-free window</string>
     <string name="note_reward_body">A fee-free window is ready. It starts only when you tap.</string>
     <string name="note_window_title">Fee-free window</string>
     <string name="note_window_body">The fee-free window ends in about 3 hours.</string>
     <string name="note_report_title">Sol</string>
     <string name="note_report_body">Today\'s note from Sol is ready. Only your real numbers. The game day (UTC) ends at %1$s your time.</string>
-    <string name="note_streak_toggle">Streak reminder</string>
+    <string name="note_streak_toggle">Check-in reminder</string>
     <string name="note_reward_toggle">Reward reminder</string>
     <string name="note_window_toggle">Window ending</string>
     <string name="note_report_toggle">Daily note</string>
@@ -258,7 +258,7 @@
     <string name="fees_nothing">Nothing owed</string>
     <string name="desk_log">Activity</string>
     <string name="desk_log_empty">Start a strategy to see each decision here.</string>
-    <string name="notes_how">Local reminders, checked about once an hour: streak at risk (3 h before the UTC day ends), reward ready, window ending, the daily note (before the UTC game day ends), and desk closes while the app is closed (at most one note per 30 min).</string>
+    <string name="notes_how">Local reminders, checked about once an hour: if today\'s check-in isn\'t signed about 3 hours before the day ends (03:00 Kyiv = 00:00 UTC). The morning briefing, Watcher alerts and call reminders have their own settings.</string>
     <string name="notes_allowed">Notifications allowed</string>
     <string name="notes_blocked">Notifications are off for Solarchik.</string>
     <string name="notes_allow">Allow notifications</string>
@@ -686,10 +686,10 @@
     <string name="sec_refreshing">Refreshing…</string>
     <string name="sec_lang">Secretary speaks</string>
     <string name="sec_lang_auto">Auto</string>
-    <string name="sec_lang_uk">Українська</string>
+    <string name="sec_lang_uk">Ukrainian</string>
     <string name="sec_lang_en">English</string>
     <string name="sec_lang_saved">Secretary language saved</string>
-    <string name="sec_player_id">Player ID</string>
+    <string name="sec_player_id">Account ID</string>
     <string name="copy">Copy</string>
     <string name="sec_no_wallet_title">No Solana wallet on this phone</string>
     <string name="sec_no_wallet_body">Top-ups are paid in USDC from a Solana wallet. Install Phantom or Solflare, or pay from another phone: copy the link or scan the QR code. Then come back and tap Check payment.</string>

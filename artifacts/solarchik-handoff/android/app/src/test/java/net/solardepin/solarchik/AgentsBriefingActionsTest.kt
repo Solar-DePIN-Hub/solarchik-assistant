@@ -323,7 +323,7 @@ class AgentsBriefingActionsTest {
         assertEquals(LocalDate.of(2026, 10, 11).atTime(8, 30).atZone(zone).toInstant().toEpochMilli(), Briefing.nextAt(BriefingPolicy(), now, zone))
         assertEquals(LocalDate.of(2026, 10, 10).atTime(9, 0).atZone(zone).toInstant().toEpochMilli(), Briefing.nextAt(BriefingPolicy(hour = 9, minute = 0), now, zone))
         assertTrue("on by default at 08:30", BriefingStore(app).policy().let { it.enabled && it.label == "08:30" })
-        val calls = sample.map { it.copy(at = now - (sample.indexOf(it) + 1) * 3_600_000L) } +
+        val calls = sample.mapIndexed { i, it -> it.copy(at = now - (i + 1) * 3_600_000L) } +  // 1.1.2: indexOf on a fresh `sample` was clock-dependent (flaky)
             call("old", "Ivan", "two days ago", "x", 0).copy(at = now - 3 * 86_400_000L)
         val plan = SeasonStore.planFor(app, net.solardepin.solarchik.game.GameSave(app), true)
         val f = Briefing.facts(calls, emptyList(), listOf("pay 10 USDC to Olena (needs your confirmation)"), listOf(WatchAlert(now, WatchAlert.PRICE, "SOL", 100.0, 94.0)),

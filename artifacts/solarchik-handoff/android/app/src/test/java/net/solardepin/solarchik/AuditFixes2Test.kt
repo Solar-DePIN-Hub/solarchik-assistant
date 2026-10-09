@@ -193,6 +193,12 @@ class AuditFixes2Test {
         shadowOf(ctx as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         Notes.createChannel(ctx)
         val nm = shadowOf(ctx.getSystemService(NotificationManager::class.java))
+        if (net.solardepin.solarchik.core.SolarchikConfig.SOL_APP == "assistant") {
+            // 1.1.2: the trading-desk note is game-only; the assistant never posts it (no desk leftovers)
+            DeskNotes.onTick(ctx, tick("p1", "p2"), now = utc(12))
+            assertEquals(0, nm.allNotifications.size)
+            return
+        }
         DeskNotes.onTick(ctx, tick("p1", "p2"), now = utc(12))
         assertEquals(1, nm.allNotifications.size)
         val text = nm.allNotifications.single().extras.getCharSequence("android.text").toString()

@@ -174,15 +174,15 @@
     <string name="err_network">Проблема з мережею. Перевір звʼязок і спробуй ще.</string>
     <string name="err_failed">Помилка гаманця: %1$s</string>
     <string name="note_channel">Соларчик</string>
-    <string name="note_streak_title">Стрік</string>
-    <string name="note_streak_body">Підпиши день, інакше стрік згасне приблизно за 3 години.</string>
+    <string name="note_streak_title">Щоденна відмітка</string>
+    <string name="note_streak_body">Сьогоднішню відмітку ще не підписано. Один дотик у гаманці зберігає стрік; день закінчиться приблизно за 3 години.</string>
     <string name="note_reward_title">Вікно без комісії</string>
     <string name="note_reward_body">Вікно без комісії готове. Воно стартує лише після кнопки.</string>
     <string name="note_window_title">Вікно без комісії</string>
     <string name="note_window_body">Вікно без комісії закінчиться приблизно за 3 години.</string>
     <string name="note_report_title">Сол</string>
     <string name="note_report_body">Сьогоднішня нотатка від Sol готова. Лише твої реальні числа. Ігровий день (UTC) закінчується о %1$s за твоїм часом.</string>
-    <string name="note_streak_toggle">Нагадування про стрік</string>
+    <string name="note_streak_toggle">Нагадування про відмітку</string>
     <string name="note_reward_toggle">Нагадування про нагороду</string>
     <string name="note_window_toggle">Кінець вікна</string>
     <string name="note_report_toggle">Щоденна записка</string>
@@ -246,7 +246,7 @@
     <string name="fees_nothing">Нічого сплачувати</string>
     <string name="desk_log">Журнал</string>
     <string name="desk_log_empty">Запусти стратегію, щоб бачити тут кожне рішення.</string>
-    <string name="notes_how">Локальні нагадування, перевірка приблизно щогодини: серія під загрозою (за 3 год до кінця дня UTC), нагорода готова, вікно закінчується, щоденна нотатка (до кінця ігрового дня UTC) і закриття на пульті, поки застосунок закритий (не частіше одного разу на 30 хв).</string>
+    <string name="notes_how">Локальні нагадування, перевірка приблизно щогодини: якщо сьогоднішню відмітку не підписано приблизно за 3 години до кінця дня (03:00 за Києвом = 00:00 UTC). Ранковий брифінг, сповіщення Спостерігача й нагадування з дзвінків налаштовуються окремо.</string>
     <string name="notes_allowed">Сповіщення дозволено</string>
     <string name="notes_blocked">Сповіщення для Solarchik вимкнено.</string>
     <string name="notes_allow">Дозволити сповіщення</string>
@@ -675,10 +675,10 @@
     <string name="sec_refreshing">Оновлюю…</string>
     <string name="sec_lang">Мова секретаря</string>
     <string name="sec_lang_auto">Авто</string>
-    <string name="sec_lang_uk">Українська</string>
-    <string name="sec_lang_en">English</string>
+    <string name="sec_lang_uk">Укр.</string>
+    <string name="sec_lang_en">Англ.</string>
     <string name="sec_lang_saved">Мову секретаря збережено</string>
-    <string name="sec_player_id">ID гравця</string>
+    <string name="sec_player_id">ID акаунта</string>
     <string name="copy">Копіювати</string>
     <string name="sec_no_wallet_title">На телефоні немає Solana-гаманця</string>
     <string name="sec_no_wallet_body">Поповнення оплачується в USDC із Solana-гаманця. Встанови Phantom або Solflare чи оплати з іншого телефона: скопіюй посилання або скануй QR-код. Потім повернись і натисни «Перевірити оплату».</string>

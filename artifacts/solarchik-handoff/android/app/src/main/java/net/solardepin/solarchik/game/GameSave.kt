@@ -232,7 +232,7 @@ class GameSave(context: Context, private val clock: () -> Long = { System.curren
     }
 
     // ---- Notification switches (keys shared with the Grok export DayAlerts) ----
-    fun noteOn(key: String): Boolean = prefs.getBoolean(key, true)
+    fun noteOn(key: String): Boolean = !assistantOff(key) && prefs.getBoolean(key, true)
     fun setNote(key: String, on: Boolean) { prefs.edit().putBoolean(key, on).apply() }
 
     var runs: Int
@@ -243,6 +243,10 @@ class GameSave(context: Context, private val clock: () -> Long = { System.curren
     fun offerBonus(): Boolean = (runs + 1) % 15 == 0
 
     companion object {
+        /** 1.1.2: game-only reminders (fee-free windows, the game's daily note, the trading desk) are off in the assistant. */
+        private val GAME_ONLY_NOTES = setOf("noteReward", "noteWindow", "noteReport", "noteDesk")
+        fun assistantOff(key: String): Boolean = net.solardepin.solarchik.core.SolarchikConfig.SOL_APP == "assistant" && key in GAME_ONLY_NOTES
+
         const val GOAL_M = SolarchikConfig.RUN_GOAL_M
         private val DAY = Regex("^\\d{4}-\\d{2}-\\d{2}$")
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
