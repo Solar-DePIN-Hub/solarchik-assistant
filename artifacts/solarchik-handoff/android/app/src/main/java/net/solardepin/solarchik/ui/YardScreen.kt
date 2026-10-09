@@ -345,7 +345,7 @@ class YardScreen(host: MainActivity) : Screen(host) {
         modPill.text = modName(save.dayMod())
 
         val dist = save.todayDistance()
-        val clocked = save.clockedToday()
+        val clocked = save.checkInOpen()
         val signed = save.signedToday()
         runLine.text = ctx.getString(R.string.yard_run_progress, dist.coerceAtMost(goal), goal)
         bestLine.text = ctx.getString(R.string.yard_best, save.bestDistance)
@@ -506,7 +506,7 @@ class YardScreen(host: MainActivity) : Screen(host) {
         when {
             signing -> Unit
             save.signedToday() -> Unit
-            save.clockedToday() -> clockIn()
+            save.checkInOpen() -> clockIn()
             else -> host.startRun()
         }
     }

@@ -32,7 +32,7 @@
     <string name="yard_signed">Signed today</string>
     <string name="yard_status_need_run">Run %1$d m on the roofs. Then CLOCK IN opens your wallet.</string>
     <string name="yard_status_first_roof">The first roof got you. Once more.</string>
-    <string name="yard_status_ready">Run counted. Sign the day to keep the streak.</string>
+    <string name="yard_status_ready">Ready: sign today\'s check-in in your wallet to keep the streak.</string>
     <string name="yard_status_tx">Signed on %1$s · transaction</string>
     <string name="yard_status_msg">Signed message · %1$s</string>
     <string name="yard_proof_tx">%1$s · explorer</string>

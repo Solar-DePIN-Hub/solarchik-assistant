@@ -177,7 +177,7 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
                 if (p.clockedToday) Ui.Btn.PRIMARY else Ui.Btn.SECONDARY, R.drawable.ic_flame) {
                 host.select(MainActivity.Tab.SHIFT, animate = true)
                 val shift = host.screen(MainActivity.Tab.SHIFT) as? YardScreen
-                if (save.clockedToday() && !save.signedToday()) shift?.signFromRun() else shift?.focusToday()
+                if (save.checkInOpen() && !save.signedToday()) shift?.signFromRun() else shift?.focusToday()
             }.apply { tag = "season-chain-go" }, 10))
             if (p.mainnet && !p.done(SeasonItem.ONCHAIN)) addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.mn_season_swap_btn), Ui.Btn.GHOST, R.drawable.ic_open) {
                 host.select(MainActivity.Tab.AGENTS, animate = true)

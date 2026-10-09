@@ -265,7 +265,7 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
     /** Season Agent: today's Seeker Season plan in one line, with a way into the full plan. */
     private fun seasonPlanCard(): View = Ui.card(ctx, accent = Ui.CYAN, pad = 16).apply {
         tag = "agent-season-plan"
-        val plan = net.solardepin.solarchik.season.SeasonStore.plan(host, host.save.signedToday(), host.save.clockedToday())
+        val plan = net.solardepin.solarchik.season.SeasonStore.plan(host, host.save.signedToday(), host.save.checkInOpen())
         addView(Ui.label(ctx, ctx.getString(R.string.aa_plan_label), Ui.CYAN))
         addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.aa_plan_line, plan.doneCount, plan.total, plan.streak), 15f, Ui.TEXT, 800), 4))
         addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.aa_plan_open), Ui.Btn.SECONDARY) { host.select(MainActivity.Tab.SEASON, animate = true) }.apply { tag = "agent-season-open" }, 10))

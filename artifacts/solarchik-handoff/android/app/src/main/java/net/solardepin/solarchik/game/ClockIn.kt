@@ -14,7 +14,7 @@ import net.solardepin.solarchik.wallet.SolanaWallet
  */
 object ClockIn {
     /** True when today's CLOCK IN is unlocked by a run and not signed yet. */
-    fun ready(save: GameSave): Boolean = save.clockedToday() && !save.signedToday()
+    fun ready(save: GameSave): Boolean = save.checkInOpen() && !save.signedToday()
 
     /**
      * Signs today's CLOCK IN. Success carries the fee-free window it granted (if any).

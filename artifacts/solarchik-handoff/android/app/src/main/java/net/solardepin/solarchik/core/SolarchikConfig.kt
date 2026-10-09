@@ -86,6 +86,8 @@ object SolarchikConfig {
     /** 0.21.8: Sol's voice (OpenAI gpt-4o-mini-tts, 24 kHz PCM streamed; edge-cached per line). */
     /** 1.0.1: tells the worker this is Solarchik Assistant, so /sol/chat uses the pocket-assistant prompt (runs keep the game prompt). */
     const val SOL_APP = "assistant"
+    /** 1.1.1 assistant: the daily check-in is one tap (memo tx in the wallet); a run in Play is an optional bonus. */
+    const val CHECKIN_NEEDS_RUN = false
     const val SOL_TTS_URL = "https://solarchik-screen.davidbell1603.workers.dev/sol/tts"
 
     // --- Explorers (1.1.0: mainnet links go to Solscan, Orb as the second link) ---

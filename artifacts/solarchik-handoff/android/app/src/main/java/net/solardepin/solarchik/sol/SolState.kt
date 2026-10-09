@@ -47,7 +47,7 @@ data class SolState(
             val today = save.today()
             val signed = save.signedToday()
             val at = if (signed) save.clockLog().filter { it.day == today }.maxOfOrNull { it.at } ?: 0L else 0L
-            return SolState(save.liveStreak().streak, signed, save.clockedToday(), save.todayDistance(), at)
+            return SolState(save.liveStreak().streak, signed, save.checkInOpen(), save.todayDistance(), at)
         }
 
         /** History without assistant lines written before today's signature (they quote the old streak). */

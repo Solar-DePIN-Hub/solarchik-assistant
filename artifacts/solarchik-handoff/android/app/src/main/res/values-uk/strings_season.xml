@@ -26,11 +26,11 @@
     <string name="season_explore_note">Поради з Solana dApp Store, не реклама і не спонсорство. Якщо застосунок встановлено, він відкриється; інакше відкриється його сайт.</string>
     <string name="season_chain_title">Одна корисна дія в мережі</string>
     <string name="season_chain_signed">Сьогоднішню відмітку підписано.</string>
-    <string name="season_chain_sign">Ти відмітився. Підпиши сьогоднішню відмітку гаманцем.</string>
-    <string name="season_chain_run">Відмітся (одна пробіжка %1$d м), потім підпиши гаманцем.</string>
-    <string name="season_chain_btn_sign">Підписати</string>
+    <string name="season_chain_sign">Один дотик: підпиши сьогоднішню відмітку в гаманці (memo-транзакція в мережі Solana mainnet, лише комісія).</string>
+    <string name="season_chain_run">Підпиши сьогоднішню відмітку в гаманці: один дотик, лише комісія.</string>
+    <string name="season_chain_btn_sign">Відмітитися</string>
     <string name="season_chain_btn_run">Відмітитися</string>
-    <string name="season_chain_note">Ця збірка підписує в Solana devnet, тож відмітка — це звичка, а не активність для Season. Гаманець питає перед кожним підписом.</string>
+    <string name="season_chain_note">Відмітка — це memo-транзакція в мережі Solana mainnet (комісія близько 0.000005 SOL). Гаманець спитає, перш ніж щось підписати. Забіг у грі — необовʼязковий бонус.</string>
     <string name="season_skr">SKR</string>
     <string name="season_skr_mainnet">Mainnet · лише читання</string>
     <string name="season_skr_none">Підключи гаманець, щоб побачити баланс SKR. Читання балансу нічого не підписує.</string>
@@ -52,7 +52,7 @@
     <string name="season_say_explore">Спробуй %1$s. %2$s</string>
     <string name="season_say_explored">Ти вже відкрив %1$s сьогодні.</string>
     <string name="season_say_signed">Твою відмітку підписано.</string>
-    <string name="season_say_sign">Ти відмітився; підпиши відмітку, коли будеш готовий.</string>
-    <string name="season_say_run">Відмітся і підпиши відмітку, якщо хочеш.</string>
+    <string name="season_say_sign">Відмітка готова: один дотик, і ти підписуєш її в гаманці.</string>
+    <string name="season_say_run">Підпиши відмітку, якщо хочеш: один дотик у гаманці.</string>
     <string name="season_say_fair">Я нічого не підписую і не повторюю за тебе; користуйся застосунками як зазвичай.</string>
 </resources>

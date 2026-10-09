@@ -257,7 +257,7 @@ class MainActivity : ComponentActivity() {
             net.solardepin.solarchik.autopilot.AutoKind.CHECKIN -> {
                 select(Tab.SHIFT, animate = true)
                 val shift = screen(Tab.SHIFT) as? net.solardepin.solarchik.ui.YardScreen ?: return
-                if (save.clockedToday() && !save.signedToday()) shift.signFromRun() else shift.focusToday()
+                if (save.checkInOpen() && !save.signedToday()) shift.signFromRun() else shift.focusToday()
             }
             net.solardepin.solarchik.autopilot.AutoKind.DAPP -> {
                 val d = net.solardepin.solarchik.season.SeasonDapps.all.firstOrNull { it.name == a.dapp } ?: net.solardepin.solarchik.season.SeasonDapps.all.first()

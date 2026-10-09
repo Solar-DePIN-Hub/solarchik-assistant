@@ -24,11 +24,11 @@
     <string name="season_explore_note">Suggestions from the Solana dApp Store, not ads and not sponsored. If the app is installed it opens; otherwise its website opens.</string>
     <string name="season_chain_title">One useful onchain action</string>
     <string name="season_chain_signed">Today\'s check-in is signed.</string>
-    <string name="season_chain_sign">You clocked in. Sign today\'s check-in with your wallet.</string>
-    <string name="season_chain_run">Clock in (one %1$d m run), then sign it with your wallet.</string>
-    <string name="season_chain_btn_sign">Sign check-in</string>
+    <string name="season_chain_sign">One tap: sign today\'s check-in in your wallet (a Solana mainnet memo, fee only).</string>
+    <string name="season_chain_run">Sign today\'s check-in in your wallet: one tap, fee only.</string>
+    <string name="season_chain_btn_sign">Check in</string>
     <string name="season_chain_btn_run">Clock in</string>
-    <string name="season_chain_note">This build signs on Solana devnet, so the check-in is a habit, not Season activity. Your wallet asks before anything is signed.</string>
+    <string name="season_chain_note">The check-in is a memo transaction on Solana mainnet (about 0.000005 SOL in fees). Your wallet asks before anything is signed. A run in Play is an optional bonus.</string>
     <string name="season_skr">SKR</string>
     <string name="season_skr_mainnet">Mainnet · read-only</string>
     <string name="season_skr_none">Connect a wallet to see its SKR balance. Reading a balance never signs anything.</string>
@@ -50,7 +50,7 @@
     <string name="season_say_explore">Try %1$s. %2$s</string>
     <string name="season_say_explored">You already opened %1$s today.</string>
     <string name="season_say_signed">Your check-in is signed.</string>
-    <string name="season_say_sign">You clocked in; sign the check-in when you\'re ready.</string>
-    <string name="season_say_run">Clock in and sign the check-in if you like.</string>
+    <string name="season_say_sign">Your check-in is ready: one tap and you sign it in your wallet.</string>
+    <string name="season_say_run">Sign the check-in if you like: one tap in your wallet.</string>
     <string name="season_say_fair">I won\'t sign or repeat anything for you; use the apps like you normally would.</string>
 </resources>

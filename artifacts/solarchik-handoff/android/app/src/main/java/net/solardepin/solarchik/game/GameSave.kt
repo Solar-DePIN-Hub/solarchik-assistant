@@ -97,6 +97,9 @@ class GameSave(context: Context, private val clock: () -> Long = { System.curren
 
     fun clockedToday(): Boolean = lastClockDay == today() && lastDistance >= GOAL_M
 
+    /** 1.1.1: today's check-in can be signed (the assistant needs no run; see SolarchikConfig.CHECKIN_NEEDS_RUN). */
+    fun checkInOpen(): Boolean = !net.solardepin.solarchik.core.SolarchikConfig.CHECKIN_NEEDS_RUN || clockedToday()
+
     /** Best distance run today (0 after a new UTC day until the next run). */
     fun todayDistance(): Int = if (prefs.getString("runDay", "") == today()) lastDistance else 0
     fun todayScore(): Int = if (prefs.getString("runDay", "") == today()) lastScore else 0

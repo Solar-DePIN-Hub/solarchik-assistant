@@ -726,7 +726,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         val save = host.save
         host.select(MainActivity.Tab.SHIFT, animate = true)
         val shift = host.screen(MainActivity.Tab.SHIFT) as? YardScreen ?: return
-        if (save.clockedToday() && !save.signedToday()) shift.signFromRun() else shift.focusToday()
+        if (save.checkInOpen() && !save.signedToday()) shift.signFromRun() else shift.focusToday()
     }
 
     // ------------------------------------------------------------------ render
@@ -841,12 +841,12 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         checkStreak.text = if (st <= 0) ctx.getString(R.string.today_checkin_none) else ctx.resources.getQuantityString(R.plurals.today_checkin_streak, st, st)
         checkState.text = when {
             save.signedToday() -> ctx.getString(R.string.today_checkin_signed)
-            save.clockedToday() -> ctx.getString(R.string.today_checkin_sign)
+            save.checkInOpen() -> ctx.getString(R.string.today_checkin_sign)
             else -> ctx.getString(R.string.today_checkin_run, GameSave.GOAL_M)
         }
         checkState.setTextColor(when {
             save.signedToday() -> Ui.GREEN
-            save.clockedToday() -> Ui.GOLD
+            save.checkInOpen() -> Ui.GOLD
             else -> Ui.MUTED
         })
         playSub.text = if (save.bestDistance <= 0) ctx.getString(R.string.today_play_new) else ctx.getString(R.string.today_play_sub, save.bestDistance)

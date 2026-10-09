@@ -129,7 +129,7 @@ object SeasonStore {
         val signed = save.signedToday()
         val checkin = signed && save.clockCluster == "mainnet" && save.clockKind == "tx"
         val onchain = onchainMarked(ctx, day) ?: if (checkin) "check-in" else null
-        return plan(ctx, signed, save.clockedToday(), day).copy(onchain = onchain, mainnet = mainnet)
+        return plan(ctx, signed, save.checkInOpen(), day).copy(onchain = onchain, mainnet = mainnet)
     }
 
     fun plan(ctx: Context, signedToday: Boolean, clockedToday: Boolean, day: LocalDate = today()): SeasonPlan {
