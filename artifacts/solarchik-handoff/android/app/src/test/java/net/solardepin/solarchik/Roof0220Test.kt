@@ -35,6 +35,10 @@ import org.robolectric.shadows.ShadowLooper
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w411dp-h914dp-xxhdpi")
 class Roof0220Test {
+    // 1.1.4: these tests drive the old game hub screens, which the assistant no longer opens.
+    @org.junit.Before fun gameHubOn() { MainActivity.gameHub = true }
+    @org.junit.After fun gameHubOff() { MainActivity.gameHub = false }
+
     private val app = ApplicationProvider.getApplicationContext<Context>()
     private val realCheck = SolanaWallet.walletAppCheck
 

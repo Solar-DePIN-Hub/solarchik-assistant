@@ -36,6 +36,10 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "uk-w411dp-h914dp-xxhdpi")
 class Shots0221Test {
+    // 1.1.4: these tests drive the old game hub screens, which the assistant no longer opens.
+    @org.junit.Before fun gameHubOn() { MainActivity.gameHub = true }
+    @org.junit.After fun gameHubOff() { MainActivity.gameHub = false }
+
     private val app = ApplicationProvider.getApplicationContext<Context>()
     private val realCheck = SolanaWallet.walletAppCheck
     private val dir = File(System.getProperty("solarchik.shots") ?: "build/screens", "0.22.3")

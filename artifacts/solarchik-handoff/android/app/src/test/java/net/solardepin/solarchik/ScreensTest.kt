@@ -29,6 +29,10 @@ import java.time.ZoneOffset
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w411dp-h914dp-xxhdpi")
 class ScreensTest {
+    // 1.1.4: these tests drive the old game hub screens, which the assistant no longer opens.
+    @org.junit.Before fun gameHubOn() { MainActivity.gameHub = true }
+    @org.junit.After fun gameHubOff() { MainActivity.gameHub = false }
+
     private val outDir = File(System.getProperty("solarchik.shots") ?: "build/screens")
 
     private fun seed(streakDays: Int, activeWindow: Boolean) {

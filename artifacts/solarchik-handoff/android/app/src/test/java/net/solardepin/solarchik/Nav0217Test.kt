@@ -31,6 +31,10 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w411dp-h914dp-xxhdpi")
 class Nav0217Test {
+    // 1.1.4: these tests drive the old game hub screens, which the assistant no longer opens.
+    @org.junit.Before fun gameHubOn() { MainActivity.gameHub = true }
+    @org.junit.After fun gameHubOff() { MainActivity.gameHub = false }
+
     private val dir = File(System.getProperty("solarchik.shots") ?: "build/screens", "nav-0217")
 
     private fun open(): MainActivity {

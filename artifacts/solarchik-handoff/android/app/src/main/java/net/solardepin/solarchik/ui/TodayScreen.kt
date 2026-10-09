@@ -700,7 +700,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         checkStreak = check.second
         checkState = check.third
         addView(check.first, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
-        val play = habitTile("today-play", R.drawable.ic_nav_run, Ui.GREEN, R.string.today_play_title) { host.select(MainActivity.Tab.YARD, animate = true) }
+        val play = habitTile("today-play", R.drawable.ic_nav_run, Ui.GREEN, R.string.today_play_title) { host.playGame() }
         playSub = play.third
         play.second.visibility = View.GONE
         addView(play.first, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))

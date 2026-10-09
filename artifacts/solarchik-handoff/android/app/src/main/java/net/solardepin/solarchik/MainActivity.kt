@@ -99,10 +99,13 @@ class MainActivity : ComponentActivity() {
 
     private val runLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         renderAll()
-        // "Sign today" on the run's CLOCK IN card: open the Yard and start the wallet flow there.
+        // "Sign today" on the run's CLOCK IN card: open the check-in card and start the wallet flow there.
         if (res.data?.getBooleanExtra(RunActivity.EXTRA_SIGN, false) == true) {
             select(Tab.SHIFT)
             (screen(Tab.SHIFT) as? net.solardepin.solarchik.ui.YardScreen)?.signFromRun()
+        } else if (!gameHub) {
+            // 1.1.4: a finished or abandoned run comes back to the assistant's home, never to the old game hub.
+            select(Tab.TODAY)
         }
     }
 
@@ -298,7 +301,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.getStringExtra(EXTRA_TAB)?.let { name -> Tab.entries.firstOrNull { it.name == name } }?.let { select(it) }
+        intent.getStringExtra(EXTRA_TAB)?.let { name -> Tab.entries.firstOrNull { it.name == name } }?.let { select(homeFor(it)) }
         if (intent.getStringExtra(EXTRA_FOCUS) == "secretary") (screen(Tab.SETTINGS) as? net.solardepin.solarchik.ui.SettingsScreen)?.focusSecretary()
         intent.getStringExtra(EXTRA_AUTOPILOT)?.let { openAutopilot(it) }
         handleAssistantExtras(intent)
@@ -645,6 +648,8 @@ class MainActivity : ComponentActivity() {
 
     fun select(tab: Tab, animate: Boolean = false) {
         if (tab == Tab.CALLS) { openCalls(); return }
+        // 1.1.4: the old game hub (rooftop yard, run garage) is unreachable in the assistant; any way into it starts the run.
+        if (!gameHub && tab in GAME_HUB) { playGame(); return }
         val changed = current != tab
         val from = current
         if (screens.containsKey(current) && changed) screens[current]?.onHide()
@@ -704,6 +709,12 @@ class MainActivity : ComponentActivity() {
 
     fun startRun() {
         runLauncher.launch(Intent(this, RunActivity::class.java))
+    }
+
+    /** 1.1.4: every Play entry in the assistant: straight into the rooftop run; the run returns to Today. */
+    fun playGame() {
+        if (!screens.containsKey(current) || current in GAME_HUB) select(Tab.TODAY)
+        startRun()
     }
 
     fun openUrl(url: String) {
@@ -770,7 +781,20 @@ class MainActivity : ComponentActivity() {
          */
         /** The tab restored after rotation / process death wins over the launch intent; unknown names fall through. */
         fun startTab(saved: String?, fromIntent: String?): Tab =
-            listOfNotNull(saved, fromIntent).firstNotNullOfOrNull { name -> Tab.entries.firstOrNull { it.name == name && it != Tab.CALLS } } ?: Tab.TODAY
+            listOfNotNull(saved, fromIntent).firstNotNullOfOrNull { name -> Tab.entries.firstOrNull { it.name == name && it != Tab.CALLS } }
+                ?.let { homeFor(it) } ?: Tab.TODAY
+
+        /** 1.1.4: screens of the old game hub. In the assistant they are never shown; Play starts the run directly. */
+        val GAME_HUB = setOf(Tab.YARD, Tab.RUN)
+
+        /**
+         * 1.1.4: false in the assistant: the rooftop yard and the run garage can't be opened. Only the older
+         * game-screen tests switch it on (they test the unchanged game UI).
+         */
+        @JvmStatic var gameHub = System.getProperty("solarchik.gamehub") == "1"
+
+        /** A restored or notification tab that points into the game hub opens Today instead (no surprise run). */
+        fun homeFor(tab: Tab): Tab = if (!gameHub && tab in GAME_HUB) Tab.TODAY else tab
 
         /** The raised button in the middle of the bar. */
         val CENTER = Tab.SOL

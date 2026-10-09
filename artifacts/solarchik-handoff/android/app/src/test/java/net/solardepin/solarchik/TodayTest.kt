@@ -149,7 +149,7 @@ class TodayTest {
 
     @Test fun installsNextToTheGameAndStaysOnDevnet() {
         assertEquals("net.solardepin.solarchik.assistant", BuildConfig.APPLICATION_ID)
-        assertEquals("1.1.3", BuildConfig.VERSION_NAME)
+        assertEquals("1.1.4", BuildConfig.VERSION_NAME)
         // 1.1.0: the release defaults to mainnet; this suite runs in dev devnet mode (solarchik.cluster=devnet)
         assertFalse(BuildConfig.DEVNET_ONLY)
         assertEquals("Solarchik Assistant", app.getString(R.string.app_name))
@@ -227,12 +227,9 @@ class TodayTest {
         find(a.window.decorView, "nav-calls")!!.performClick(); idle()
         assertEquals(CallsActivity::class.java.name, sa.nextStartedActivity.component!!.className)
         assertEquals(MainActivity.Tab.TODAY, a.current)
-        // Play is the small tile into the rooftop game; Back returns to Today
+        // 1.1.4: Play starts the rooftop run straight away (no game hub); Today stays underneath
         find(a.window.decorView, "today-play")!!.performClick(); idle()
-        assertEquals(MainActivity.Tab.YARD, a.current)
-        a.onBackPressedDispatcher.onBackPressed(); idle()
-        // the roof may close its own sheet first
-        if (a.current != MainActivity.Tab.TODAY) { a.onBackPressedDispatcher.onBackPressed(); idle() }
+        assertEquals(net.solardepin.solarchik.game.RunActivity::class.java.name, sa.nextStartedActivity.component!!.className)
         assertEquals(MainActivity.Tab.TODAY, a.current)
         // check-in opens today's CLOCK IN card
         find(a.window.decorView, "today-checkin")!!.performClick(); idle()
