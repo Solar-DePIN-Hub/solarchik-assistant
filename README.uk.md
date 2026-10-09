@@ -4,7 +4,7 @@ English: [README.md](README.md) (там повна версія: архітек�
 
 Я Вадим, роблю Solarchik сам у Solar DePIN. Solarchik Assistant — Android-застосунок, кишеньковий помічник на Solana. Тримаєш одну кнопку й говориш із Солом. AI-секретар відповідає на дзвінки, які ти не можеш узяти, і лишає коротку нотатку. Гаманець агента на Solana devnet робить кроки в мережі лише після твого підтвердження.
 
-**Завантажити:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.0.0/solarchik-assistant.apk) (v1.0.0, Android 8+, sha256 `de3b730eeb31cb02f33bdfca00520f8d6cccb067e6932d7303288410b637288f`)
+**Завантажити:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.0.1/solarchik-assistant.apk) (v1.0.1, Android 8+, sha256 `f771f4c8e08053f8e548522513a9da0bfb7d0b30326680463923ebc8871806ca`)
 
 ![Сьогодні](docs/screens/01-today-uk.png)
 

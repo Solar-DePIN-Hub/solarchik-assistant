@@ -20,7 +20,7 @@ function kv() {
   const m = new Map();
   return { m, get: async (k) => (m.has(k) ? m.get(k) : null), put: async (k, v) => void m.set(k, String(v)), delete: async (k) => void m.delete(k) };
 }
-async function call(env, path, body, method = "POST", headers = {}, ctx = { waitUntil() {} }) {
+async function call(env, path, body, method = "POST", headers = {}, ctx) {
   const res = await worker.fetch(
     new Request("https://solarchik-screen.example" + path, {
       method,
@@ -714,7 +714,6 @@ test("0.22.3 run scene: game first; agent rules/context only when the player nam
   assert.ok(!RUN_AGENT_WORDS.test("Що тут робити?") && !RUN_AGENT_WORDS.test("Як побити рекорд?"));
   assert.ok(RUN_AGENT_WORDS.test("запусти мого агента") && RUN_AGENT_WORDS.test("change my strategy"));
 });
-
 
 // ---------------------------------------------------------------- 1.0.1 assistant persona (app: "assistant")
 

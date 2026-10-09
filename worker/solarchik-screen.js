@@ -20,9 +20,8 @@ Use the caller's number as the callback; ask for another number only if they off
 Keep spoken answers under 20 words. Warm, a bit cheeky, never rude.
 Never give wallets, seeds, passwords, or home address.
 If spam or scam, refuse and end the call.
-When you have name plus reason, confirm once and say the owner will see the note, then say goodbye.`;
-
-const VOICE_UK = `Address the caller with polite «ви» every time (you speak for the owner to someone you do not know): «Як вас звати і що ви хотіли передати?». Never switch to «ти» mid-call; «ви хотіли» also avoids guessing the caller's gender.`;
+When you have name plus reason, confirm once and say the owner will see the note, then say goodbye.
+In Ukrainian, address the caller with polite «ви» every time (you speak for the owner to someone you do not know): «Як вас звати і що ви хотіли передати?». Never switch to «ти» mid-call; «ви хотіли» also avoids guessing the caller's gender.`;
 
 const NOTE_RULE = "\nBefore goodbye, call the save_call_note tool once with what you learned.";
 
@@ -116,7 +115,6 @@ function json(data, status = 200) {
     status,
     headers: {
       "Content-Type": "application/json",
-      "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
@@ -511,9 +509,9 @@ const last4 = (n) => (n && n !== "unknown" ? "…" + String(n).slice(-4) : Strin
 
 export const LANGS = ["auto", "uk", "en"];
 export const LANG_RULE = {
-  uk: "Always speak Ukrainian. " + VOICE_UK,
-  en: "LANGUAGE LOCK: speak only English for the entire call, including the greeting and the goodbye. If the caller speaks Ukrainian, Russian, or any other language, you still answer in English. Never say a Ukrainian or Russian word. Never switch language after the greeting. If you did not understand, ask them to repeat, in English.",
-  auto: "Speak only English for the entire call. Do not switch to the caller's language.",
+  uk: "Always speak Ukrainian.",
+  en: "Always speak English.",
+  auto: "Greet in Ukrainian, then reply in the language the caller speaks.",
 };
 
 export async function langOf(env, userId) {
@@ -523,8 +521,7 @@ export async function langOf(env, userId) {
 }
 
 export function voiceFor(lang, withNote) {
-  const rule = LANG_RULE[lang] || LANG_RULE.en;
-  return VOICE + "\n" + (withNote ? NOTE_FIRST + "\n" : "") + rule + (withNote ? NOTE_RULE : "");
+  return VOICE + "\n" + (withNote ? NOTE_FIRST + "\n" : "") + (LANG_RULE[lang] || LANG_RULE.auto) + (withNote ? NOTE_RULE : "");
 }
 
 function validUserId(userId) {
@@ -756,45 +753,6 @@ export function canonCallId(id) {
   return String(id || "").replace(/^(rtc|live)_/, "");
 }
 
-/** Longer snapshot wins. Same length keeps the side with more text (a speech revision). */
-export function preferLines(a, b) {
-  const A = Array.isArray(a) ? a : [];
-  const B = Array.isArray(b) ? b : [];
-  if (B.length > A.length) return B;
-  if (A.length > B.length) return A;
-  const size = (xs) => xs.reduce((n, l) => n + String(l?.text || "").length, 0);
-  return size(B) > size(A) ? B : A;
-}
-
-/**
- * Caller speech on this line is Ukrainian. With no language, gpt-4o-mini-transcribe
- * wrote Arabic and Persian for ordinary Ukrainian words.
- */
-export function callerTranscription() {
-  return {
-    model: "gpt-4o-mini-transcribe",
-    language: "uk",
-    prompt: "Телефонна розмова. Співрозмовник говорить українською. Записуй кирилицею.",
-  };
-}
-
-/** Pending call from the durable room, so a stale inbox cache cannot hide a live talk. */
-export function withLiveItem(items, live) {
-  const list = Array.isArray(items) ? items : [];
-  if (!live?.callId || live.ended) return list;
-  if (list.some((it) => it?.callId && canonCallId(it.callId) === canonCallId(live.callId))) return list;
-  return [
-    {
-      callId: live.callId,
-      caller: live.caller || "",
-      text: "Call answered by the secretary. Note follows.",
-      at: live.at || Date.now(),
-      status: "pending",
-    },
-    ...list,
-  ];
-}
-
 /**
  * The inbox as the apps get it: per call, a failed "could not pick up" ghost (the live_ twin of an answered call)
  * is dropped when the same call also has an answered/pending/blocked line. Old KV data still has such ghosts.
@@ -995,8 +953,7 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
   const route = await playerRoute(env, parties);
   const userId = route.userId;
   const own = isOwnLine(env, parties);
-  // English only until the booth is allowed to pick a language again.
-  const lang = "en";
+  const lang = await langOf(env, userId);
   const base = { type: "realtime", model: "gpt-realtime", instructions: voiceFor(lang, false) };
   const reject = () =>
     fetch("https://api.openai.com/v1/realtime/calls/" + encodeURIComponent(callId) + "/reject", {
@@ -1212,9 +1169,6 @@ export class CallRoom {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === "/lines") return this.linesRoute();
-    if (url.pathname === "/live-set" || url.pathname === "/live-get" || url.pathname === "/live-end") {
-      return this.liveRoute(url.pathname, await request.json().catch(() => ({})));
-    }
     if (url.pathname === "/claim" || url.pathname === "/claim-take") return this.claimRoute(url.pathname, await request.json().catch(() => ({})));
     // A session-only delivery (live_<x>, no call_id) cannot be accepted when its rtc_<x> twin exists: give the
     // twin a moment to claim this room (both arrive within ms); answer it only if no twin comes.
@@ -1248,10 +1202,8 @@ export class CallRoom {
         startedAt: Date.now(),
         source: out.meta.source || "",
         chargedAt: out.meta.chargedAt || Date.now(),
-        lang: out.meta.lang || "",
       });
       await this.state.storage.setAlarm(Date.now() + 16 * 60 * 1000);
-      await markLive(this.env, out.meta.userId, b.callId, out.meta.caller);
       this.watch(b.callId, out.meta.userId, out.meta.caller).catch((e) =>
         console.log(JSON.stringify({ event: "sideband_error", callId: String(b.callId).slice(-8), detail: String(e?.message || e).slice(0, 120) })),
       );
@@ -1270,7 +1222,7 @@ export class CallRoom {
     }
     ws.accept();
     console.log(JSON.stringify({ event: "sideband_open", callId: String(callId).slice(-8) }));
-    ws.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio: { input: { transcription: callerTranscription() } } } }));
+    ws.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio: { input: { transcription: { model: "gpt-4o-mini-transcribe" } } } } }));
     ws.addEventListener("message", (e) => {
       let ev = null;
       try {
@@ -1299,7 +1251,6 @@ export class CallRoom {
     const durationSec = startedAt ? Math.max(1, Math.round((Date.now() - startedAt) / 1000)) : null;
     try {
       await saveTranscript(this.env, callId, lines, durationSec);
-      await endLive(this.env, userId, callId);
       await patchInbox(this.env, userId, callId, { durationSec, transcriptLines: lines.length }, { create: false });
       const heard = lines.some((l) => l && l.who === "caller" && l.text);
       const source = await this.state.storage.get("source");
@@ -1320,33 +1271,7 @@ export class CallRoom {
     const s = await this.state.storage.get(["lines", "startedAt", "endedAt"]);
     const startedAt = s.get("startedAt") || null;
     const endedAt = s.get("endedAt") || null;
-    const lines = preferLines(s.get("lines") || [], this.lines);
-    return json({ lines, durationSec: startedAt && endedAt ? Math.max(1, Math.round((endedAt - startedAt) / 1000)) : null });
-  }
-
-  /** One live call per player. Strongly consistent, unlike the inbox KV cache. */
-  async liveRoute(path, b) {
-    const userId = String(b.userId || "").trim();
-    if (!validUserId(userId)) return json({ error: "userId required" }, 400);
-    const key = "live:" + userId;
-    if (path === "/live-set") {
-      const callId = String(b.callId || "");
-      if (!callId) return json({ error: "callId required" }, 400);
-      const row = { callId, caller: String(b.caller || ""), at: Date.now(), ended: false };
-      await this.state.storage.put(key, row);
-      return json({ ok: true, ...row });
-    }
-    if (path === "/live-end") {
-      const cur = await this.state.storage.get(key);
-      if (cur && (!b.callId || cur.callId === b.callId || canonCallId(cur.callId) === canonCallId(b.callId))) {
-        await this.state.storage.put(key, { ...cur, ended: true, at: Date.now() });
-      }
-      return json({ ok: true });
-    }
-    const cur = await this.state.storage.get(key);
-    if (!cur?.callId) return json({ callId: "" });
-    if (cur.ended && Date.now() - (cur.at || 0) > 180000) return json({ callId: "" });
-    return json({ callId: cur.callId, caller: cur.caller || "", ended: Boolean(cur.ended), at: cur.at || 0 });
+    return json({ lines: s.get("lines") || [], durationSec: startedAt && endedAt ? Math.max(1, Math.round((endedAt - startedAt) / 1000)) : null });
   }
 
   /** The "__line_claims__" room: /claim arms the demo line for one player; /claim-take is read by the next call. */
@@ -1816,41 +1741,39 @@ async function solTtsRoute(env, request, ctx) {
   return new Response(res.body, { headers });
 }
 
-async function livePointer(env, userId) {
-  const room = claimRoom(env);
-  if (!room || !validUserId(userId)) return null;
+/**
+ * Live since 1be24509 (8 Oct 2026, "cache inbox reads, do not burn KV"; ported here from the deployed bundle on 9 Oct):
+ * short Cloudflare edge cache for the app's read routes (/inbox 8 s, /call 3 s, /balance 60 s, GET /secretary-lang 60 s)
+ * so polling apps stop burning KV reads. A KV "limit exceeded" read answers 503 KV_LIMIT instead of crashing.
+ * The phone path (SIP webhook, call room, notes) is not cached.
+ */
+async function readCached(ctx, cacheKey, ttl, produce) {
+  const req = new Request("https://solarchik-cache.internal/" + cacheKey);
   try {
-    const r = await (await room.fetch("https://call-room/live-get", { method: "POST", body: JSON.stringify({ userId }) })).json();
-    return r?.callId ? r : null;
+    const hit = await caches.default.match(req);
+    if (hit) return hit;
   } catch {
-    return null;
+    /* no cache (tests, local) */
   }
-}
-
-async function markLive(env, userId, callId, caller) {
-  const room = claimRoom(env);
-  if (!room || !validUserId(userId) || !callId) return;
-  await room.fetch("https://call-room/live-set", { method: "POST", body: JSON.stringify({ userId, callId, caller: caller || "" }) }).catch(() => {});
-}
-
-async function endLive(env, userId, callId) {
-  const room = claimRoom(env);
-  if (!room || !validUserId(userId)) return;
-  await room.fetch("https://call-room/live-end", { method: "POST", body: JSON.stringify({ userId, callId }) }).catch(() => {});
-}
-
-async function roomLines(env, callId) {
-  if (!env?.CALLS || !callId) return [];
-  let best = [];
-  for (const name of [...new Set([String(callId), canonCallId(callId)])]) {
-    try {
-      const r = await (await env.CALLS.get(env.CALLS.idFromName(name)).fetch("https://call-room/lines")).json();
-      if (Array.isArray(r?.lines)) best = preferLines(best, r.lines);
-    } catch {
-      /* room has no words yet */
-    }
+  let payload;
+  try {
+    payload = await produce();
+  } catch (e) {
+    if (e && e.code === 404) return json({ error: "not found" }, 404);
+    const msg = String((e && e.message) || e);
+    const limited = msg.includes("limit exceeded");
+    return json({ error: limited ? "KV_LIMIT" : "READ_FAIL", detail: msg.slice(0, 200) }, limited ? 503 : 500);
   }
-  return best;
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    "Cache-Control": "public, max-age=" + ttl,
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  });
+  const stored = new Response(JSON.stringify(payload), { status: 200, headers });
+  if (ctx) ctx.waitUntil(caches.default.put(req, stored.clone()).catch(() => {}));
+  return stored;
 }
 
 export default {
@@ -1939,25 +1862,9 @@ export default {
     if (request.method === "GET" && url.pathname === "/inbox") {
       const userId = url.searchParams.get("userId") || "";
       if (!userId) return json({ error: "userId required" }, 400);
-      const raw = await env.BALANCES.get("inbox:" + userId, { cacheTtl: 30 });
-      console.log(JSON.stringify({ event: "app_seen", route: "inbox", userId: userId.slice(0, 80) }));
-      const items = withLiveItem(cleanInbox(raw ? JSON.parse(raw) : []), await livePointer(env, userId));
-      return json({ userId, items });
-    }
-
-    if (request.method === "GET" && url.pathname === "/live") {
-      const userId = url.searchParams.get("userId") || "";
-      if (!validUserId(userId)) return json({ error: "userId required" }, 400);
-      const live = await livePointer(env, userId);
-      if (!live?.callId) return json({ userId, callId: "", status: "", lines: [], caller: "" });
-      const lines = await roomLines(env, live.callId);
-      return json({
-        userId,
-        callId: live.callId,
-        caller: live.caller || "",
-        status: live.ended ? "done" : "pending",
-        at: live.at || Date.now(),
-        lines,
+      return readCached(ctx, "inbox:" + userId, 8, async () => {
+        const raw = await env.BALANCES.get("inbox:" + userId);
+        return { userId, items: cleanInbox(raw ? JSON.parse(raw) : []) };
       });
     }
 
@@ -1966,25 +1873,43 @@ export default {
       const userId = url.searchParams.get("userId") || "";
       const callId = url.searchParams.get("callId") || "";
       if (!validUserId(userId) || !callId) return json({ error: "userId and callId required" }, 400);
-      const items = cleanInbox(JSON.parse((await env.BALANCES.get("inbox:" + userId)) || "[]"));
-      const item = items.find((it) => it.callId === callId);
-      if (!item) return json({ error: "not found" }, 404);
-      let rec = null;
-      try {
-        rec = JSON.parse((await env.BALANCES.get("transcript:" + callId, { cacheTtl: 30 })) || "null");
-      } catch {
-        rec = null;
-      }
-      // A short KV snapshot must not freeze the talk: the room keeps every line as it is spoken.
-      let lines = Array.isArray(rec?.lines) ? rec.lines : [];
-      let durationSec = rec?.durationSec ?? null;
-      const fresh = await roomLines(env, callId);
-      const best = preferLines(lines, fresh);
-      if (best.length && best !== lines) {
-        lines = best;
-        ctx.waitUntil(saveTranscript(env, callId, best, durationSec).catch(() => {}));
-      }
-      return json({ userId, item, lines, durationSec: item.durationSec ?? durationSec ?? null });
+      return readCached(ctx, "call:" + userId + ":" + callId, 3, async () => {
+        let rawInbox = "[]";
+        try {
+          rawInbox = (await env.BALANCES.get("inbox:" + userId)) || "[]";
+        } catch (e) {
+          if (!String((e && e.message) || e).includes("limit exceeded")) throw e;
+          rawInbox = "[]";
+        }
+        const items = cleanInbox(JSON.parse(rawInbox));
+        const item = items.find((it) => it.callId === callId) || null;
+        let rec = null;
+        try {
+          rec = JSON.parse((await env.BALANCES.get("transcript:" + callId)) || "null");
+        } catch {
+          rec = null;
+        }
+        if (!rec && env.CALLS && item) {
+          // Calls before 0.21.9 kept their words only in the call room (named by the full id, now the canonical one).
+          for (const name of [...new Set([callId, canonCallId(callId)])]) {
+            try {
+              const r = await (await env.CALLS.get(env.CALLS.idFromName(name)).fetch("https://call-room/lines")).json();
+              if (Array.isArray(r?.lines) && r.lines.length) {
+                rec = await saveTranscript(env, callId, r.lines, r.durationSec ?? null);
+                break;
+              }
+            } catch {
+              /* no stored words */
+            }
+          }
+        }
+        if (!item && !(rec && rec.lines && rec.lines.length)) {
+          const err = new Error("not found");
+          err.code = 404;
+          throw err;
+        }
+        return { userId, item, lines: rec?.lines || [], durationSec: (item && item.durationSec) || rec?.durationSec || null };
+      });
     }
 
     if (url.pathname === "/block" && (request.method === "GET" || request.method === "POST")) {
@@ -2032,10 +1957,11 @@ export default {
     if (request.method === "GET" && url.pathname === "/balance") {
       const userId = url.searchParams.get("userId") || "";
       if (!userId) return json({ error: "userId required" }, 400);
-      console.log(JSON.stringify({ event: "app_seen", route: "balance", userId: userId.slice(0, 80) }));
-      const paidUsd = await getUsd(env, userId);
-      const t = await trialOf(env, userId);
-      return json({ userId, usd: cents(paidUsd + t.usd), paidUsd, trialUsd: t.usd, trial: t.usd > 0, sessionUsd: SESSION_USD, owner: isAdmin(env, userId) });
+      return readCached(ctx, "balance:" + userId, 60, async () => {
+        const paidUsd = await getUsd(env, userId);
+        const t = await trialOf(env, userId);
+        return { userId, usd: cents(paidUsd + t.usd), paidUsd, trialUsd: t.usd, trial: t.usd > 0, sessionUsd: SESSION_USD, owner: isAdmin(env, userId) };
+      });
     }
 
     if (url.pathname === "/secretary-lang" && (request.method === "GET" || request.method === "POST")) {
@@ -2043,7 +1969,9 @@ export default {
       const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
       const userId = String((request.method === "POST" ? body.userId : url.searchParams.get("userId")) || "").trim();
       if (!validUserId(userId)) return json({ error: "userId required" }, 400);
-      if (request.method === "GET") return json({ userId, lang: await langOf(env, userId), options: LANGS });
+      if (request.method === "GET") {
+        return readCached(ctx, "lang:" + userId, 60, async () => ({ userId, lang: await langOf(env, userId), options: LANGS }));
+      }
       const lang = String(body.lang || "").trim().toLowerCase();
       if (!LANGS.includes(lang)) return json({ error: "lang must be one of auto, uk, en", options: LANGS }, 400);
       await env.BALANCES.put("secretary_lang:" + userId, lang);

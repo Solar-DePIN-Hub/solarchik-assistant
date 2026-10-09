@@ -1,8 +1,9 @@
-# 1.0.1 (Solarchik Assistant repo): source copied from Solar-DePIN-Hub/Solarchik branch web-fees @ 021aaf6 (8 Oct 2026),
-# plus the assistant persona for /sol/chat (request field app: "assistant"; no field = the game prompt, unchanged).
-# NOT DEPLOYED YET: the live version is 1be24509 ("cache inbox reads, do not burn KV", 8 Oct 2026 22:16 UTC), whose source
-# is not in any repo I could find. Deploying this file would drop that change. Get that source (or an explicit OK) first.
-# Deploy: npx wrangler deploy --config worker/wrangler.screen.toml   Rollback: npx wrangler rollback <previous id> --name solarchik-screen
+# 1.0.1 (Solarchik Assistant repo): source = Solar-DePIN-Hub/Solarchik web-fees @ 7d07d3c (deployed as 6fa974bc)
+# + the live 1be24509 change "cache inbox reads, do not burn KV" (readCached for /inbox, /call, /balance, GET /secretary-lang),
+# ported from the deployed bundle (saved on the box in /workspace/worker-live-1be24509/; normalized bundle diff = none)
+# + the assistant persona for /sol/chat (request field app: "assistant"; no field = the game prompt, unchanged).
+# Note: web-fees commits f9b8d3f / 021aaf6 (8 Oct, secretary language lock, live call lines) were never live and are NOT included.
+# Deploy: npx wrangler deploy --config worker/wrangler.screen.toml   Rollback: npx wrangler rollback 1be24509-0c8d-49ce-8912-ed06ccc0cd42 --name solarchik-screen
 # Call secretary Worker (solarchik-screen.davidbell1603.workers.dev). Source recovered from the Grok export
 # (artifacts/solar-depin-worldsfair/app/screen/cf/worker.js), which matches deployed version 744a4bf8
 # (compat date 2026-09-19, KV BALANCES, secret OPENAI_API_KEY). Optional var/secret SOLANA_RPC (mainnet RPC URL).

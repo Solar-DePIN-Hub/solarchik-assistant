@@ -6,7 +6,7 @@ I'm Vadym, and I build Solarchik on my own under Solar DePIN. Solarchik Assistan
 
 I built this repo for the Colosseum Crypto World's Fair (Solana track, AI / agents). Submissions close 12 Oct 2026, 11:59pm PT (13 Oct, 09:59 Kyiv). My older game build, CLOCK IN, lives in [Solar-DePIN-Hub/Solarchik](https://github.com/Solar-DePIN-Hub/Solarchik), and I didn't change it for this. In this app the game is only a small "Play" tile.
 
-**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.0.0/solarchik-assistant.apk) (v1.0.0, Android 8+, sha256 `de3b730eeb31cb02f33bdfca00520f8d6cccb067e6932d7303288410b637288f`)
+**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.0.1/solarchik-assistant.apk) (v1.0.1, Android 8+, sha256 `f771f4c8e08053f8e548522513a9da0bfb7d0b30326680463923ebc8871806ca`)
 
 | Today | Sol answers from the phone | Call inbox |
 | --- | --- | --- |
@@ -93,7 +93,7 @@ I checked every signature below with `getSignatureStatuses` on devnet (9 Oct 202
 
 ## Install
 
-1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.0.0/solarchik-assistant.apk) from the [v1.0.0 release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.0.0).
+1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.0.1/solarchik-assistant.apk) from the [v1.0.1 release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.0.1).
 2. Allow installs from your browser or file manager when Android asks.
 3. Open the app. It installs as **Solarchik Assistant** (`net.solardepin.solarchik.assistant`), next to the CLOCK IN game if you have it.
 4. To try the wallet without a wallet app, tap "Set up wallet" on Today. You get the built-in devnet wallet, and the faucet funds it. If Phantom, Solflare or Seed Vault is installed, it connects through MWA instead.
@@ -105,7 +105,7 @@ Build from source:
 
 ```bash
 cd artifacts/solarchik-handoff/android
-./gradlew :app:testDebugUnitTest      # 370 tests, 11 skipped (device/network-only)
+./gradlew :app:testDebugUnitTest      # 373 tests, 11 skipped (device/network-only)
 ./gradlew :app:assembleDebug
 ```
 
@@ -123,7 +123,7 @@ cd artifacts/solarchik-handoff/android
 | Screenshots in this README | Real app views rendered in tests, with sample calls and a sample balance. |
 
 Some known rough edges:
-- When a question goes to the model, Sol can still talk like the game character. The fix is in this repo: since 1.0.1 the app sends `app: "assistant"` with a short summary of the phone's state, and [worker/solarchik-screen.js](worker/solarchik-screen.js) then uses an assistant prompt. It goes live once I deploy that worker version.
+- Fixed in 1.0.1: the app sends `app: "assistant"` with a short summary of what's on the phone, and the worker ([worker/solarchik-screen.js](worker/solarchik-screen.js), live since 9 Oct) answers as a pocket assistant. The CLOCK IN game app sends no flag and gets the same Sol as before.
 - I tested on the Robolectric renders and the unit tests. I didn't have an emulator for this release. The full secretary flow and the voice need a real phone.
 
 ## Roadmap
@@ -140,7 +140,7 @@ Some known rough edges:
 | Item | URL |
 | --- | --- |
 | This repo | https://github.com/Solar-DePIN-Hub/solarchik-assistant |
-| Release v1.0.0 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.0.0 |
+| Release v1.0.1 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.0.1 |
 | Game repo (CLOCK IN, unchanged) | https://github.com/Solar-DePIN-Hub/Solarchik |
 | API / market (devnet) | https://solarchik-market.vercel.app |
 | Demo video (CLOCK IN cut, an Assistant cut is coming) | https://youtu.be/oAxoliLwUXo |
