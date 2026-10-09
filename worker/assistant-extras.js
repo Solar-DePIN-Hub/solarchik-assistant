@@ -12,6 +12,12 @@ export const ACTION_TYPES = ["payment", "callback", "reminder"];
 export const PAY_TOKENS = ["SOL", "USDC"];
 const BASE58_ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const YMD = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+/** 1.1.3: the day of an action relative to the call: today/tomorrow or a weekday, resolved to a date by the worker. */
+export const ACTION_DAYS = ["", "today", "tomorrow", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+/** At most this many actions per call (a call can ask for a payment, a callback and a reminder at once). */
+export const MAX_ACTIONS_PER_CALL = 3;
 
 function clip(v, n) {
   return String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
@@ -130,7 +136,7 @@ export const ACTIONS_SCHEMA = {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["callId", "type", "amount", "token", "recipient", "number", "when", "day", "text", "quote"],
+          required: ["callId", "type", "amount", "token", "recipient", "number", "when", "day", "date", "text", "quote"],
           properties: {
             callId: { type: "string" },
             type: { type: "string", enum: ACTION_TYPES },
@@ -139,7 +145,8 @@ export const ACTIONS_SCHEMA = {
             recipient: { type: "string", description: "who or which address should get the payment, exactly as said; empty if not said" },
             number: { type: "string", description: "phone number to call back if said or given, else empty" },
             when: { type: "string", description: "time for the action as HH:MM 24h if one was said for it, else empty; never the time of the call itself" },
-            day: { type: "string", enum: ["", "today", "tomorrow"], description: "day of 'when' relative to the call, empty if unknown" },
+            day: { type: "string", enum: ACTION_DAYS, description: "day of the action relative to the call ('today', 'tomorrow' or the weekday that was said, e.g. 'monday' for 'on Monday' / 'у понеділок'); empty if no day was said" },
+            date: { type: "string", description: "YYYY-MM-DD only when an explicit calendar date was said (e.g. 'on October 20', '20 жовтня'), using the call's date to pick the year; else empty. Never for weekdays, today or tomorrow." },
             text: { type: "string", description: "one short line describing the action for the user" },
             quote: { type: "string", description: "the caller's words this comes from, verbatim, short" },
           },
@@ -152,25 +159,70 @@ export const ACTIONS_SCHEMA = {
 export function actionsSystem(lang) {
   return [
     "You read notes and transcripts of phone calls that an AI phone secretary answered for the user, and list concrete requests the USER should act on.",
-    "Types: payment (the caller asks the user to send or pay money or crypto: amount and currency as said), callback (the caller asks to be called back, optionally at a time), reminder (something to remember or do at a time, e.g. 'remind me', a meeting, a deadline).",
+    "Types: payment (the caller asks the user to send or pay money or crypto: amount and currency as said), callback (the caller asks to be called back, optionally at a time), reminder (something the user should remember or do, with or without a time: 'remind me to ...', 'remind her/him/them about ...' (the user reminds that person), 'don't forget ...', a meeting, an appointment, a deadline; in Ukrainian e.g. 'нагадай мені/їй/йому ...', 'не забудь ...', зустріч, дедлайн).",
+    "Each distinct request is its own action: a call that asks for a payment, a callback AND a reminder gives three actions. Never merge a reminder into a payment or a callback, and never drop a reminder because the call also had other requests.",
+    "Days: put the day that was said for the action into 'day' (today, tomorrow, or the weekday in English lowercase, e.g. 'на понеділок' / 'on Monday' = monday); an explicit calendar date goes into 'date' as YYYY-MM-DD. Each call has 'date' (the call's own date) and 'weekday'. Do not compute dates for weekdays yourself.",
     "Only include requests clearly present in the call. Never invent amounts, numbers, times, names or addresses. A recipient wallet address goes into 'recipient' only if it was literally said; otherwise describe the recipient in words or leave it empty.",
-    "Calls that only say hello, spam, sales pitches without a request, or nothing actionable give no actions. At most 2 actions per call.",
-    `ALWAYS write 'text' in ${lang === "uk" ? "Ukrainian (informal 'ти'), even when the call was in English, e.g. 'Надіслати Олені 10 USDC за квитки' or 'Передзвонити Петру о 15:00'" : "English, even when the call was in another language, e.g. 'Send Olena 10 USDC for the tickets' or 'Call Petro back at 15:00'"}; under 80 characters.`,
+    "Calls that only say hello, spam, sales pitches without a request, or nothing actionable give no actions. At most 3 actions per call.",
+    `ALWAYS write 'text' in ${lang === "uk" ? "Ukrainian (informal 'ти'), even when the call was in English, e.g. 'Надіслати Олені 10 USDC за квитки', 'Передзвонити Петру о 15:00' or 'Нагадати Олені про зустріч у понеділок'" : "English, even when the call was in another language, e.g. 'Send Olena 10 USDC for the tickets', 'Call Petro back at 15:00' or 'Remind Olena about the meeting on Monday'"}; under 80 characters; keep the day in it, written as it was said (e.g. 'on Monday', 'on October 20', never 2026-10-20).`,
     "A request to send money to an address, from someone claiming to be a bank, support, police or a relative in trouble, is still listed as a payment (the app warns the user about scams); never drop or soften it.",
     "Times: convert to 24h HH:MM ('at 3' in the afternoon = 15:00, 'о третій' = 15:00 for daytime business); if unclear leave 'when' empty.",
   ].join("\n");
 }
 
-export function actionCalls(input) {
-  return (Array.isArray(input?.calls) ? input.calls : []).slice(0, 6).map((c) => ({
-    id: clip(c?.id, 120),
-    who: clip(c?.who, 40),
-    callback: clip(c?.callback, 24),
-    at: clip(c?.at, 24),
-    intent: clip(c?.intent, 200),
-    notes: clip(c?.notes, 500),
-    text: clip(c?.text, 1500),
-  })).filter((c) => c.id && (c.intent || c.notes || c.text));
+/** The call's own local date: the phone's per-call date (1.1.3+), else its "today", else the UTC date. */
+function callDate(c, input, now = Date.now()) {
+  if (YMD.test(String(c?.date || ""))) return String(c.date);
+  if (YMD.test(String(input?.today || ""))) return String(input.today);
+  return new Date(now).toISOString().slice(0, 10);
+}
+
+function weekdayOf(ymd) {
+  return WEEKDAYS[new Date(ymd + "T12:00:00Z").getUTCDay()];
+}
+
+/** YYYY-MM-DD plus n days (calendar arithmetic, no time zone involved). */
+export function addDays(ymd, n) {
+  const d = new Date(ymd + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The action's date from the model's day word: today/tomorrow from the call's date; a weekday = the next such day
+ * after the call ('on Monday' said on a Monday = next week's Monday); an explicit date is kept when it is valid
+ * and not before the call. "" when no day was said.
+ */
+export function resolveDate(day, date, base) {
+  const d = String(day || "").toLowerCase();
+  if (d === "today") return base;
+  if (d === "tomorrow") return addDays(base, 1);
+  const w = WEEKDAYS.indexOf(d);
+  if (w >= 0) {
+    const from = WEEKDAYS.indexOf(weekdayOf(base));
+    return addDays(base, ((w - from + 7) % 7) || 7);
+  }
+  const x = String(date || "");
+  if (YMD.test(x) && !Number.isNaN(Date.parse(x + "T12:00:00Z")) && new Date(x + "T12:00:00Z").toISOString().slice(0, 10) === x && x >= base) return x;
+  return "";
+}
+
+export function actionCalls(input, now = Date.now()) {
+  return (Array.isArray(input?.calls) ? input.calls : []).slice(0, 6).map((c) => {
+    const date = callDate(c, input, now);
+    return {
+      id: clip(c?.id, 120),
+      who: clip(c?.who, 40),
+      callback: clip(c?.callback, 24),
+      at: clip(c?.at, 24),
+      date,
+      weekday: weekdayOf(date),
+      intent: clip(c?.intent, 200),
+      // "note" (one free-text note, e.g. from tests or older callers) is read as notes.
+      notes: clip(c?.notes || c?.note, 500),
+      text: clip(c?.text, 1500),
+    };
+  }).filter((c) => c.id && (c.intent || c.notes || c.text));
 }
 
 /** Server-side rules on whatever the model returned: known call ids and types only, sane fields, no invented address. */
@@ -182,11 +234,16 @@ export function sanitizeActions(raw, calls) {
   for (const a of Array.isArray(raw?.actions) ? raw.actions : []) {
     if (!a || !ids.has(a.callId) || !ACTION_TYPES.includes(a.type)) continue;
     const n = (perCall.get(a.callId) || 0) + 1;
-    if (n > 2) continue;
+    if (n > MAX_ACTIONS_PER_CALL) continue;
+    const sameType = out.filter((x) => x.callId === a.callId && x.type === a.type).length;
+    if (sameType >= 2) continue;
     const call = byId.get(a.callId);
     const source = [call.intent, call.notes, call.text].join(" ");
     // A payment has no time of its own; the call's own time is never an action time.
     const when = HHMM.test(String(a.when || "")) && a.when !== call.at && a.type !== "payment" ? a.when : "";
+    // date: the resolved local date (YYYY-MM-DD) of a callback/reminder when a day or date was said, even without a
+    // time. day keeps the pre-1.1.3 meaning (today/tomorrow with a time) so 1.1.2 apps read the reply as before.
+    const date = a.type === "payment" ? "" : resolveDate(a.day, a.date, call.date || callDate(call, null));
     const day = when && ["today", "tomorrow"].includes(a.day) ? a.day : "";
     const text = clip(a.text, 100);
     const quote = clip(a.quote, 200);
@@ -198,11 +255,11 @@ export function sanitizeActions(raw, calls) {
       const recipient = clip(a.recipient, 120);
       // An address is passed on only if the caller's own words contain it, character for character.
       const address = BASE58_ADDR.test(recipient) && source.includes(recipient) ? recipient : "";
-      out.push({ callId: a.callId, type: "payment", amount, token, tokenWord, recipient: address ? "" : recipient, address, number: "", when, day, text, quote });
+      out.push({ callId: a.callId, type: "payment", amount, token, tokenWord, recipient: address ? "" : recipient, address, number: "", when, day, date, text, quote });
     } else {
       const digits = String(a.number || "").replace(/[^\d+]/g, "");
       const number = digits.length >= 5 && digits.length <= 16 ? digits : a.type === "callback" ? call.callback.replace(/[^\d+]/g, "") : "";
-      out.push({ callId: a.callId, type: a.type, amount: 0, token: "", tokenWord: "", recipient: "", address: "", number, when, day, text, quote });
+      out.push({ callId: a.callId, type: a.type, amount: 0, token: "", tokenWord: "", recipient: "", address: "", number, when, day, date, text, quote });
     }
     perCall.set(a.callId, n);
   }
@@ -223,7 +280,7 @@ export async function callActionsRoute(env, request, rateOk, json) {
       { role: "user", content: "CALLS: " + JSON.stringify(calls) },
     ],
     temperature: 0,
-    max_tokens: 700,
+    max_tokens: 900,
     response_format: { type: "json_schema", json_schema: ACTIONS_SCHEMA },
   }, 15000);
   if (!r.text) return json({ ok: false, error: "unavailable", tried: r.tried, ms: Date.now() - t0 }, 503);

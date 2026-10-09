@@ -154,6 +154,8 @@ object CallText {
 
     fun summary(ctx: Context, item: CallItem): String = when {
         item.blocked -> ctx.getString(R.string.calls_blocked_line)
+        // 1.1.3: the worker's daily AI call minutes cap (the caller heard a short goodbye, nothing was charged)
+        item.reason == "CALL_MINUTES_GLOBAL" || item.reason == "CALL_MINUTES_ACCOUNT" -> ctx.getString(R.string.calls_missed_minutes_cap)
         item.status == CallInbox.NEED_TOPUP && item.reason == "TRIAL_CALLER_CAP" -> ctx.getString(R.string.calls_missed_caller_cap)
         item.status == CallInbox.NEED_TOPUP && item.reason == "TRIAL_DAILY_CAP" -> ctx.getString(R.string.calls_missed_daily_cap)
         item.status == CallInbox.NEED_TOPUP -> ctx.getString(R.string.calls_missed_topup)

@@ -79,7 +79,7 @@ const authDisabled = env("VITE_AUTH_ENABLED") === "false";
 // for any `*.grok-sandbox.com` callback (see `./preview`).
 const grokIssuer = env("GROK_AUTH_ISSUER") ?? GROK_ISSUER_DEFAULT;
 const grokClientId = env("GROK_AUTH_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
-const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? PREVIEW_CLIENT_SECRET;
+const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? (PREVIEW_CLIENT_SECRET || undefined);
 
 /** True when federated sign-in is active (real auth is enforced). */
 export const authConfigured =

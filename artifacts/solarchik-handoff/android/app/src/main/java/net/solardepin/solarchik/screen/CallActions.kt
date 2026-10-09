@@ -16,8 +16,11 @@ import org.json.JSONObject
 import org.sol4k.PublicKey
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.temporal.TemporalAdjusters
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
@@ -50,6 +53,8 @@ data class CallAction(
     val status: String = OPEN,
     val signature: String = "",
     val remindAt: Long = 0L,
+    /** 1.1.3: the action's local date (YYYY-MM-DD) when a day or date was said ("remind her Monday"), else "". */
+    val date: String = "",
 ) {
     val payment: Boolean get() = type == PAYMENT
 
@@ -67,6 +72,11 @@ data class CallAction(
 
 object CallActionRules {
     const val MAX_PER_SYNC = 6
+    /** 1.1.3: a call can hold a payment, a callback and a reminder. */
+    const val MAX_PER_CALL = 3
+    /** A reminder with a day but no time fires at this local time. */
+    val DEFAULT_TIME: LocalTime = LocalTime.of(9, 0)
+    private val YMD = Regex("^\\d{4}-\\d{2}-\\d{2}$")
     const val WINDOW_MS = 7L * 24 * 3600_000L
     /** Amounts above these get an extra "large amount" warning on the card. */
     const val LARGE_SOL = 0.5
@@ -78,12 +88,15 @@ object CallActionRules {
         calls.filter { !it.blocked && it.status == CallInbox.DONE && it.key !in processed && now - it.at in 0..WINDOW_MS && (it.intent + it.notes + it.text).isNotBlank() }
             .sortedByDescending { it.at }.take(MAX_PER_SYNC)
 
-    fun requestBody(calls: List<CallItem>, lang: String, zone: ZoneId): String = JSONObject()
+    fun requestBody(calls: List<CallItem>, lang: String, zone: ZoneId, now: Long = System.currentTimeMillis()): String = JSONObject()
         .put("lang", lang).put("app", "assistant")
+        // 1.1.3: the phone's zone and date, so "Monday" / "tomorrow" resolve to the user's own calendar day.
+        .put("tz", zone.id).put("today", Instant.ofEpochMilli(now).atZone(zone).toLocalDate().toString())
         .put("calls", JSONArray().apply {
             calls.forEach { c ->
                 put(JSONObject().put("id", c.key).put("who", c.who).put("callback", c.callback.takeIf { it != "unknown" }.orEmpty())
                     .put("at", Instant.ofEpochMilli(c.at).atZone(zone).toLocalTime().withSecond(0).withNano(0).toString())
+                    .put("date", Instant.ofEpochMilli(c.at).atZone(zone).toLocalDate().toString())
                     .put("intent", c.intent).put("notes", c.notes).put("text", c.text))
             }
         }).toString()
@@ -110,6 +123,7 @@ object CallActionRules {
                 time = a.optString("when").takeIf { Regex("^([01]\\d|2[0-3]):[0-5]\\d$").matches(it) }.orEmpty(),
                 day = a.optString("day").takeIf { it == "today" || it == "tomorrow" }.orEmpty(),
                 text = a.optString("text").take(100), quote = a.optString("quote").take(200),
+                date = if (type == CallAction.PAYMENT) "" else validDate(a.optString("date")),
             )
         }
         if (out.any { it.payment && it.amount <= 0.0 }) out.removeAll { it.payment && it.amount <= 0.0 }
@@ -119,10 +133,27 @@ object CallActionRules {
 
     private val PAY_EN = Regex("(?i)\\b(?:send|pay|transfer|wire)\\b[^.?!]{0,40}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|usd|dollars?|\\$)")
     private val PAY_UK = Regex("(?iu)(?:надішли|надіслати|скинь|скинути|переказати|перекажи|заплати|оплати)[^.?!]{0,40}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|usd|долар\\w*|\\$)")
-    private val CALL_EN = Regex("(?i)\\bcall (?:me )?back\\b(?:[^.?!]{0,30}?\\bat (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?)?")
+    private val CALL_EN = Regex("(?i)\\bcall (?:me |her |him |them |us )?back\\b(?:[^.?!]{0,30}?\\bat (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?)?")
     private val CALL_UK = Regex("(?iu)\\b(?:передзвони|передзвоніть|перетелефонуй)\\w*(?:[^.?!]{0,30}?\\bо (\\d{1,2})(?::(\\d{2}))?)?")
-    private val REMIND_EN = Regex("(?i)\\bremind (?:me|yourself|you)\\b[^.?!]{0,60}?(?:\\bat (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?)?")
-    private val REMIND_UK = Regex("(?iu)\\bнагада\\w*[^.?!]{0,60}?(?:\\bо (\\d{1,2})(?::(\\d{2}))?)?")
+    private val REMIND_EN = Regex("(?i)\\b(?:remind (?:me|yourself|you|her|him|them)|don'?t forget)\\b[^.?!]{0,60}?(?:\\bat (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?)?")
+    private val REMIND_UK = Regex("(?iu)(?:\\bнагада\\w*|\\bне забу\\w*)[^.?!]{0,60}?(?:\\bо (\\d{1,2})(?::(\\d{2}))?)?")
+    private val DAY_WORDS = listOf(
+        DayOfWeek.MONDAY to Regex("(?iu)\\bmonday\\b|понеділ"), DayOfWeek.TUESDAY to Regex("(?iu)\\btuesday\\b|вівтор"),
+        DayOfWeek.WEDNESDAY to Regex("(?iu)\\bwednesday\\b|серед[уаи]\\b"), DayOfWeek.THURSDAY to Regex("(?iu)\\bthursday\\b|четвер"),
+        DayOfWeek.FRIDAY to Regex("(?iu)\\bfriday\\b|п.ятниц"), DayOfWeek.SATURDAY to Regex("(?iu)\\bsaturday\\b|субот"),
+        DayOfWeek.SUNDAY to Regex("(?iu)\\bsunday\\b|(?<!по)неділ"),
+    )
+    private val TOMORROW = Regex("(?iu)\\btomorrow\\b|завтра")
+
+    /** Pure: a weekday or "tomorrow" in [text] -> that local date after the call's day (same weekday = next week). */
+    fun localDate(text: String, callAt: Long, zone: ZoneId): String {
+        val base = Instant.ofEpochMilli(callAt).atZone(zone).toLocalDate()
+        if (TOMORROW.containsMatchIn(text)) return base.plusDays(1).toString()
+        val dow = DAY_WORDS.firstOrNull { it.second.containsMatchIn(text) }?.first ?: return ""
+        return base.with(TemporalAdjusters.next(dow)).toString()
+    }
+
+    fun validDate(s: String): String = s.trim().takeIf { YMD.matches(it) && runCatching { LocalDate.parse(it) }.isSuccess }.orEmpty()
 
     /** Offline fallback: a few plain rules over the note (EN/UK). Same safety: no address is ever taken over. */
     fun local(c: CallItem): List<CallAction> {
@@ -139,11 +170,14 @@ object CallActionRules {
             val t = hhmm(m.groupValues.getOrNull(1), m.groupValues.getOrNull(2), m.groupValues.getOrNull(3))
             out += CallAction("${c.key}#${out.size}", c.key, CallAction.CALLBACK, number = c.dialNumber.filter { it.isDigit() || it == '+' }, time = t, quote = m.value.take(120), source = CallAction.SOURCE_LOCAL)
         }
-        if (out.size < 2) (REMIND_EN.find(src) ?: REMIND_UK.find(src))?.let { m ->
+        if (out.size < MAX_PER_CALL) (REMIND_EN.find(src) ?: REMIND_UK.find(src))?.let { m ->
             val t = hhmm(m.groupValues.getOrNull(1), m.groupValues.getOrNull(2), m.groupValues.getOrNull(3))
-            out += CallAction("${c.key}#${out.size}", c.key, CallAction.REMINDER, time = t, text = c.intent.take(100), quote = m.value.take(120), source = CallAction.SOURCE_LOCAL)
+            // the rest of the sentence after "remind ..." holds its day ("... about the meeting on Monday")
+            val sentence = src.substring(m.range.first).split(Regex("[.?!]")).first()
+            out += CallAction("${c.key}#${out.size}", c.key, CallAction.REMINDER, time = t, text = c.intent.take(100),
+                quote = m.value.take(120), source = CallAction.SOURCE_LOCAL, date = localDate(sentence, c.at, ZoneId.systemDefault()))
         }
-        return out.take(2)
+        return out.take(MAX_PER_CALL)
     }
 
     /** "3", "", "pm" -> "15:00"; a bare 1..7 is read as afternoon (business calls), 8..11 as morning. */
@@ -159,8 +193,18 @@ object CallActionRules {
         return String.format(java.util.Locale.ROOT, "%02d:%02d", hour, min)
     }
 
-    /** Pure: when a callback/reminder with [time] should fire: on the call's day (+1 for "tomorrow"), never in the past. */
+    /**
+     * Pure: when a callback/reminder should fire. 1.1.3: with a date ("Monday") on that day at [time] or
+     * [DEFAULT_TIME]; if that moment has passed, the old rule (next day at the time) applies.
+     * Without a date: at [time] on the call's day (+1 for "tomorrow"), never in the past.
+     */
     fun remindAt(a: CallAction, callAt: Long, now: Long, zone: ZoneId): Long {
+        if (a.date.isNotBlank() && a.type != CallAction.PAYMENT) {
+            val d = runCatching { LocalDate.parse(a.date) }.getOrNull()
+            val t = a.time.takeIf { it.isNotBlank() }?.let { runCatching { LocalTime.parse(it) }.getOrNull() } ?: DEFAULT_TIME
+            val at = d?.atTime(t)?.atZone(zone)?.toInstant()?.toEpochMilli()
+            if (at != null && at > now) return at
+        }
         if (a.time.isBlank()) return 0L
         val t = LocalTime.parse(a.time)
         var d = Instant.ofEpochMilli(callAt).atZone(zone).toLocalDate()
@@ -218,7 +262,7 @@ class CallActionStore(context: Context) {
             CallAction(o.getString("id"), o.getString("callKey"), o.getString("type"), o.optDouble("amount", 0.0), o.optString("token"),
                 o.optString("recipient"), o.optString("said"), o.optString("number"), o.optString("time"), o.optString("day"),
                 o.optString("text"), o.optString("quote"), o.optString("source", CallAction.SOURCE_WORKER), o.optString("status", CallAction.OPEN),
-                o.optString("sig"), o.optLong("remindAt"))
+                o.optString("sig"), o.optLong("remindAt"), o.optString("date"))
         }
     }.getOrDefault(emptyList())
 
@@ -227,7 +271,7 @@ class CallActionStore(context: Context) {
         list.takeLast(120).forEach {
             a.put(JSONObject().put("id", it.id).put("callKey", it.callKey).put("type", it.type).put("amount", it.amount).put("token", it.token)
                 .put("recipient", it.recipient).put("said", it.saidAddress).put("number", it.number).put("time", it.time).put("day", it.day)
-                .put("text", it.text).put("quote", it.quote).put("source", it.source).put("status", it.status).put("sig", it.signature).put("remindAt", it.remindAt))
+                .put("text", it.text).put("quote", it.quote).put("source", it.source).put("status", it.status).put("sig", it.signature).put("remindAt", it.remindAt).put("date", it.date))
         }
         p.edit().putString("actions", a.toString()).apply()
     }

@@ -1,7 +1,12 @@
 /** Phone builds have no API key. They call the desk host, which holds the key. */
 
 export const DESK_ORIGIN = "https://solarchik-desk.davidbell1603.workers.dev";
-export const DESK_TOKEN = "e78f97fe9bbfe357a98365b1104dd31a";
+/**
+ * 1.1.3: the desk token is no longer in the source (the leaked value was rotated on the desk worker).
+ * Server code reads the server env DESK_TOKEN; browser and native bundles get none (the desk answers 401).
+ */
+export const DESK_TOKEN: string =
+  import.meta.env.VITE_NATIVE === "1" || typeof process === "undefined" ? "" : (process.env.DESK_TOKEN ?? "").trim();
 
 export function deskHeaders(): Record<string, string> {
   return {

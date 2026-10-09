@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 1.1.3: the worker's daily AI call minutes cap -->
+    <string name="calls_missed_minutes_cap">Пропущено: хвилини AI-дзвінків на сьогодні закінчилися, тож секретар не відповів. Абонент почув коротке повідомлення. Нічого не списано.</string>
+</resources>

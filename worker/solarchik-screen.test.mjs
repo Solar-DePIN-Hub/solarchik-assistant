@@ -8,6 +8,8 @@ import worker, {
   canonCallId, cleanInbox, isBlocked, saveTranscript, speakable,
   solState, solStateLine, solIsAssistant, solAssistantSystem,
   chargeSession, takeTrialSlot, releaseTrialSlot, refundShortCall, isAdmin, ADMIN_USER_IDS, SHORT_CALL_SEC,
+  callLimits, callUsage, addCallSeconds, callCapReason, capInstructions, wrapInstructions, CAPPED_TEXT,
+  CALL_MAX_SEC, CALL_WRAP_SEC, CALL_DAILY_MIN_GLOBAL, CALL_DAILY_MIN_ACCOUNT,
 } from "./solarchik-screen.js";
 
 const realFetch = globalThis.fetch;
@@ -206,7 +208,9 @@ test("CallRoom: two deliveries of one call (166 ms apart or at once) -> one acce
   assert.equal(calls.filter((c) => c.url.endsWith("/accept")).length, 1);
   assert.equal(await env.BALANCES.get(OWNER), "0.8");
   assert.equal(st.m.get("state"), "accepted");
-  assert.ok(st.alarm > Date.now() + 15 * 60 * 1000);
+  // 1.1.3: the first alarm is the wrap-up at CALL_WRAP_SEC (165 s), not the old 16-minute safety net
+  assert.equal(st.m.get("phase"), "wrap");
+  assert.ok(st.alarm > Date.now() + 160 * 1000 && st.alarm <= Date.now() + 165 * 1000);
 });
 
 test("/sip goes through the CALLS room when bound", async () => {
@@ -792,4 +796,202 @@ test("1.1.0: the assistant prompt describes mainnet and the three agents; the ga
   const game = solSystem("en", "chat", ctx, "", null, true);
   assert.match(game, /Everything runs on devnet with test money/);
   assert.doesNotMatch(game, /Season Agent|Watcher/);
+});
+
+// ---------------- 1.1.3: call cost cap (max length + daily AI minutes) ----------------
+
+/** A fake sideband socket: records what the room sends. */
+function fakeSocket() {
+  const sent = [];
+  const handlers = {};
+  return { sent, handlers, send: (x) => sent.push(JSON.parse(x)), addEventListener: (t, f) => (handlers[t] = f), accept() {} };
+}
+
+test("call limits: defaults 2:45 wrap / 3:00 hang-up, 30 min/day global, 20 min/day per account; env overrides; 0 = off", () => {
+  assert.deepEqual([CALL_WRAP_SEC, CALL_MAX_SEC, CALL_DAILY_MIN_GLOBAL, CALL_DAILY_MIN_ACCOUNT], [165, 180, 30, 20]);
+  const d = callLimits({});
+  assert.equal(d.wrapSec, 165);
+  assert.equal(d.maxSec, 180);
+  const e = callLimits({ CALL_MAX_SEC: "120", CALL_WRAP_SEC: "200", CALL_DAILY_MIN_GLOBAL: "5", CALL_DAILY_MIN_ACCOUNT: "0" });
+  assert.equal(e.maxSec, 120);
+  assert.equal(e.wrapSec, 115, "the wrap-up always comes before the hang-up");
+  assert.equal(e.globalMin, 5);
+  assert.equal(e.accountMin, 0);
+  assert.equal(callLimits({ CALL_MAX_SEC: "abc" }).maxSec, 180, "a bad value keeps the default");
+});
+
+test("call room clock: wrap-up at 2:45 over the sideband (after the current answer), hang-up at 3:00, then finish", async () => {
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER };
+  await env.BALANCES.put(OWNER, "1");
+  await env.BALANCES.put("secretary_lang:" + OWNER, "en");
+  const calls = openai();
+  const st = roomState();
+  const room = new CallRoom(st, env);
+  room.watch = async () => {};
+  const r = await (await room.fetch(new Request("https://call-room/incoming", { method: "POST", body: JSON.stringify({ origin: "https://w", callId: "rtc_clock", sipHeaders: ZADARMA }) }))).json();
+  assert.equal(r.accepted, true);
+  const started = st.m.get("startedAt");
+  assert.equal(st.alarm, started + 165_000);
+  // the model is speaking at 2:45: the wrap-up waits for response.done
+  const ws = fakeSocket();
+  room.ws = ws;
+  room.onEvent({ type: "response.created" });
+  await room.alarm();
+  assert.equal(ws.sent.length, 0);
+  assert.equal(st.m.get("phase"), "hangup");
+  assert.equal(st.alarm, started + 180_000);
+  room.onEvent({ type: "response.done" });
+  assert.equal(ws.sent.length, 1);
+  assert.equal(ws.sent[0].type, "response.create");
+  assert.match(ws.sent[0].response.instructions, /pass their message on/);
+  room.onEvent({ type: "response.done" });
+  assert.equal(ws.sent.length, 1, "wrap-up is sent once");
+  // 3:00: hang up through the realtime calls API
+  await room.alarm();
+  const hang = calls.filter((c) => c.url.endsWith("/hangup"));
+  assert.equal(hang.length, 1);
+  assert.ok(hang[0].url.includes("/v1/realtime/calls/rtc_clock/hangup"));
+  assert.equal(st.m.get("phase"), "finish");
+  // the socket never closed: the next alarm finishes the call (note + counters)
+  st.m.set("startedAt", Date.now() - 180_000);
+  await room.alarm();
+  assert.equal(st.m.get("state"), "finished");
+  const u = await callUsage(env, OWNER);
+  assert.ok(u.global >= 179 && u.global <= 182, String(u.global));
+  assert.equal(u.account, u.global);
+});
+
+test("call room: a woken room without a socket still hangs up at 3:00; a failed hang-up is retried", async () => {
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk" };
+  const st = roomState();
+  st.m.set("state", "accepted");
+  st.m.set("callId", "rtc_woken");
+  st.m.set("startedAt", Date.now() - 166_000);
+  st.m.set("phase", "wrap");
+  const room = new CallRoom(st, env);
+  let n = 0;
+  globalThis.fetch = async (url) => {
+    if (String(url).endsWith("/hangup")) return new Response("{}", { status: ++n === 1 ? 500 : 200 });
+    return new Response("{}", { status: 200 });
+  };
+  await room.alarm(); // wrap: no socket, nothing to send
+  assert.equal(st.m.get("phase"), "hangup");
+  await room.alarm(); // hang-up fails
+  assert.equal(st.m.get("phase"), "hangup");
+  assert.ok(st.alarm <= Date.now() + 15_000);
+  await room.alarm(); // retried, ok
+  assert.equal(n, 2);
+  assert.equal(st.m.get("phase"), "finish");
+});
+
+test("a call that ends before 2:45 is never wrapped up or hung up; an old 16-min alarm (no phase) still just finishes", async () => {
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER };
+  await env.BALANCES.put(OWNER, "1");
+  const calls = openai();
+  const st = roomState();
+  const room = new CallRoom(st, env);
+  room.watch = async () => {};
+  await room.fetch(new Request("https://call-room/incoming", { method: "POST", body: JSON.stringify({ origin: "https://w", callId: "rtc_short", sipHeaders: ZADARMA }) }));
+  room.lines = [{ who: "caller", text: "Це Вадим, передзвоніть" }];
+  st.m.set("startedAt", Date.now() - 50_000);
+  await room.finish("rtc_short", OWNER, "+380638500117", "closed");
+  assert.equal(st.alarm, null);
+  await room.alarm();
+  assert.equal(calls.filter((c) => c.url.endsWith("/hangup")).length, 0);
+  assert.ok((await callUsage(env, OWNER)).account >= 49);
+  const old = roomState();
+  old.m.set("state", "accepted");
+  old.m.set("callId", "rtc_old");
+  old.m.set("userId", OWNER);
+  const r2 = new CallRoom(old, env);
+  await r2.alarm();
+  assert.equal(old.m.get("state"), "finished");
+  assert.equal(calls.filter((c) => c.url.endsWith("/hangup")).length, 0);
+});
+
+test("daily AI minutes: under the cap calls are answered; at the global or account cap the call gets a short goodbye, no secretary, no charge", async () => {
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER };
+  await env.BALANCES.put(OWNER, "1");
+  let calls = openai();
+  await addCallSeconds(env, OWNER, 19 * 60);
+  assert.equal(await callCapReason(env, OWNER), "");
+  assert.equal((await handleIncoming(env, "https://w", "rtc_under", ZADARMA)).body.accepted, true);
+  // account cap (20 min)
+  await addCallSeconds(env, OWNER, 60);
+  assert.equal(await callCapReason(env, OWNER), "CALL_MINUTES_ACCOUNT");
+  calls = openai();
+  const r = await handleIncoming(env, "https://w", "rtc_capped", ZADARMA);
+  assert.equal(r.body.capped, true);
+  assert.equal(r.body.reason, "CALL_MINUTES_ACCOUNT");
+  assert.equal(r.meta.capped, true);
+  const acc = calls.filter((c) => c.url.endsWith("/accept"));
+  assert.equal(acc.length, 1);
+  assert.equal(acc[0].body.tools, undefined, "no note tool, no secretary");
+  assert.match(acc[0].body.instructions, /closed for today/);
+  assert.ok(!acc[0].body.instructions.includes("save_call_note"));
+  assert.equal(await env.BALANCES.get(OWNER), "0.8", "only the first call was charged");
+  const line = JSON.parse(await env.BALANCES.get("inbox:" + OWNER))[0];
+  assert.equal(line.callId, "rtc_capped");
+  assert.equal(line.status, "failed");
+  assert.equal(line.reason, "CALL_MINUTES_ACCOUNT");
+  assert.equal(line.text, CAPPED_TEXT);
+  assert.equal(line.chargedUsd, 0);
+  // global cap (30 min) also stops other accounts and unmapped calls
+  const env2 = { BALANCES: kv(), OPENAI_API_KEY: "sk" };
+  await addCallSeconds(env2, "someone-else-0001", 30 * 60);
+  assert.equal(await callCapReason(env2, ""), "CALL_MINUTES_GLOBAL");
+  calls = openai();
+  const u = await handleIncoming(env2, "https://w", "rtc_unmapped", ZADARMA);
+  assert.equal(u.body.capped, true);
+  assert.equal(u.body.reason, "CALL_MINUTES_GLOBAL");
+  assert.equal(await env2.BALANCES.get("trial_day:" + new Date().toISOString().slice(0, 10)), null, "no demo slot taken");
+  // env: 0 turns a cap off
+  assert.equal(await callCapReason({ ...env2, CALL_DAILY_MIN_GLOBAL: "0" }, ""), "");
+});
+
+test("after CALL_CAP_MESSAGES goodbyes a capped call is rejected (486) without any realtime session", async () => {
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER, CALL_CAP_MESSAGES: "1", CALL_DAILY_MIN_ACCOUNT: "1" };
+  await addCallSeconds(env, OWNER, 60);
+  let calls = openai();
+  assert.equal((await handleIncoming(env, "https://w", "rtc_c1", ZADARMA)).body.accepted, true);
+  calls = openai();
+  const r = await handleIncoming(env, "https://w", "rtc_c2", ZADARMA);
+  assert.equal(r.body.accepted, false);
+  assert.equal(r.meta, null);
+  assert.equal(calls.filter((c) => c.url.endsWith("/accept")).length, 0);
+  assert.equal(calls.filter((c) => c.url.endsWith("/reject")).length, 1);
+});
+
+test("capped call room: says its line at once, hangs up after CAPPED_CALL_SEC, its seconds are not added to the minutes", async () => {
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER, CALL_DAILY_MIN_ACCOUNT: "1" };
+  await env.BALANCES.put("secretary_lang:" + OWNER, "uk");
+  await addCallSeconds(env, OWNER, 60);
+  const calls = openai();
+  const st = roomState();
+  const room = new CallRoom(st, env);
+  const ws = fakeSocket();
+  room.watch = async function () {
+    // like the real watch(): a capped room speaks first
+    this.ws = ws;
+    if (this.capped) ws.send(JSON.stringify({ type: "response.create", response: { instructions: capInstructions(this.lang) } }));
+  };
+  const r = await (await room.fetch(new Request("https://call-room/incoming", { method: "POST", body: JSON.stringify({ origin: "https://w", callId: "rtc_cap_room", sipHeaders: ZADARMA }) }))).json();
+  assert.equal(r.capped, true);
+  assert.equal(st.m.get("phase"), "hangup");
+  assert.equal(st.alarm, st.m.get("startedAt") + 15_000);
+  assert.match(ws.sent[0].response.instructions, /зателефонуйте завтра/);
+  await room.alarm();
+  assert.equal(calls.filter((c) => c.url.endsWith("/hangup")).length, 1);
+  st.m.set("startedAt", Date.now() - 15_000);
+  await room.finish("rtc_cap_room", OWNER, "+380638500117", "closed");
+  assert.equal((await callUsage(env, OWNER)).account, 60, "unchanged");
+  assert.equal(JSON.parse(await env.BALANCES.get("inbox:" + OWNER))[0].status, "failed", "the missed line is kept");
+});
+
+test("wrap-up and capped texts: EN and UK, polite, no tool calls", () => {
+  assert.match(wrapInstructions("en"), /pass their message on/);
+  assert.match(wrapInstructions("uk"), /передасте повідомлення/);
+  assert.match(wrapInstructions("auto"), /передасте/);
+  assert.match(capInstructions("en"), /call back tomorrow/);
+  assert.match(capInstructions("auto"), /зателефонуйте завтра.*call back tomorrow/);
 });

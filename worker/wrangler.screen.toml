@@ -1,3 +1,9 @@
+# 1.1.3 (10 Oct 2026): call cost cap + reminders. Every AI call is wrapped up at CALL_WRAP_SEC (165 s: the secretary says it
+# will pass the message on) and hung up at CALL_MAX_SEC (180 s) by the CallRoom alarms (POST /v1/realtime/calls/{id}/hangup);
+# daily AI call minutes per UTC day: CALL_DAILY_MIN_GLOBAL (30) and CALL_DAILY_MIN_ACCOUNT (20); over the cap a call gets a
+# ~15 s scripted goodbye (CAPPED_CALL_SEC, at most CALL_CAP_MESSAGES = 20 a day, then 486) and is never charged. All optional
+# [vars]/secrets, 0 = that cap off. /call/actions: reminders ("remind her Monday") with a resolved date, up to 3 actions a call.
+# Live 1.1.3: a0236789-4ac4-40cc-984c-74d2bde134f0 (first 1.1.3 deploy fef96561, same code minus a prompt wording tweak). Rollback: npx wrangler rollback 4b18e3ff-4c12-493d-8351-94b251baad18 --name solarchik-screen
 # 1.1.0 (9 Oct 2026): + worker/agent-mint.js (mainnet Metaplex Core agent mints: GET /agent/mint-config, POST /agent/mint-cosign,
 # GET /agent/verify-mint, cluster explicit "mainnet-beta"; Combo stays paid-only server-side) + assistant prompt says mainnet.
 # Game prompt and every other route unchanged. Mint stays 503 MINT_NOT_READY until Vadym creates the collection and sets

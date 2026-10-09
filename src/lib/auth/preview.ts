@@ -17,8 +17,13 @@
  * broker env var and this constant together.
  */
 export const PREVIEW_CLIENT_ID = "grok_preview";
+/**
+ * Not in the source any more (1.1.3, gitleaks): read from the server env
+ * `GROK_PREVIEW_CLIENT_SECRET` when this code runs in a sandbox preview. Unset =
+ * no preview sign-in (deployed apps use their own `GROK_AUTH_*`).
+ */
 export const PREVIEW_CLIENT_SECRET =
-  "8bcdb7fc5a33874ad933ca568918d5790388a0795e44c4d1dea691f801b17ec5";
+  (typeof process !== "undefined" ? process.env.GROK_PREVIEW_CLIENT_SECRET?.trim() : "") || "";
 
 /** The shared auth broker issuer (OIDC discovery lives under it). */
 export const GROK_ISSUER_DEFAULT = "https://auth.grok.me";

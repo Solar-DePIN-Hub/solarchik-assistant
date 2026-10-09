@@ -683,6 +683,123 @@ const MISSED = {
   TRIAL_CALLER_CAP: "Missed call: this caller used up today's free trial calls. Top up to let the secretary answer.",
 };
 
+// ---- 1.1.3 call cost cap: max call length + daily AI call minutes (account and global) ----
+//
+// Every AI call is wrapped up and hung up by its call room (CallRoom alarms): at CALL_WRAP_SEC the secretary is
+// told (realtime sideband, response.create) to say it will pass the message on and say goodbye; at CALL_MAX_SEC
+// the worker hangs up (POST /v1/realtime/calls/{id}/hangup). Finished calls add their real length to KV counters
+// per UTC day: call_sec_day:<day> (everyone) and call_sec_user:<day>:<userId>. When either daily cap is reached a
+// new call is not given to the secretary: it gets one short scripted goodbye (a few seconds, no tools, no
+// secretary prompt; hung up after CAPPED_CALL_SEC) and a missed-call line, and nothing is charged. After
+// CALL_CAP_MESSAGES such goodbyes in a day, further calls are rejected (486) without any realtime session.
+// OpenAI SIP has no way to play audio without a realtime session, so the goodbye is a tiny one.
+// Counters are best effort (KV, not atomic): a call that starts under the cap can still run its full length.
+// All values are env-configurable ([vars] or secrets); 0 turns that cap off.
+
+/** Hard maximum length of one AI call, seconds (env CALL_MAX_SEC). */
+export const CALL_MAX_SEC = 180;
+/** When the secretary is told to wrap up, seconds after answering (env CALL_WRAP_SEC). */
+export const CALL_WRAP_SEC = 165;
+/** AI call minutes per UTC day for everyone together (env CALL_DAILY_MIN_GLOBAL). */
+export const CALL_DAILY_MIN_GLOBAL = 30;
+/** AI call minutes per UTC day for one account (env CALL_DAILY_MIN_ACCOUNT). */
+export const CALL_DAILY_MIN_ACCOUNT = 20;
+/** A capped call's goodbye is hung up after this many seconds (env CAPPED_CALL_SEC). */
+export const CAPPED_CALL_SEC = 15;
+/** Scripted "limit reached" goodbyes per UTC day; after that capped calls are rejected silently (env CALL_CAP_MESSAGES). */
+export const CALL_CAP_MESSAGES = 20;
+
+export function callLimits(env) {
+  const max = capOf(env?.CALL_MAX_SEC, CALL_MAX_SEC);
+  const wrap = Math.min(capOf(env?.CALL_WRAP_SEC, CALL_WRAP_SEC), max ? Math.max(0, max - 5) : Infinity);
+  return {
+    maxSec: max,
+    wrapSec: wrap,
+    globalMin: capOf(env?.CALL_DAILY_MIN_GLOBAL, CALL_DAILY_MIN_GLOBAL),
+    accountMin: capOf(env?.CALL_DAILY_MIN_ACCOUNT, CALL_DAILY_MIN_ACCOUNT),
+    cappedSec: Math.max(5, capOf(env?.CAPPED_CALL_SEC, CAPPED_CALL_SEC)),
+    capMessages: capOf(env?.CALL_CAP_MESSAGES, CALL_CAP_MESSAGES),
+  };
+}
+
+const callSecKeys = (userId, now) => {
+  const day = dayKey(now);
+  return { g: "call_sec_day:" + day, u: userId ? "call_sec_user:" + day + ":" + userId : "" };
+};
+
+/** Seconds of AI calls today: { global, account }. */
+export async function callUsage(env, userId, now = Date.now()) {
+  const k = callSecKeys(userId, now);
+  const global = Number((await env.BALANCES.get(k.g)) || 0) || 0;
+  const account = k.u ? Number((await env.BALANCES.get(k.u)) || 0) || 0 : 0;
+  return { global, account };
+}
+
+/** Adds a finished call's real length to today's counters (the day the call was answered). */
+export async function addCallSeconds(env, userId, sec, at = Date.now()) {
+  if (!Number.isFinite(sec) || sec <= 0) return;
+  const k = callSecKeys(userId, at);
+  const add = async (key) => {
+    const n = Number((await env.BALANCES.get(key)) || 0) || 0;
+    await env.BALANCES.put(key, String(Math.round(n + sec)), { expirationTtl: COUNTER_TTL });
+  };
+  await add(k.g);
+  if (k.u) await add(k.u);
+}
+
+/** "" while today's AI minutes are under both caps, else CALL_MINUTES_GLOBAL / CALL_MINUTES_ACCOUNT. */
+export async function callCapReason(env, userId, now = Date.now()) {
+  const L = callLimits(env);
+  const u = await callUsage(env, userId, now);
+  if (L.globalMin > 0 && u.global >= L.globalMin * 60) return "CALL_MINUTES_GLOBAL";
+  if (userId && L.accountMin > 0 && u.account >= L.accountMin * 60) return "CALL_MINUTES_ACCOUNT";
+  return "";
+}
+
+const CAP_LINE = {
+  uk: "Добрий день! На жаль, сьогодні помічник уже не може приймати дзвінки. Будь ласка, зателефонуйте завтра або напишіть повідомлення. Дякую і до побачення!",
+  en: "Hello! Sorry, the assistant can't take any more calls today. Please call back tomorrow or send a text message. Thank you, goodbye!",
+};
+
+/** The capped call's whole script: one short goodbye, nothing else. */
+export function capInstructions(lang) {
+  const line = lang === "en" ? CAP_LINE.en : lang === "uk" ? CAP_LINE.uk : CAP_LINE.uk + " " + CAP_LINE.en;
+  return `You are a phone line that is closed for today. Say exactly this once, in a calm friendly voice, and nothing else: "${line}" Do not answer questions, do not take messages, do not continue the conversation.`;
+}
+
+/** What the secretary is told at CALL_WRAP_SEC (sent as response.create instructions over the sideband). */
+export function wrapInstructions(lang) {
+  if (lang === "en") return "The call time is almost over. In one or two short sentences, politely tell the caller that you will pass their message on to the owner, thank them and say goodbye. Do not ask any more questions.";
+  return "Час дзвінка майже вийшов. Одним-двома короткими реченнями ввічливо скажіть абонентові (на «ви»), що передасте повідомлення власникові, подякуйте і попрощайтеся. Більше нічого не питайте. If the caller speaks English, say it in English.";
+}
+
+export const CAPPED_TEXT = "Missed call: today's AI call minutes are used up, so the secretary did not answer. The caller heard a short message.";
+
+/** Takes one of today's scripted goodbyes; false when they are used up (then the call is rejected silently). */
+async function takeCapMessage(env, now = Date.now()) {
+  const max = callLimits(env).capMessages;
+  if (max === 0) return false;
+  const key = "call_cap_msg:" + dayKey(now);
+  const n = Number((await env.BALANCES.get(key)) || 0) || 0;
+  if (n >= max) return false;
+  await env.BALANCES.put(key, String(n + 1), { expirationTtl: COUNTER_TTL });
+  return true;
+}
+
+/** Ends an AI call (SIP or WebRTC). true on 2xx. */
+export async function hangupCall(env, callId) {
+  try {
+    const res = await fetch("https://api.openai.com/v1/realtime/calls/" + encodeURIComponent(callId) + "/hangup", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + env.OPENAI_API_KEY },
+      signal: AbortSignal.timeout(10000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ---- Webhook dedup: the same realtime.call.incoming may be delivered more than once ----
 
 export const DEDUP_TTL_SEC = 600;
@@ -966,7 +1083,25 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
       body: JSON.stringify({ status_code: 486 }),
     }).catch(() => null);
 
+  // 1.1.3: today's AI call minutes are used up (everyone, or this account): never the secretary, never a charge.
+  const capped = async (reason) => {
+    const at = Date.now();
+    await putMark(env, callId, { userId, caller: parties.caller, at, state: "capped" });
+    const say = await takeCapMessage(env, at);
+    let accepted = false;
+    if (say) {
+      const acc = await acceptCall(env, callId, { type: "realtime", model: "gpt-realtime", instructions: capInstructions(lang) }).catch(() => null);
+      accepted = Boolean(acc?.ok);
+    }
+    if (!accepted) await reject();
+    if (userId) await addInbox(env, userId, { callId, caller: parties.caller, text: CAPPED_TEXT, at, status: "failed", reason, chargedUsd: 0 });
+    console.log(JSON.stringify({ event: "sip_capped", callId: String(callId).slice(-8), reason, message: accepted }));
+    return { body: { accepted, capped: true, reason }, meta: accepted ? { capped: true, userId: userId || "", caller: parties.caller, lang } : null };
+  };
+
   if (!userId) {
+    const capReason = await callCapReason(env, "");
+    if (capReason) return capped(capReason);
     const takenAt = Date.now();
     const reason = await takeTrialSlot(env, parties.caller, takenAt);
     console.log(
@@ -988,7 +1123,11 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
       await releaseTrialSlot(env, parties.caller, takenAt);
       await forgetDelivery(env, dedupKeys);
     }
-    return { body: { accepted: accept.ok, status: accept.status, player: false, trial: true, source: "demo", lang }, meta: null };
+    // 1.1.3: the call room still watches an unmapped call, so it is wrapped up and hung up like any other.
+    return {
+      body: { accepted: accept.ok, status: accept.status, player: false, trial: true, source: "demo", lang },
+      meta: accept.ok ? { userId: "", caller: parties.caller, lang, noteTool: false, source: "demo", chargedAt: takenAt, unmapped: true } : null,
+    };
   }
 
   // Taken before any money moves: a second delivery that reaches this point later sees the marker.
@@ -1001,6 +1140,8 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
     console.log(JSON.stringify({ event: "sip_blocked", callId: String(callId).slice(-8), caller: last4(parties.caller) }));
     return { body: { accepted: false, rejected: Boolean(rej?.ok), blocked: true }, meta: null };
   }
+  const capReason = await callCapReason(env, userId);
+  if (capReason) return capped(capReason);
   await putMark(env, callId, { userId, caller: parties.caller, at, state: "accepting" });
   let charge = await chargeSession(env, userId, parties.caller, { fallback: route.via === "fallback" });
   if (!charge.ok && own) {
@@ -1197,18 +1338,30 @@ export class CallRoom {
       await this.state.storage.delete("state");
       this.taken = false;
     }
-    else if (out.meta?.userId) {
+    else if (out.meta && (out.meta.userId || out.meta.unmapped || out.meta.capped)) {
+      // 1.1.3: the room's alarms run the call clock: "wrap" (secretary says goodbye) -> "hangup" -> "finish".
+      // A capped call only gets its short goodbye and is hung up after CAPPED_CALL_SEC.
+      const L = callLimits(this.env);
+      const startedAt = Date.now();
+      const capped = Boolean(out.meta.capped);
+      const phase = capped ? "hangup" : L.maxSec > 0 ? "wrap" : "finish";
+      const next = capped ? startedAt + L.cappedSec * 1000 : L.maxSec > 0 ? startedAt + L.wrapSec * 1000 : startedAt + 16 * 60 * 1000;
       await this.state.storage.put({
         state: "accepted",
         callId: b.callId,
-        userId: out.meta.userId,
+        userId: out.meta.userId || "",
         caller: out.meta.caller,
-        startedAt: Date.now(),
+        startedAt,
         source: out.meta.source || "",
-        chargedAt: out.meta.chargedAt || Date.now(),
+        chargedAt: out.meta.chargedAt || startedAt,
+        lang: out.meta.lang || "auto",
+        capped,
+        phase,
       });
-      await this.state.storage.setAlarm(Date.now() + 16 * 60 * 1000);
-      this.watch(b.callId, out.meta.userId, out.meta.caller).catch((e) =>
+      await this.state.storage.setAlarm(next);
+      this.lang = out.meta.lang || "auto";
+      this.capped = capped;
+      this.watch(b.callId, out.meta.userId || "", out.meta.caller).catch((e) =>
         console.log(JSON.stringify({ event: "sideband_error", callId: String(b.callId).slice(-8), detail: String(e?.message || e).slice(0, 120) })),
       );
     }
@@ -1225,8 +1378,11 @@ export class CallRoom {
       return;
     }
     ws.accept();
+    this.ws = ws;
     console.log(JSON.stringify({ event: "sideband_open", callId: String(callId).slice(-8) }));
     ws.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio: { input: { transcription: { model: "gpt-4o-mini-transcribe" } } } } }));
+    // A capped call says its one line right away instead of waiting for the caller.
+    if (this.capped) ws.send(JSON.stringify({ type: "response.create", response: { instructions: capInstructions(this.lang) } }));
     ws.addEventListener("message", (e) => {
       let ev = null;
       try {
@@ -1234,6 +1390,7 @@ export class CallRoom {
       } catch {
         return;
       }
+      this.onEvent(ev);
       const l = transcriptLine(ev);
       if (l) {
         this.lines.push(l);
@@ -1244,6 +1401,33 @@ export class CallRoom {
     const end = (why) => this.finish(callId, userId, caller, why).catch(() => {});
     ws.addEventListener("close", () => end("closed"));
     ws.addEventListener("error", () => end("error"));
+  }
+
+  /** Tracks whether the model is speaking, so the wrap-up never collides with a response in progress. */
+  onEvent(ev) {
+    if (ev?.type === "response.created") this.responding = true;
+    if (ev?.type === "response.done") {
+      this.responding = false;
+      if (this.wrapPending) this.sendWrap();
+    }
+  }
+
+  sendWrap() {
+    this.wrapPending = false;
+    try {
+      this.ws?.send(JSON.stringify({ type: "response.create", response: { instructions: wrapInstructions(this.lang) } }));
+      this.wrapSent = true;
+    } catch {
+      this.wrapSent = false;
+    }
+  }
+
+  /** CALL_WRAP_SEC: ask the secretary to say goodbye (now, or as soon as its current answer ends). */
+  wrapUp() {
+    if (!this.ws || this.wrapSent) return false;
+    if (this.responding) this.wrapPending = true;
+    else this.sendWrap();
+    return true;
   }
 
   async finish(callId, userId, caller, why) {
@@ -1261,6 +1445,9 @@ export class CallRoom {
       const chargedAt = await this.state.storage.get("chargedAt");
       if (await refundShortCall(this.env, { userId, callId, caller, source, chargedAt, durationSec, heard })) {
         console.log(JSON.stringify({ event: "short_call_refunded", callId: String(callId).slice(-8), source, durationSec }));
+      } else if (!(await this.state.storage.get("capped"))) {
+        // 1.1.3: today's AI call minutes (a refunded no-word call does not count; capped goodbyes are counted apart).
+        await addCallSeconds(this.env, userId, durationSec || 0, chargedAt || Date.now());
       }
     } catch (e) {
       console.log(JSON.stringify({ event: "transcript_save_failed", callId: String(callId).slice(-8), detail: String(e?.message || e).slice(0, 80) }));
@@ -1303,8 +1490,35 @@ export class CallRoom {
   }
 
   async alarm() {
-    const s = await this.state.storage.get(["callId", "userId", "caller", "state"]);
-    if (s.get("state") === "accepted") await this.finish(s.get("callId"), s.get("userId"), s.get("caller"), "alarm");
+    const s = await this.state.storage.get(["callId", "userId", "caller", "state", "phase", "startedAt", "lang", "hangupTries"]);
+    if (s.get("state") !== "accepted") return;
+    const callId = s.get("callId");
+    const now = Date.now();
+    const L = callLimits(this.env);
+    if (s.get("phase") === "wrap") {
+      // A woken room (evicted, or a deploy) has no socket: then only the hang-up below ends the call.
+      if (!this.lang) this.lang = s.get("lang") || "auto";
+      const sent = this.wrapUp();
+      console.log(JSON.stringify({ event: "call_wrap", callId: String(callId).slice(-8), sent }));
+      await this.state.storage.put("phase", "hangup");
+      await this.state.storage.setAlarm(Math.max(now + 1000, (s.get("startedAt") || now) + L.maxSec * 1000));
+      return;
+    }
+    if (s.get("phase") === "hangup") {
+      const tries = (s.get("hangupTries") || 0) + 1;
+      const ok = await hangupCall(this.env, callId);
+      console.log(JSON.stringify({ event: "call_hangup", callId: String(callId).slice(-8), ok, tries }));
+      await this.state.storage.put("hangupTries", tries);
+      if (!ok && tries < 4) {
+        await this.state.storage.setAlarm(now + 15000);
+        return;
+      }
+      // The socket closing writes the note; if it never closes, finish a minute later anyway.
+      await this.state.storage.put("phase", "finish");
+      await this.state.storage.setAlarm(now + 60000);
+      return;
+    }
+    await this.finish(callId, s.get("userId"), s.get("caller"), "alarm");
   }
 }
 
