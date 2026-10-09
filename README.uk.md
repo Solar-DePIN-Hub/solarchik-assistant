@@ -4,7 +4,7 @@ English: [README.md](README.md) (там повна версія: архітек�
 
 Я Вадим, роблю Solarchik сам у Solar DePIN. Solarchik Assistant — Android-застосунок, кишеньковий помічник на Solana. Тримаєш одну кнопку й говориш із Солом. AI-секретар відповідає на дзвінки, які ти не можеш узяти, і лишає коротку нотатку. З версії 1.1.0 застосунок працює в **mainnet** з твоїм гаманцем (Mobile Wallet Adapter), і кожну транзакцію ти схвалюєш у гаманці.
 
-**Завантажити:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.2/solarchik-assistant.apk) (v1.1.2, Android 8+, sha256 `292a5c057ef15b742381d74c11cba5c07ca36c878637405742233e4e9af3e0a8`)
+**Завантажити:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.3/solarchik-assistant.apk) (v1.1.3, Android 8+, sha256 `98cb5e64c3d8bd6b53d072bf77fb538c4e071540422eb83521498f55e0c32a02`)
 
 > **Mainnet, справжні кошти.** Усе, що ти схвалюєш у гаманці, рухає справжні SOL чи токени, і це не скасувати. Застосунок ніколи не підписує за твій гаманець сам. Справжні обміни, Скарбничка й експериментальний делегований ліміт вимкнені, доки ти їх не ввімкнеш, і мають маленькі ліміти.
 
