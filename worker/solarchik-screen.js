@@ -1796,7 +1796,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/sol/tts") return solTtsRoute(env, request, ctx);
     // 1.1.0 Season rules watcher: official Solana Mobile sources -> versioned scoring signals (KV).
     if (url.pathname === "/season/rules" || url.pathname === "/season/rules/check") {
-      const r = await seasonRulesRoute(env, request, solRateOk, json);
+      const r = await seasonRulesRoute(env, request, solRateOk, json, ctx);
       if (r) return r;
     }
 
@@ -2043,7 +2043,12 @@ export default {
 
   // 1.1.0: cron (wrangler.screen.toml [triggers]) re-reads the official Season sources every 6 hours.
   async scheduled(event, env, ctx) {
-    if (!env.OPENAI_API_KEY) return;
-    ctx.waitUntil(checkRules(env).then((r) => console.log(JSON.stringify({ event: "season_rules", version: r.rules.version, changed: r.changed, extracted: r.extracted, errors: r.errors }))).catch((e) => console.log(JSON.stringify({ event: "season_rules_fail", error: String(e) }))));
+    // heartbeat first (proves the trigger fired), then the check; its outcome lands in season-rules:cron too
+    const beat = (o) => env.BALANCES.put("season-rules:cron", JSON.stringify({ cron: event.cron, at: Date.now(), ...o })).catch(() => {});
+    await beat({ state: "started" });
+    if (!env.OPENAI_API_KEY) return beat({ state: "no model key" });
+    ctx.waitUntil(checkRules(env)
+      .then((r) => { console.log(JSON.stringify({ event: "season_rules", version: r.rules.version, changed: r.changed, extracted: r.extracted, errors: r.errors })); return beat({ state: "done", version: r.rules.version, changed: r.changed, extracted: r.extracted, errors: r.errors }); })
+      .catch((e) => { console.log(JSON.stringify({ event: "season_rules_fail", error: String(e) })); return beat({ state: "failed", error: String(e) }); }));
   },
 };

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { clipSentences, blogUrls, pageText, publishedOf, sanitizeSignals, checkRules, RULES_KEY, DOCS_PAGES, SKIPPED } from "./season-rules.js";
+import { refreshIfStale, STALE_MS, clipSentences, blogUrls, pageText, publishedOf, sanitizeSignals, checkRules, RULES_KEY, DOCS_PAGES, SKIPPED } from "./season-rules.js";
 
 const fx = (n) => readFileSync(new URL("./fixtures/season/" + n, import.meta.url), "utf8");
 const SUMMER = "https://solanamobile.com/blog/summer-wrapped.-what%E2%80%99s-next-on-your-seeker";
@@ -103,4 +103,23 @@ test("checkRules: versioned KV, re-extracts only changed pages, keeps sources on
   assert.equal(r5.rules.version, 2);
   assert.equal(r5.rules.signals[0].quote, "gives much more weight to everyday wallet use");
   assert.ok(r5.rules.errors.some((e) => e.includes("extraction failed")));
+});
+
+test("a stale read starts one background check; a fresh read or a held lock does not", async () => {
+  const kv = kvMem();
+  const waited = [];
+  const ctx = { waitUntil: (p) => waited.push(p.catch(() => {})) };
+  const env = { OPENAI_API_KEY: "k", BALANCES: kv };
+  const now = 10 * STALE_MS;
+  assert.equal(await refreshIfStale(env, ctx, { checkedAt: now - 1000 }, now), false, "fresh");
+  assert.equal(await refreshIfStale({ BALANCES: kv }, ctx, null, now), false, "no model key");
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("down", { status: 503 });
+  try {
+    assert.equal(await refreshIfStale(env, ctx, { checkedAt: now - STALE_MS - 1 }, now), true);
+    assert.equal(await refreshIfStale(env, ctx, { checkedAt: 0 }, now), false, "lock held");
+    await Promise.all(waited);
+  } finally { globalThis.fetch = realFetch; }
+  assert.equal(waited.length, 1);
+  assert.ok(kv.m.has("season-rules:lock"));
 });

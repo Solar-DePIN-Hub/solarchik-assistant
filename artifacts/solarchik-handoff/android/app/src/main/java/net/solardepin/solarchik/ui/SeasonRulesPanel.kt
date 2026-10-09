@@ -76,10 +76,9 @@ class SeasonRulesPanel(private val host: MainActivity, private val onChange: () 
             addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.sr_status, doc.version, t), 11f).apply { tag = "sr-status" }, 10))
         }
         addView(Ui.top(Ui.switchRow(ctx, ctx.getString(R.string.sr_adapt), store.enabled) { _, on -> store.enabled = on; onChange() }.apply { tag = "sr-switch" }, 10))
-        val btns = Ui.row(ctx, gap = 8)
-        btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(if (checking) R.string.sr_checking else R.string.sr_check), Ui.Btn.SECONDARY) { checkNow() }.apply { tag = "sr-check"; Ui.setEnabled(this, !checking) }))
-        if (store.updated) btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.sr_seen), Ui.Btn.GHOST) { store.seenVersion = doc?.version ?: 0; onChange() }.apply { tag = "sr-seen" }))
-        addView(Ui.top(btns, 10))
+        // full-width rows: the labels are long in Ukrainian
+        addView(Ui.top(Ui.button(ctx, ctx.getString(if (checking) R.string.sr_checking else R.string.sr_check), Ui.Btn.SECONDARY) { checkNow() }.apply { tag = "sr-check"; Ui.setEnabled(this, !checking) }, 10))
+        if (store.updated) addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.sr_seen), Ui.Btn.GHOST) { store.seenVersion = doc?.version ?: 0; onChange() }.apply { tag = "sr-seen" }, 8))
         addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.sr_honest), 11f).apply { setLineSpacing(0f, 1.2f); tag = "sr-honest" }, 8))
     }
 

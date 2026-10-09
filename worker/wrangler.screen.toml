@@ -5,7 +5,8 @@
 # 1.1.0 (second scope, 9 Oct): + worker/assistant-extras.js: POST /sol/briefing (morning voice briefing from the facts the app
 # sends; assistant persona) and POST /call/actions (structured-output extraction of payment/callback/reminder requests from
 # call notes; an address is returned only if literally spoken; nothing is stored). Assistant chat: three agents, no tools.
-# Live 1.1.0 version: f5f3acfd-4171-4bcd-823a-47fdfa835334 (briefing: payment direction; earlier 1.1.0 deploys 45fb2e1b, b483888b, a894b28a, 25f25d22, 599c88b7).
+# 1.1.0 Season rules watcher: GET /season/rules, POST /season/rules/check, cron 17 */6 * * * (official sources only).
+# Live 1.1.0 version: 4b18e3ff-4c12-493d-8351-94b251baad18 (rules watcher + cron heartbeat + stale-read refresh; rollback: f35c29ee-c567-4f19-8d40-4713f75a5cba; earlier: 6cf8d310, 793c6192 (temporary 5-min cron), 5d1dba81, 587933fa, 81821eb7 rules watcher iterations; f5f3acfd briefing payment direction; earlier 1.1.0 deploys 45fb2e1b, b483888b, a894b28a, 25f25d22, 599c88b7).
 # Rollback: npx wrangler rollback 19d11443-933f-4a90-8171-02ef8b29a3bb --name solarchik-screen
 # 1.0.1 (Solarchik Assistant repo): source = Solar-DePIN-Hub/Solarchik web-fees @ 7d07d3c (deployed as 6fa974bc)
 # + the live 1be24509 change "cache inbox reads, do not burn KV" (readCached for /inbox, /call, /balance, GET /secretary-lang),
@@ -59,3 +60,7 @@ class_name = "CallRoom"
 [[migrations]]
 tag = "v1-call-room"
 new_sqlite_classes = ["CallRoom"]
+
+# 1.1.0: Season rules watcher re-reads the official Solana Mobile sources every 6 hours (worker/season-rules.js).
+[triggers]
+crons = ["17 */6 * * *"]

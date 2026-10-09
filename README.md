@@ -6,7 +6,7 @@ I'm Vadym, and I build Solarchik on my own under Solar DePIN. Solarchik Assistan
 
 I built this repo for the Colosseum Crypto World's Fair (Solana track, AI / agents). Submissions close 12 Oct 2026, 11:59pm PT (13 Oct, 09:59 Kyiv). My older game build, CLOCK IN, lives in [Solar-DePIN-Hub/Solarchik](https://github.com/Solar-DePIN-Hub/Solarchik), and I didn't change it for this. In this app the game is only a small "Play" tile.
 
-**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.0/solarchik-assistant.apk) (v1.1.0, Android 8+, sha256 `42caf41fc7000e3633503034efcc813efc157c6838ef8ac06e2ec7aec0c999ce`)
+**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.0/solarchik-assistant.apk) (v1.1.0, Android 8+, sha256 `07e2bd83d8e84895fe205fe8c6d62cff8e5c135c6d066aaf730f5a658ba5aac6`)
 
 > **Mainnet, real funds.** 1.1.0 talks to Solana mainnet. Anything you approve in your wallet moves real SOL or tokens and can't be undone. The app never signs for your wallet by itself. Real swaps, the Saver and the experimental delegated limit are all off until you turn them on, and they have small caps. Read [What's real on mainnet](#whats-real-on-mainnet-and-what-isnt) first.
 

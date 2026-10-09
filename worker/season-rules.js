@@ -238,11 +238,25 @@ export async function checkRules(env, deps = {}) {
   return { rules, changed, checked: urls.length, extracted, errors };
 }
 
-export async function seasonRulesRoute(env, request, rateOk, json) {
+export const STALE_MS = 6 * 3600_000;
+
+/** Stale-while-revalidate: a read of rules older than 6 h starts one background check (KV lock, 5 min). */
+export async function refreshIfStale(env, ctx, cur, now = Date.now()) {
+  if (!ctx || !env.OPENAI_API_KEY || (cur && now - (cur.checkedAt || 0) < STALE_MS)) return false;
+  const lock = await env.BALANCES.get("season-rules:lock").catch(() => null);
+  if (lock) return false;
+  await env.BALANCES.put("season-rules:lock", String(now), { expirationTtl: 300 }).catch(() => {});
+  ctx.waitUntil(checkRules(env).then((r) => env.BALANCES.put("season-rules:refresh", JSON.stringify({ at: now, via: "stale-read", version: r.rules.version, changed: r.changed, errors: r.errors }))).catch((e) => console.log(JSON.stringify({ event: "season_rules_stale_fail", error: String(e) }))));
+  return true;
+}
+
+export async function seasonRulesRoute(env, request, rateOk, json, ctx) {
   const url = new URL(request.url);
   if (request.method === "GET" && url.pathname === "/season/rules") {
     const cur = await env.BALANCES.get(RULES_KEY, "json").catch(() => null);
-    return json(cur || { ok: true, version: 0, sources: [], signals: [], skipped: SKIPPED });
+    const cron = await env.BALANCES.get("season-rules:cron", "json").catch(() => null);
+    const refreshing = await refreshIfStale(env, ctx, cur);
+    return json({ ...(cur || { ok: true, version: 0, sources: [], signals: [], skipped: SKIPPED }), cron, refreshing });
   }
   if (request.method === "POST" && url.pathname === "/season/rules/check") {
     if (!rateOk(request.headers.get("cf-connecting-ip"))) return json({ ok: false, error: "rate" }, 429);

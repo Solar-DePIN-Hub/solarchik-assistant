@@ -157,7 +157,7 @@ class SolScreen(host: MainActivity) : Screen(host) {
     override fun onShow() {
         render()
         if (MainActivity.tickerEnabled) {
-            retellOnce()
+            // 1.1.0 assistant: no game-note retelling (it talked about runs and CLOCK IN)
             // 0.21.9: warm the agent/market context and the worker connection before the first question
             actions.prewarm()
             net.solardepin.solarchik.sol.SolLatency.prewarmWorker()
@@ -209,6 +209,8 @@ class SolScreen(host: MainActivity) : Screen(host) {
         val today = host.save.today()
         val rep = currentReport()
         report.removeAllViews()
+        // 1.1.0 assistant: the rooftop game's daily note (runs, CLOCK IN, fee windows) is not shown here.
+        report.visibility = View.GONE
         val head = Ui.row(ctx)
         head.addView(Ui.weight(Ui.label(ctx, ctx.getString(R.string.report_title), Ui.CYAN)))
         report.addView(head)
@@ -229,7 +231,7 @@ class SolScreen(host: MainActivity) : Screen(host) {
         if (turns.isEmpty()) chatList.addView(Ui.muted(ctx, ctx.getString(R.string.chat_empty), 12f))
         turns.takeLast(8).forEach { chatList.addView(bubbleView(it)) }
         pending?.let { chatList.addView(actionCard(it)) }
-        bubble.text = turns.lastOrNull { it.role == "assistant" && !it.fallback }?.text ?: told ?: tipOfDay(ctx, today)
+        bubble.text = turns.lastOrNull { it.role == "assistant" && !it.fallback }?.text ?: ctx.getString(R.string.today_line_idle)
         micBtn.alpha = if (listening) 1f else 0.9f
         micBtn.background = Ui.rounded(if (listening) Ui.withAlpha(Ui.RED, 0x55) else Ui.withAlpha(Ui.CYAN, 0x22), dp(16).toFloat(), Ui.withAlpha(if (listening) Ui.RED else Ui.CYAN, 0x88), dp(1))
     }
