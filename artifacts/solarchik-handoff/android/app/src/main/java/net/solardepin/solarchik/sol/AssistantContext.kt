@@ -18,7 +18,7 @@ import java.util.TimeZone
 object AssistantContext {
     const val MAX = 900
 
-    data class Wallet(val connected: Boolean, val builtIn: Boolean, val address: String)
+    data class Wallet(val connected: Boolean, val builtIn: Boolean, val address: String, val mainnet: Boolean = false, val sol: Double? = null, val skr: Double? = null, val swapsOn: Boolean = false)
 
     fun build(
         calls: List<CallItem>,
@@ -28,6 +28,8 @@ object AssistantContext {
         secretaryOn: Boolean,
         now: Long = System.currentTimeMillis(),
         zone: TimeZone = TimeZone.getDefault(),
+        /** 1.1.0: Watcher alerts, open call actions and which agents are on (short plain lines). */
+        extras: List<String> = emptyList(),
     ): String {
         val clock = SimpleDateFormat("HH:mm", Locale.US).apply { timeZone = zone }
         val day = SimpleDateFormat("EEE d MMM yyyy, HH:mm", Locale.US).apply { timeZone = zone }
@@ -57,14 +59,20 @@ object AssistantContext {
                 FollowUp.Kind.CALLBACK -> "call back ${who(f.item)}"
             }
         } + "."
-        parts += if (!wallet.connected) "Agent wallet: not connected (Solana devnet)."
-        else "Agent wallet: ${if (wallet.builtIn) "built-in" else "wallet app"} on Solana devnet, ${wallet.address.take(4)}…${wallet.address.takeLast(4)}; every on-chain step needs the user's tap."
+        val net = if (wallet.mainnet) "Solana mainnet, real funds" else "Solana devnet, developer test mode"
+        parts += if (!wallet.connected) "Wallet: not connected ($net)."
+        else "Wallet: ${if (wallet.builtIn) "built-in devnet key" else "wallet app"} on $net, ${wallet.address.take(4)}…${wallet.address.takeLast(4)}" +
+            (wallet.sol?.let { ", ${java.math.BigDecimal(it).setScale(4, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} SOL" } ?: "") +
+            (wallet.skr?.let { ", ${java.math.BigDecimal(it).setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} SKR" } ?: "") +
+            "; every transaction is approved by the user in the wallet app." +
+            (if (wallet.mainnet) " Real Jupiter swaps: ${if (wallet.swapsOn) "on, with the user's daily cap" else "off (opt-in in Agents › Swaps)"}." else "")
         val todo = buildList {
             if (!season.done(SeasonItem.EXPLORE)) add("open ${season.suggestion.name}")
             if (!season.done(SeasonItem.ONCHAIN)) add(if (season.clockedToday) "sign today's check-in" else "do the daily check-in")
         }
         parts += "Seeker Season plan: ${season.doneCount}/${season.total} done" + (if (todo.isEmpty()) "." else "; left: " + todo.joinToString(", ") + ".") +
             " Streak ${season.streak} day(s)."
+        parts += extras.filter { it.isNotBlank() }
         return parts.joinToString(" ").take(MAX)
     }
 }

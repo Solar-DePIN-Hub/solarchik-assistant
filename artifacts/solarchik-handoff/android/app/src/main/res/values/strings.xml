@@ -79,8 +79,8 @@
     <string name="meters">%1$d m</string>
 
     <!-- Agents -->
-    <string name="agents_title">Strategy agents</string>
-    <string name="agents_sub">Each strategy is a Metaplex Core NFT you own. It forecasts and acts only within your limits.</string>
+    <string name="agents_title">Your three agents</string>
+    <string name="agents_sub">Season Agent, Saver and Watcher. Each is off until you turn it on, and real funds move only after you approve in your wallet (except the experimental delegated limit you approve yourself).</string>
     <string name="tier_free">Free</string>
     <string name="tier_pro">Pro</string>
     <string name="tier_free_line" formatted="false">Free mint · one per wallet · 5% fee on realized profit only</string>
@@ -172,7 +172,7 @@
     <string name="settings_run_music">Music volume</string>
     <string name="settings_run_sfx">Effects volume</string>
     <string name="settings_language">Language</string>
-    <string name="settings_language_body">Solarchik follows your phone language: Ukrainian on a Ukrainian phone, English otherwise. Pick one here to override it (also Sol\'s chat and voice).</string>
+    <string name="settings_language_body">Solarchik is in English by default. Pick Українська here, or Phone to follow your phone\'s language. This also changes Sol\'s chat and voice.</string>
     <string name="settings_language_open">Change app language</string>
     <string name="settings_notes">Reminders</string>
     <string name="settings_about">About</string>

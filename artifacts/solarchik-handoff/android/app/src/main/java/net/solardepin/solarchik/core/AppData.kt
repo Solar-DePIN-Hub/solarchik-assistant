@@ -15,6 +15,7 @@ object AppData {
     /** Every SharedPreferences file the app writes. Keep in sync when a new store is added. */
     val PREFS = listOf(
         "solarchik-game",
+        "solarchik.swap",
         "solarchik-lang",
         "solarchik-slice",
         "solarchik-agents",
@@ -35,10 +36,13 @@ object AppData {
         // 1.0.0 assistant: onboarding seen, wallet balance cache, follow-ups done
         "solarchik.assistant",
         "solarchik.followups", "solarchik.season",
+        // 1.1.0 Season autopilot, experimental delegated limit (+ its sealed agent key)
+        "solarchik.autopilot", "solarchik.delegate", "solarchik-agent-key",
+        "solarchik.saver", "solarchik.watcher", "solarchik.briefing", "solarchik.callactions",
     )
 
     /** Background jobs that would otherwise keep ticking with old state. */
-    val WORKS = listOf("solarchik-desk", "solarchik-notes", "solarchik-calls-poll")
+    val WORKS = listOf("solarchik-desk", "solarchik-notes", "solarchik-calls-poll", "solarchik-season-auto", "solarchik-briefing")
 
     const val PRIVACY_URL = "https://github.com/Solar-DePIN-Hub/solarchik-assistant/blob/main/PRIVACY.md"
 
@@ -58,5 +62,7 @@ object AppData {
         net.solardepin.solarchik.sol.SolHandoff.take()
         // the built-in devnet wallet's Keystore key goes too (its devnet SOL is test money)
         runCatching { net.solardepin.solarchik.wallet.LocalKey.delete(app) }
+        // 1.1.0: the delegated-mode agent key (the UI asks to withdraw its SOL first)
+        runCatching { net.solardepin.solarchik.delegate.AgentKey.delete(app) }
     }
 }

@@ -53,14 +53,17 @@ object CoreIx {
         uri: String,
         plugins: List<Plugin>,
         owner: PublicKey? = null,
+        /** 1.1.0 mainnet: the Solarchik collection and its update authority (co-signed by the server). */
+        collection: PublicKey? = null,
+        authority: PublicKey? = null,
     ): Ix {
         val none = Meta(PROGRAM, signer = false, writable = false)
         return Ix(
             PROGRAM,
             listOf(
                 Meta(asset, signer = true, writable = true),
-                none, // collection
-                none, // authority (payer signs)
+                collection?.let { Meta(it, signer = false, writable = true) } ?: none, // collection
+                authority?.let { Meta(it, signer = true, writable = false) } ?: none, // authority (payer signs when none)
                 Meta(payer, signer = true, writable = true),
                 owner?.let { Meta(it, signer = false, writable = false) } ?: none,
                 none, // update authority = payer

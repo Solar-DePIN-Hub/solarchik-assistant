@@ -1,3 +1,12 @@
+# 1.1.0 (9 Oct 2026): + worker/agent-mint.js (mainnet Metaplex Core agent mints: GET /agent/mint-config, POST /agent/mint-cosign,
+# GET /agent/verify-mint, cluster explicit "mainnet-beta"; Combo stays paid-only server-side) + assistant prompt says mainnet.
+# Game prompt and every other route unchanged. Mint stays 503 MINT_NOT_READY until Vadym creates the collection and sets
+# [vars] MAINNET_COLLECTION / MAINNET_COLLECTION_AUTHORITY and secret COLLECTION_AUTHORITY_SECRET (see scripts/mainnet/README.md).
+# 1.1.0 (second scope, 9 Oct): + worker/assistant-extras.js: POST /sol/briefing (morning voice briefing from the facts the app
+# sends; assistant persona) and POST /call/actions (structured-output extraction of payment/callback/reminder requests from
+# call notes; an address is returned only if literally spoken; nothing is stored). Assistant chat: three agents, no tools.
+# Live 1.1.0 version: f5f3acfd-4171-4bcd-823a-47fdfa835334 (briefing: payment direction; earlier 1.1.0 deploys 45fb2e1b, b483888b, a894b28a, 25f25d22, 599c88b7).
+# Rollback: npx wrangler rollback 19d11443-933f-4a90-8171-02ef8b29a3bb --name solarchik-screen
 # 1.0.1 (Solarchik Assistant repo): source = Solar-DePIN-Hub/Solarchik web-fees @ 7d07d3c (deployed as 6fa974bc)
 # + the live 1be24509 change "cache inbox reads, do not burn KV" (readCached for /inbox, /call, /balance, GET /secretary-lang),
 # ported from the deployed bundle (saved on the box in /workspace/worker-live-1be24509/; normalized bundle diff = none)

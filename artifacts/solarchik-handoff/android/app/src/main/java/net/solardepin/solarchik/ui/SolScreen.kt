@@ -266,7 +266,7 @@ class SolScreen(host: MainActivity) : Screen(host) {
         input.setText("")
         // 1.0.0: calls / "what can you do" are answered from this phone (call archive), instantly and offline
         (net.solardepin.solarchik.sol.AssistantRules.answer(ctx, msg, net.solardepin.solarchik.screen.CallInbox.cached(ctx),
-                season = { net.solardepin.solarchik.season.SeasonStore.plan(ctx, host.save.signedToday(), host.save.clockedToday()) })
+                season = { net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, host.wallet.mainnet) })
             ?: net.solardepin.solarchik.sol.SolRules.answer(ctx, msg, net.solardepin.solarchik.sol.SolState.of(host.save)))?.let { rule ->
             store.add(ChatTurn("assistant", rule, System.currentTimeMillis(), local = true))
             render()
@@ -284,9 +284,12 @@ class SolScreen(host: MainActivity) : Screen(host) {
         val line = net.solardepin.solarchik.sol.AssistantContext.build(
             net.solardepin.solarchik.screen.CallInbox.cached(ctx),
             net.solardepin.solarchik.screen.FollowUps.list(ctx, now),
-            net.solardepin.solarchik.sol.AssistantContext.Wallet(w.connected, w.isLocal, if (w.connected) w.address else ""),
-            net.solardepin.solarchik.season.SeasonStore.plan(ctx, host.save.signedToday(), host.save.clockedToday()),
+            net.solardepin.solarchik.sol.AssistantContext.Wallet(w.connected, w.isLocal, if (w.connected) w.address else "", w.mainnet,
+                host.walletSol.takeIf { w.connected }, host.walletSkr.takeIf { w.connected && w.mainnet },
+                runCatching { net.solardepin.solarchik.swap.SwapStore(ctx).policy().live }.getOrDefault(false)),
+            net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, host.wallet.mainnet),
             secOn, now,
+            extras = net.solardepin.solarchik.sol.AssistantExtras.lines(ctx, now),
         )
         val report = currentReport().script.take(250)
         return if (report.isBlank()) line else "$line Agent desk: $report"

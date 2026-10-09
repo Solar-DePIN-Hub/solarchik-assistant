@@ -84,7 +84,7 @@ class AssistantPersonaTest {
         assertTrue(s, s.contains("Calls today (1): Olena") && s.contains("Wants to move Friday's meeting") && s.contains("callback +380671112233"))
         assertFalse("blocked callers are left out", s.contains("+380931234567"))
         assertTrue(s, s.contains("Follow-ups: none."))
-        assertTrue(s, s.contains("Agent wallet: not connected (Solana devnet)."))
+        assertTrue(s, s.contains("Wallet: not connected (Solana devnet, developer test mode)."))
         assertTrue(s, s.contains("Seeker Season plan: 0/3 done; left: open ${plan.suggestion.name}, do the daily check-in."))
         assertTrue(s.length <= AssistantContext.MAX)
         val empty = AssistantContext.build(emptyList(), emptyList(), AssistantContext.Wallet(false, false, ""), plan, false, now)

@@ -19,6 +19,7 @@ import net.solardepin.solarchik.agents.engine.Track
 import net.solardepin.solarchik.agents.engine.UserCaps
 import net.solardepin.solarchik.core.AgentSku
 import net.solardepin.solarchik.core.AgentTier
+import net.solardepin.solarchik.core.AssistantAgent
 import net.solardepin.solarchik.core.Catalog
 import net.solardepin.solarchik.core.FeeLedger
 import net.solardepin.solarchik.core.FeeReason
@@ -48,15 +49,21 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
     private fun setBalance(key: String, v: Double) {
         if (key == walletKey()) balance = v
     }
-    /** 0 = desk, 1 = strategies (catalog + mint), 2 = Strategy NFT market (devnet), 3 = Slice (stocks, paper). */
-    var section = 0
+    /**
+     * 1.1.0: the assistant shows three agents: [SEASON] (Season plan, autopilot, delegated limit), [SAVER] (small
+     * saves into USDC/SKR through real, confirmed Jupiter swaps) and [WATCHER] (price and wallet alerts, never
+     * trades). The game's desk, strategy catalog, NFT market and Slice stay in the code (shared engine) but are
+     * not shown here.
+     */
+    var section = SEASON
         private set
 
-    /** Home cards open a section directly (0.21.7). */
+    /** Home cards and notifications open an agent directly. */
     fun openSection(i: Int) {
-        section = i.coerceIn(0, 3)
+        section = i.coerceIn(SEASON, WATCHER)
         render()
     }
+
     private var track = Track.PAPER
     private var paying = false
 
@@ -67,6 +74,13 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
     private lateinit var sliceBox: LinearLayout
     private val strategyPanel by lazy { StrategyPanel(host) { render() } }
     private val slicePanel by lazy { SlicePanel(host) { render() } }
+    internal val swapPanel by lazy { SwapPanel(host) { render() } }
+    internal val delegatePanel by lazy { DelegatePanel(host) { render() } }
+    internal val autopilotPanel by lazy { AutopilotPanel(host) { render() } }
+    internal val saverPanel by lazy { SaverPanel(host) { render() } }
+    internal val watcherPanel by lazy { WatcherPanel(host) { render() } }
+    private lateinit var swapBox: LinearLayout
+    private lateinit var agentBox: LinearLayout
 
     private lateinit var walletPill: TextView
     private lateinit var clusterLabel: TextView
@@ -96,6 +110,10 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
         addView(marketBox)
         sliceBox = Ui.column(ctx, gap = 12)
         addView(sliceBox)
+        swapBox = Ui.column(ctx, gap = 12)
+        addView(swapBox)
+        agentBox = Ui.column(ctx, gap = 12).apply { tag = "agents-box" }
+        addView(agentBox)
         shopBox.apply {
 
         // Tier switch
@@ -177,27 +195,78 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
         tierLine.setTextColor(if (pro) Ui.GOLD else Ui.TEXT)
 
         sectionBox.removeAllViews()
-        sectionBox.addView(Ui.segmented(ctx, listOf(ctx.getString(R.string.desk_tab), ctx.getString(R.string.strategies_tab), ctx.getString(R.string.market_tab), ctx.getString(R.string.slice_tab)), section) {
+        sectionBox.addView(Ui.segmented(ctx, AssistantAgent.entries.map { ctx.getString(it.titleRes) }, section) {
             section = it
             render()
-        })
-        deskBox.visibility = if (section == 0) View.VISIBLE else View.GONE
-        shopBox.visibility = if (section == 1) View.VISIBLE else View.GONE
-        marketBox.visibility = if (section == 2) View.VISIBLE else View.GONE
-        sliceBox.visibility = if (section == 3) View.VISIBLE else View.GONE
-        if (section == 3) {
-            if (MainActivity.tickerEnabled) slicePanel.load()
-            slicePanel.render(sliceBox)
-        } else if (section == 0) {
-            renderDesk()
-        } else if (section == 2) {
-            strategyPanel.load()
-            strategyPanel.render(marketBox)
-        } else {
-            catalogBox.removeAllViews()
-            Catalog.skus.forEach { catalogBox.addView(skuCard(it)) }
-            renderMine()
+        }.apply { tag = "agents-tabs" })
+        // The game's desk / catalog / market / Slice are not part of the assistant UI (1.1.0).
+        for (b in listOf(deskBox, shopBox, marketBox, sliceBox)) b.visibility = View.GONE
+        swapBox.visibility = View.GONE
+        agentBox.removeAllViews()
+        val agent = AssistantAgent.entries[section]
+        agentBox.addView(agentCard(agent))
+        when (agent) {
+            AssistantAgent.SEASON -> {
+                agentBox.addView(seasonPlanCard())
+                agentBox.addView(autopilotPanel.card())
+                delegatePanel.render(agentBox)
+            }
+            AssistantAgent.SAVER -> {
+                agentBox.addView(saverPanel.card())
+                // SwapPanel clears its box: give it its own.
+                agentBox.addView(Ui.column(ctx, gap = 12).also { swapPanel.render(it) }.apply { tag = "agent-swaps" })
+            }
+            AssistantAgent.WATCHER -> agentBox.addView(watcherPanel.card())
         }
+    }
+
+    /** One of the three agents: what it does, whether it is on, and its NFT (Free / Pro) mint. */
+    private fun agentCard(agent: AssistantAgent): View = Ui.card(ctx, accent = agent.accent).apply {
+        tag = "agent-" + agent.key
+        val row = Ui.row(ctx, gap = 14).apply { gravity = Gravity.TOP }
+        val artBox = FrameLayout(ctx).apply { background = Ui.rounded(Ui.withAlpha(agent.accent, 0x1E), dp(18).toFloat()) }
+        artBox.addView(Ui.image(ctx, agent.artRes), FrameLayout.LayoutParams(dp(58), dp(80), Gravity.CENTER))
+        row.addView(artBox, LinearLayout.LayoutParams(dp(74), dp(94)))
+        val col = Ui.column(ctx)
+        val on = when (agent) {
+            AssistantAgent.SEASON -> autopilotPanel.store.policy().enabled || delegatePanel.desk.store.policy().enabled
+            AssistantAgent.SAVER -> saverPanel.store.policy().enabled
+            AssistantAgent.WATCHER -> watcherPanel.store.policy().enabled
+        }
+        col.addView(Ui.pill(ctx, ctx.getString(if (on) R.string.aa_on else R.string.aa_off), if (on) Ui.GREEN else Ui.MUTED, filled = on).apply { tag = "agent-state" })
+        col.addView(Ui.top(Ui.text(ctx, ctx.getString(agent.titleRes), 18f, Ui.TEXT, 800), 8))
+        col.addView(Ui.top(Ui.muted(ctx, ctx.getString(agent.roleRes), 13f).apply { setLineSpacing(0f, 1.2f) }, 4))
+        row.addView(Ui.weight(col))
+        addView(row)
+        // Agent NFT: Free or Pro (0.1 SOL to the treasury); "coming soon" until the mainnet collection exists.
+        addView(Ui.top(Ui.label(ctx, ctx.getString(R.string.aa_nft)), 14))
+        val sku = agent.sku
+        val btns = Ui.row(ctx, gap = 8)
+        val soon = host.minter.canMint(sku, AgentTier.FREE) == MintError.Kind.MAINNET_SOON
+        if (soon) btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.mn_mint_soon), Ui.Btn.SECONDARY) {}.apply { tag = "agent-mint-soon"; Ui.setEnabled(this, false) }))
+        else for (t in listOf(AgentTier.FREE, AgentTier.PRO)) {
+            val block = host.minter.canMint(sku, t)
+            val busy = busySku == sku.skuId(t)
+            val label = when {
+                busy -> ctx.getString(R.string.mint_busy)
+                t == AgentTier.PRO -> ctx.getString(R.string.aa_nft_pro, Fmt.sol(SolarchikConfig.PRO_PRICE_SOL))
+                else -> ctx.getString(R.string.aa_nft_free)
+            }
+            val b = Ui.button(ctx, label, if (t == AgentTier.PRO) Ui.Btn.PRIMARY else Ui.Btn.SECONDARY) { tier = t; tierPicked = true; mint(sku) }.apply { tag = "agent-mint-$t"; textSize = 13f }
+            Ui.setEnabled(b, block == null && busySku == null)
+            btns.addView(Ui.weight(b))
+        }
+        addView(Ui.top(btns, 8))
+        addView(Ui.top(Ui.muted(ctx, ctx.getString(if (soon) R.string.mn_mint_soon_body else R.string.aa_nft_note), 11.5f).apply { tag = if (soon) "mint-soon" else "agent-nft-note"; setLineSpacing(0f, 1.2f) }, 6))
+    }
+
+    /** Season Agent: today's Seeker Season plan in one line, with a way into the full plan. */
+    private fun seasonPlanCard(): View = Ui.card(ctx, accent = Ui.CYAN, pad = 16).apply {
+        tag = "agent-season-plan"
+        val plan = net.solardepin.solarchik.season.SeasonStore.plan(host, host.save.signedToday(), host.save.clockedToday())
+        addView(Ui.label(ctx, ctx.getString(R.string.aa_plan_label), Ui.CYAN))
+        addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.aa_plan_line, plan.doneCount, plan.total, plan.streak), 15f, Ui.TEXT, 800), 4))
+        addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.aa_plan_open), Ui.Btn.SECONDARY) { host.select(MainActivity.Tab.SEASON, animate = true) }.apply { tag = "agent-season-open" }, 10))
     }
 
     // ---------------- Desk ----------------
@@ -294,7 +363,7 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
                 else -> ctx.getString(R.string.desk_status_stopped) to Ui.MUTED
             }
             pills.addView(Ui.pill(ctx, stLabel, stColor, filled = r.running || r.open != null))
-            val ownedPaper = r.track != Track.PAPER || net.solardepin.solarchik.agents.Ownership.ownsSku(host.store.agents(), r.skuId)
+            val ownedPaper = r.track != Track.PAPER || host.paperOpen || net.solardepin.solarchik.agents.Ownership.ownsSku(host.store.agents(), r.skuId)
             if (r.track == Track.PAPER && r.key.startsWith("paper:")) pills.addView(Ui.pill(ctx, ctx.getString(if (ownedPaper) R.string.desk_owned else R.string.desk_not_owned_pill), if (ownedPaper) Ui.GREEN else Ui.MUTED))
             val tierPill = Ui.pill(ctx, ctx.getString(if (r.tier == AgentTier.PRO) R.string.tier_pro else R.string.tier_free), if (r.tier == AgentTier.PRO) Ui.GOLD else Ui.CYAN)
             // three pills do not fit the narrow column on a phone ("Безкошт|овний" broke mid-word): tier goes on its own line
@@ -495,12 +564,14 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
             block == MintError.Kind.FREE_USED -> ctx.getString(R.string.mint_free_used)
             block == MintError.Kind.PRO_MAINNET_OFF -> ctx.getString(R.string.mint_pro_off)
             block == MintError.Kind.PAID_ONLY -> ctx.getString(R.string.mint_err_paid_only)
+            block == MintError.Kind.MAINNET_SOON -> ctx.getString(R.string.mn_mint_soon)
             tier == AgentTier.PRO -> ctx.getString(R.string.mint_pro, Fmt.sol(sku.priceSol(tier)))
             else -> ctx.getString(R.string.mint_free)
         }
         val btn = Ui.button(ctx, label, if (tier == AgentTier.PRO) Ui.Btn.PRIMARY else Ui.Btn.SECONDARY, R.drawable.ic_bolt_small) { mint(sku) }
         Ui.setEnabled(btn, block == null && busySku == null)
         addView(Ui.top(btn, 14))
+        if (block == MintError.Kind.MAINNET_SOON) addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.mn_mint_soon_body), 11.5f).apply { tag = "mint-soon" }, 6))
     }
 
     private fun lanes(code: String): String {
@@ -625,6 +696,10 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
     }
 
     companion object {
+        /** 1.1.0 assistant agent tabs. */
+        const val SEASON = 0
+        const val SAVER = 1
+        const val WATCHER = 2
         private val TRADE_STEPS = listOf(0.002, 0.005, 0.01, 0.015, 0.02)
         private val DAY_STEPS = listOf(0.02, 0.05, 0.1, 0.2, 0.3)
         private val LOSS_STEPS = listOf(1.0, 2.0)

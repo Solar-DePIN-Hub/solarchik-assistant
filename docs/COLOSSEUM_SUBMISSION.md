@@ -7,11 +7,11 @@ Voice: first person as Vadym. Do not submit until he OKs.
 
 ## Short description (one liner)
 
-I built Solarchik Assistant: a pocket AI on Android with a voice friend, a real-line call secretary, and agent NFTs on Solana.
+I built Solarchik Assistant: a pocket AI on Android with a voice friend, a real-line call secretary that turns calls into actions, a morning voice briefing and three small agents on Solana mainnet, where every transaction is approved in your wallet.
 
 ## Elevator pitch (~90s / short form)
 
-I got tired of cold chatbots and spam calls. Solarchik Assistant puts one character on your phone home screen. You hold a mic and talk to Sol. If you cannot pick up, the AI secretary answers on a real number, talks to the caller, and leaves a short summary: who called, why, what to do next. Agent NFTs on Solana hold strategy and a small wallet path. A daily on-chain check-in keeps the habit. The roof run is only a bonus. For the hackathon everything money-related stays on Solana devnet and paper mode. No live exchange orders.
+I got tired of cold chatbots and spam calls. Solarchik Assistant puts one character on your phone home screen. You hold a mic and talk to Sol. If you cannot pick up, the AI secretary answers on a real number, talks to the caller, and leaves a short summary: who called, why, what to do next. What the caller asked for becomes a card: call back in one tap, a reminder, or a payment you approve in your own wallet, with the recipient typed or confirmed by you and a scam warning. Every morning Sol reads you a short briefing: calls, follow-ups, how your wallet changed, your Seeker Season plan. Three agents, all off by default: a Season Agent, a Saver that moves small amounts into USDC or SKR through real Jupiter swaps with caps, and a Watcher that only watches prices. It runs on Solana mainnet with Mobile Wallet Adapter; the app never signs for your wallet.
 
 ## Problem
 
@@ -19,22 +19,24 @@ People get spam and unknown calls, and most AI tools feel like another chat tab.
 
 ## Solution
 
-Native Kotlin Android app. Sol for voice. Secretary on a real line with transcripts and reminders. Metaplex Core agent NFTs and check-in memos on Solana devnet. Optional roof run as a daily bonus.
+Native Kotlin Android app. Sol for voice. Secretary on a real line with transcripts, reminders and action cards. Morning voice briefing from local data. Mainnet check-in memos, capped Jupiter swaps, SOL/USDC transfers and an experimental SPL-approve delegated limit, all through MWA. Metaplex Core agent NFTs (tested on devnet; mainnet collection coming soon).
 
 ## How it uses Solana
 
-- Daily check-in as a memo transaction on devnet
-- Metaplex Core agent NFTs (free / Pro mint path)
-- Strategy change transactions and ownership checks
-- Mobile Wallet Adapter (Phantom / Solflare / Seed Vault) or a built-in devnet wallet for judges
+- Mainnet-beta by default; Mobile Wallet Adapter only (Phantom / Solflare / Seed Vault); real SOL/SKR balances, Solscan/Orb links
+- Daily check-in as a mainnet memo transaction
+- Jupiter swaps (SOL/USDC/SKR/JUP), opt-in, daily cap, slippage and impact limits; Saver agent proposals use the same review
+- Payments from call notes as SOL / USDC (transferChecked) transfers the user approves
+- Experimental delegated limit: SPL Approve to an agent key, caps, revoke/withdraw
+- Metaplex Core agent NFTs, Free / Pro (0.1 SOL), paid checks on the server (devnet tested; mainnet coming soon)
 
 ## Demo video script (film on phone, ~2–3 min)
 
-1. Home: Sol + mic. Ask one question in Ukrainian, one in English.
-2. Missed-call / secretary card: open summary, show transcript snippet.
-3. Agents: mint or open an existing strategy NFT on explorer (devnet link).
-4. Check-in: sign the daily memo, show explorer.
-5. Optional 10s of roof run. Close: “Solarchik Assistant — pocket AI on Solana.”
+1. Morning: the briefing notification, Sol speaks the summary.
+2. Secretary call: the note, then the action cards (call back, reminder, payment with the scam warning).
+3. Payment: type the recipient, the wallet app opens, approve a tiny amount, show Solscan.
+4. Agents: Season Agent plan, Saver proposal → swap review → wallet; Watcher alert.
+5. Check-in memo on mainnet. Close: “Solarchik Assistant — pocket AI on Solana.”
 
 ## Links to paste
 
@@ -42,7 +44,7 @@ Native Kotlin Android app. Sol for voice. Secretary on a real line with transcri
 - CLOCK IN game repo (separate): https://github.com/Solar-DePIN-Hub/Solarchik
 - API / market: https://solarchik-market.vercel.app
 - Demo (CLOCK IN cut, reuse until Assistant cut): https://youtu.be/oAxoliLwUXo
-- APK: https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.0.0/solarchik-assistant.apk
+- APK: https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.0/solarchik-assistant.apk
 - Deck PDF (CLOCK IN frames; refresh for Assistant): docs/clockin-deck.pdf in this repo
 - X: https://x.com/SolarDePin
 - Email: team.solardepinhub@gmail.com
@@ -52,12 +54,13 @@ Native Kotlin Android app. Sol for voice. Secretary on a real line with transcri
 - Started Sep 19, 2026 on the Solarchik line; older Jul Telegram prototype is unrelated.
 - MunichTech and CLOCK IN used the game-shaped build; Colosseum is repositioned as Assistant in this repo.
 - No dApp Store publish yet. SKR is shown read-only (mainnet balance); staking is a link to stake.solanamobile.com. The Seeker Season plan never signs or repeats anything, and it can't show Season points.
-- No live mainnet trading; agents are paper/devnet.
+- 1.1.0 is on mainnet with real funds; swaps and agents are opt-in with small caps. Signed mainnet transactions were verified by building and simulating against mainnet, not by spending funds. Agent NFT mint on mainnet is not open yet.
 - Prior accelerator wins were with a different project (answer No if the form means this product).
 
 ## Open before submit
 
 - [x] New `applicationId` (`net.solardepin.solarchik.assistant`) so Assistant installs beside the game APK (v1.0.0)
 - [x] Home UI: Today with Sol + large mic, secretary, follow-ups, wallet, Seeker Season (v1.0.0)
+- [x] v1.1.0 mainnet build: three agents, morning briefing, call → action
 - [ ] Fresh demo video + deck frames for Assistant story
 - [ ] Update Colosseum project page links to this repo

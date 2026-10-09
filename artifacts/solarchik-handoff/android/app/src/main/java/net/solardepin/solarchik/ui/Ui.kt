@@ -296,6 +296,12 @@ object Ui {
                 isClickable = true
                 background = if (on) gradient(intArrayOf(GOLD, AMBER), ctx.dp(14).toFloat(), GradientDrawable.Orientation.LEFT_RIGHT) else null
                 setOnClickListener { if (!on) { it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY); onPick(i) } }
+                // 1.1.0: five tabs (Agents gained "Swaps") must not break a word over two lines
+                if (labels.size >= 5) {
+                    maxLines = 1
+                    setPadding(ctx.dp(2), 0, ctx.dp(2), 0)
+                    setAutoSizeTextTypeUniformWithConfiguration(9, 14, 1, TypedValue.COMPLEX_UNIT_SP)
+                }
             }
             seg.addView(tv, LinearLayout.LayoutParams(0, ctx.dp(TAP_MIN_DP), 1f))
         }

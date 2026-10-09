@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 1.1.0: three assistant agents -->
+    <string name="aa_season">Season Agent</string>
+    <string name="aa_season_role">Your daily Seeker Season plan, an optional autopilot that suggests 1–2 varied real actions a day (you sign each one), and the experimental delegated limit.</string>
+    <string name="aa_saver">Saver</string>
+    <string name="aa_saver_role">Moves small amounts of SOL into USDC or SKR: on a schedule or as a share of a swap you made. Real Jupiter swaps within your limits, always confirmed in your wallet.</string>
+    <string name="aa_watcher">Watcher</string>
+    <string name="aa_watcher_role">Watches SOL, SKR and JUP prices and your wallet, and tells you through Sol and a notification. It never trades.</string>
+    <string name="aa_on">On</string>
+    <string name="aa_off">Off</string>
+    <string name="aa_nft">Agent NFT (Metaplex Core)</string>
+    <string name="aa_nft_free">Mint Free</string>
+    <string name="aa_nft_pro">Mint Pro · %1$s SOL</string>
+    <string name="aa_nft_note">Free: one per wallet. Pro: 0.1 SOL to the Solarchik treasury, checked by the server. The agent works the same without an NFT.</string>
+    <string name="aa_plan_label">Seeker Season plan</string>
+    <string name="aa_plan_line">%1$d of %2$d done today · streak %3$d</string>
+    <string name="aa_plan_open">Open the Season plan</string>
+
+    <!-- Saver -->
+    <string name="sv_label">Saver · off by default</string>
+    <string name="sv_body">Proposes small saves of SOL into USDC or SKR. Each one opens the swap review below (quote, price impact, fees) and only your wallet app can approve it. Your Swaps daily cap and slippage limit apply.</string>
+    <string name="sv_turn_on">Turn on Saver</string>
+    <string name="sv_turn_off">Turn off</string>
+    <string name="sv_dialog">Turn on Saver? It will suggest small real swaps (real funds on Solana mainnet) on a schedule and after your SOL swaps. Nothing happens until you review it and approve in your wallet.</string>
+    <string name="sv_needs_swaps">Real swaps are off: turn them on below (risk opt-in and daily cap) before a save can go through.</string>
+    <string name="sv_waiting">Waiting for you</string>
+    <string name="sv_target">Save into</string>
+    <string name="sv_amount">Amount per save, SOL</string>
+    <string name="sv_every">Scheduled save</string>
+    <string name="sv_daily">Daily</string>
+    <string name="sv_weekly">Weekly</string>
+    <string name="sv_share">Save the change after your SOL swaps</string>
+    <string name="sv_share_off">Off</string>
+    <string name="sv_now">%1$s SOL → %2$s next on %3$s (a notification; you approve in the wallet).</string>
+    <string name="sv_save_now">Save %1$s SOL → %2$s now</string>
+    <string name="sv_note">Saves are real swaps: prices move and fees apply. The Saver never signs anything; nothing here promises returns.</string>
+    <string name="sv_kind_change">change</string>
+    <string name="sv_kind_scheduled">scheduled</string>
+    <string name="sv_review">Review</string>
+    <string name="sv_note_title">Saver: a small save is ready</string>
+    <string name="sv_note_body">%1$s. Tap to review; your wallet asks to confirm.</string>
+    <string name="sv_note_change">Save the change: %1$s. Tap to review; your wallet asks to confirm.</string>
+
+    <!-- Watcher -->
+    <string name="wt_label">Watcher · off by default</string>
+    <string name="wt_body">Checks prices (Jupiter) and your wallet balance (Solana mainnet) about every 15 minutes and alerts you when something moves. Read-only.</string>
+    <string name="wt_prices_loading">Reading prices…</string>
+    <string name="wt_turn_on">Turn on Watcher</string>
+    <string name="wt_never_trades">The Watcher only reads prices and balances. It cannot trade, sign or move anything.</string>
+    <string name="wt_move">Alert when a price moves by</string>
+    <string name="wt_wallet_move">Alert when my SOL balance changes by</string>
+    <string name="wt_watch_prices">Watch SOL, SKR and JUP prices</string>
+    <string name="wt_watch_wallet">Watch my wallet</string>
+    <string name="wt_alerts">Recent alerts</string>
+    <string name="wt_no_alerts">No alerts yet. The first check sets the starting point.</string>
+    <string name="wt_check_now">Check now</string>
+    <string name="wt_checked_alert">Watcher: new alert</string>
+    <string name="wt_checked_quiet">Watcher: nothing moved enough</string>
+    <string name="wt_note_title">Watcher</string>
+    <string name="wt_price_up">%1$s is up %2$s%% to $%3$s</string>
+    <string name="wt_price_down">%1$s is down %2$s%% to $%3$s</string>
+    <string name="wt_wallet_in">Your wallet got %1$s (now %2$s)</string>
+    <string name="wt_wallet_out">%1$s left your wallet (now %2$s)</string>
+
+    <!-- Morning briefing -->
+    <string name="br_title">Morning briefing</string>
+    <string name="br_at">Every day at %1$s · tap to change</string>
+    <string name="br_off">Off · tap to set a time</string>
+    <string name="br_play">Play briefing</string>
+    <string name="br_stop">Stop</string>
+    <string name="br_preparing">Preparing…</string>
+    <string name="br_note_title">Your morning briefing is ready</string>
+    <string name="br_note_body">Tap and Sol reads you the calls, follow-ups, wallet and Season plan.</string>
+    <string name="br_hello">Good morning, here is your briefing.</string>
+    <string name="br_no_calls">No calls since yesterday.</string>
+    <plurals name="br_calls">
+        <item quantity="one">One call since yesterday.</item>
+        <item quantity="other">%1$d calls since yesterday.</item>
+    </plurals>
+    <string name="br_call">%1$s at %2$s: %3$s.</string>
+    <string name="br_callback">Call back on %1$s.</string>
+    <plurals name="br_followups">
+        <item quantity="one">One follow-up is due.</item>
+        <item quantity="other">%1$d follow-ups are due.</item>
+    </plurals>
+    <plurals name="br_actions">
+        <item quantity="one">One action from a call waits for your confirmation.</item>
+        <item quantity="other">%1$d actions from calls wait for your confirmation.</item>
+    </plurals>
+    <string name="br_wallet_first">Your wallet holds %1$s SOL.</string>
+    <string name="br_wallet_same">Your wallet is unchanged at %1$s SOL.</string>
+    <string name="br_wallet_up">Your wallet is up %1$s SOL, now %2$s SOL.</string>
+    <string name="br_wallet_down">Your wallet is down %1$s SOL, now %2$s SOL.</string>
+    <string name="br_alerts">Watcher: %1$s.</string>
+    <string name="br_season_done">Today\'s Season plan is done.</string>
+    <string name="br_season_left">Season plan: %1$d of %2$d done.</string>
+    <string name="br_bye">Have a good day!</string>
+
+    <!-- Call -> action -->
+    <string name="ca_title">Actions from calls</string>
+    <string name="ca_kind_pay">Payment request</string>
+    <string name="ca_kind_cb">Call back</string>
+    <string name="ca_kind_rem">Reminder</string>
+    <string name="ca_pay_title">Pay %1$s %2$s · asked by %3$s</string>
+    <string name="ca_cb_title">Call %1$s back</string>
+    <string name="ca_cb_title_at">Call %1$s back at %2$s</string>
+    <string name="ca_rem_title">Reminder from a call</string>
+    <string name="ca_dismiss">Dismiss</string>
+    <string name="ca_reminder_set">Reminder at %1$s</string>
+    <string name="ca_pay_warning">Payment requests by phone are a common scam. Pay only people you know, check the address yourself, and never pay because a caller says it is urgent.</string>
+    <string name="ca_pay_prepare">Prepare transfer</string>
+    <string name="ca_dial">Call</string>
+    <string name="ca_remind">Remind me</string>
+    <string name="ca_done">Done</string>
+    <string name="ca_note_title">Reminder from a call</string>
+    <string name="ca_sheet_title">Transfer (you approve in the wallet)</string>
+    <string name="ca_sheet_amount">%1$s %2$s</string>
+    <string name="ca_large">This is a large amount. Double-check who asked and why.</string>
+    <string name="ca_usdc_mainnet">USDC payments work on Solana mainnet only.</string>
+    <string name="ca_sheet_hint">Recipient wallet address (type or paste)</string>
+    <string name="ca_said_warning">The caller said this address. Anyone can claim to be someone else on the phone: use it only if you are sure it belongs to the person you know.</string>
+    <string name="ca_said_use">Use this address</string>
+    <string name="ca_sheet_check">I checked the recipient address myself</string>
+    <string name="ca_sheet_note">Your wallet app shows the transfer and asks you to approve it. Solarchik never signs payments.</string>
+    <string name="ca_sheet_confirm">Confirm in wallet</string>
+    <string name="ca_err_token">Only SOL and USDC transfers are supported.</string>
+    <string name="ca_err_amount">The amount is not valid.</string>
+    <string name="ca_err_address">Enter a valid Solana address.</string>
+    <string name="ca_err_self">That is your own wallet.</string>
+    <string name="ca_err_check">Tick the box after checking the address.</string>
+    <string name="ca_sent">Transfer sent: %1$s</string>
+    <string name="ca_open_today">Act on Today</string>
+</resources>

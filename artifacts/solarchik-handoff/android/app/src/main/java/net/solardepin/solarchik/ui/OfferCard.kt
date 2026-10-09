@@ -38,13 +38,21 @@ object OfferCard {
         if (!sku.paidOnly) {
             val block = host.minter.canMint(sku, AgentTier.FREE)
             out += Option(
-                if (block == MintError.Kind.FREE_USED) ctx.getString(R.string.mint_free_used) else ctx.getString(R.string.offer_mint_free),
+                when (block) {
+                    MintError.Kind.FREE_USED -> ctx.getString(R.string.mint_free_used)
+                    MintError.Kind.MAINNET_SOON -> ctx.getString(R.string.mn_mint_soon)
+                    else -> ctx.getString(R.string.offer_mint_free)
+                },
                 primary = false, enabled = !busy && block == null, tag = "offer-mint-free",
             ) { pick(AgentTier.FREE) }
         }
         val proBlock = host.minter.canMint(sku, AgentTier.PRO)
         out += Option(
-            if (proBlock == MintError.Kind.PRO_MAINNET_OFF) ctx.getString(R.string.mint_pro_off) else ctx.getString(R.string.offer_buy_pro, Fmt.sol(sku.priceSol(AgentTier.PRO))),
+            when (proBlock) {
+                MintError.Kind.PRO_MAINNET_OFF -> ctx.getString(R.string.mint_pro_off)
+                MintError.Kind.MAINNET_SOON -> ctx.getString(R.string.mn_mint_soon)
+                else -> ctx.getString(R.string.offer_buy_pro, Fmt.sol(sku.priceSol(AgentTier.PRO)))
+            },
             primary = true, enabled = !busy && proBlock == null, tag = "offer-buy-pro",
         ) { pick(AgentTier.PRO) }
         return out

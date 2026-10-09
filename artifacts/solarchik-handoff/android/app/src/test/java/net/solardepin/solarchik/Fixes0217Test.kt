@@ -113,9 +113,14 @@ class Fixes0217Test {
         val bad = ScriptRpc(SolarchikConfig.RPC_DEVNET, 400)
         assertTrue(runCatching { bad.balanceLamports("x") }.isFailure)
         assertEquals(1, bad.hits.size)
-        val main = ScriptRpc(SolarchikConfig.RPC_MAINNET, 429, 429, 429)
-        assertTrue("mainnet has no devnet proxy", runCatching { main.balanceLamports("x") }.isFailure)
-        assertEquals(3, main.hits.size)
+        // 1.1.0: mainnet falls back to PublicNode (never to the devnet proxy)
+        val main = ScriptRpc(SolarchikConfig.RPC_MAINNET, 429, 429, 429, ok)
+        assertEquals(42L, main.balanceLamports("x"))
+        assertEquals(SolarchikConfig.RPC_MAINNET_FALLBACK, main.hits.last())
+        assertEquals(4, main.hits.size)
+        val other = ScriptRpc("https://example.invalid/rpc", 429, 429, 429)
+        assertTrue("an unknown node has no fallback", runCatching { other.balanceLamports("x") }.isFailure)
+        assertEquals(3, other.hits.size)
     }
 
     @Test @Config(qualifiers = "uk")

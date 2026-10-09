@@ -89,7 +89,7 @@ class Audit0221Test {
             val a = open()
             roof(a).debugTap(o); idle()
             assertEquals("$o", tab, a.current)
-            if (o == RoofObject.TICKER) assertEquals(3, (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).section)
+            if (o == RoofObject.TICKER) assertEquals(AgentsScreen.WATCHER, (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).section)
             if (o == RoofObject.PANELS) assertEquals(0, (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).section)
         }
         val a = open()

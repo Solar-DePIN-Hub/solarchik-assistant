@@ -74,8 +74,8 @@
     <string name="run_unlocked">День відкрито. Підпиши його у Дворі.</string>
     <string name="meters">%1$d м</string>
 
-    <string name="agents_title">Агенти-стратегії</string>
-    <string name="agents_sub">Кожна стратегія — твій NFT Metaplex Core. Вона прогнозує і діє лише в межах твоїх лімітів.</string>
+    <string name="agents_title">Твої три агенти</string>
+    <string name="agents_sub">Агент сезону, Скарбничка і Вартовий. Кожен вимкнений, доки ти його не ввімкнеш, і справжні кошти рухаються лише після схвалення в гаманці (крім експериментального делегованого ліміту, який ти схвалюєш сам).</string>
     <string name="tier_free">Безкоштовний</string>
     <string name="tier_pro">Про</string>
     <string name="tier_free_line" formatted="false">Безкоштовно · один на гаманець · 5% лише з реалізованого прибутку</string>
@@ -163,7 +163,7 @@
     <string name="settings_run_music">Гучність музики</string>
     <string name="settings_run_sfx">Гучність ефектів</string>
     <string name="settings_language">Мова</string>
-    <string name="settings_language_body">Соларчик іде за мовою телефону: українська на українському телефоні, інакше англійська. Тут можна вибрати мову вручну (і для чату та голосу Sol).</string>
+    <string name="settings_language_body">Типово Соларчик англійською. Тут можна вибрати українську або «Як у телефоні», щоб мова була як на телефоні. Це змінює й чат та голос Сола.</string>
     <string name="settings_language_open">Змінити мову застосунку</string>
     <string name="settings_notes">Нагадування</string>
     <string name="settings_about">Про застосунок</string>

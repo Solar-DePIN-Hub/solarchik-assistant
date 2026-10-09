@@ -676,3 +676,14 @@ Owner feedback from the 0.21.7 phone test (9 items) plus the secretary's duplica
 - **Seeker Season helper** (`season/SeekerSeason.kt`, `ui/SeasonScreen.kt`): daily plan that ticks only from local state (opened today + streak, a suggested dApp opened from the plan today, today's check-in signed). Suggestions verified in the dApp Store catalog: Orb (`dev.helius.orb`), Jupiter Mobile, Loopscale, TokenRun. SKR balance read-only from mainnet `getTokenAccountsByOwner` (mint `SKRbvo6G…hW3`), parser tested on a captured real RPC answer; staking is a link to stake.solanamobile.com (layout not verified, so no numbers). Nothing signs or repeats.
 - Tests: `TodayTest` (16), `SeasonTest` (6); full suite 370 run, 11 skipped, 0 failed. Renders in `docs/screens/`.
 - Not verified here: emulator (no KVM permission on the box), real phone, voice by ear. The worker persona is still game-flavoured for brain answers (live worker untouched).
+
+## 1.1.0 (versionCode 110, 9 Oct 2026): mainnet, three agents, morning briefing, call → action
+
+- Mainnet-beta by default (hidden developer devnet switch: 7 taps on the version line). MWA only on mainnet; no built-in key, no faucet. Real SOL/SKR balances, Solscan + Orb links.
+- Check-in memo on mainnet. Jupiter swaps (SOL/USDC/SKR/JUP), opt-in with risk note, 0.05 SOL/day default cap (max 0.5), slippage 0.5 % (max 3 %), 1 % impact limit, 1232-byte guard with re-quote. Paper mode stays.
+- Three assistant agents (`core/AssistantAgents.kt`): Season Agent (plan + autopilot + experimental delegated limit), Saver (`agents/Saver.kt`), Watcher (`agents/Watcher.kt`); background ticks in `agents/AgentTicks.kt` via the 15-min autopilot worker. Legacy game agents/Slice/Combo hidden from the assistant UI (code kept). NFT Free/Pro per agent; mainnet mint "coming soon" until the collection exists (`scripts/mainnet`).
+- Morning briefing (`sol/Briefing.kt`): WorkManager one-time job at the user's time (08:30 default), notification, plays on Today; worker `/sol/briefing`, local template offline.
+- Call → action (`screen/CallActions.kt`, `ui/CallActionCards.kt`): worker `/call/actions` (structured output) with a local regex fallback; payment = SOL / USDC transfer the wallet approves, recipient never prefilled; callback = `ACTION_DIAL` + reminder; reminder = local notification.
+- English is the default language; Ukrainian complete and switchable in More → Language.
+- Fix found by the live mainnet simulation: the Associated Token Account program id in `delegate/SplIx.kt` was wrong (now `ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL`).
+- Evidence per feature: `docs/evidence/1.1.0.md`. Worker live version f5f3acfd (rollback 19d11443).

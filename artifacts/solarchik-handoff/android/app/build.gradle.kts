@@ -24,11 +24,16 @@ android {
         applicationId = "net.solardepin.solarchik.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 101
-        versionName = "1.0.1"
+        versionCode = 110
+        versionName = "1.1.0"
         buildConfigField("boolean", "MAINNET_PAID_MINT", "false")
         // The assistant build never talks to mainnet, Seeker included.
-        buildConfigField("boolean", "DEVNET_ONLY", "true")
+        buildConfigField("boolean", "DEVNET_ONLY", "false")
+        // 1.1.0: mainnet Metaplex Core mints stay "coming soon" until the mainnet collection exists (scripts/mainnet/README.md).
+        buildConfigField("boolean", "MAINNET_MINT_READY", "false")
+        // Filled from scripts/mainnet/out/collection-mainnet.json once Vadym's funded key created the collection.
+        buildConfigField("String", "MAINNET_COLLECTION", "\"\"")
+        buildConfigField("String", "MAINNET_COLLECTION_AUTHORITY", "\"\"")
     }
 
     buildFeatures { buildConfig = true }
@@ -39,6 +44,13 @@ android {
             it.maxHeapSize = "1536m"
             // First-launch onboarding stays off in older screen tests; TodayTest switches it on.
             it.systemProperty("solarchik.onboarding", "0")
+            // 1.1.0: the app defaults to English; the existing uk-qualifier tests run as "follow the phone"
+            it.systemProperty("solarchik.langDefault", (project.findProperty("langDefault") as String?) ?: "phone")
+            // 1.1.0: the app defaults to mainnet; the unit suite runs in dev devnet mode unless a test flips it.
+            it.systemProperty("solarchik.cluster", (project.findProperty("cluster") as String?) ?: "devnet")
+            // 1.1.0: read-only live mainnet checks (balances, Jupiter quote + unsigned swap build, memo simulation)
+            it.systemProperty("solarchik.mainnetLive", (project.findProperty("mainnetLive") as String?) ?: "0")
+            it.systemProperty("solarchik.rehearsal", (project.findProperty("rehearsal") as String?) ?: "")
             it.systemProperty("solarchik.devnet", (project.findProperty("devnet") as String?) ?: "0")
             it.systemProperty("solarchik.live", (project.findProperty("live") as String?) ?: "")
             it.systemProperty("solarchik.chat", (project.findProperty("chat") as String?) ?: "")

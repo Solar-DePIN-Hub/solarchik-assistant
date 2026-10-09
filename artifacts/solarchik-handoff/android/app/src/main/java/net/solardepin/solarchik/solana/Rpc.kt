@@ -175,9 +175,12 @@ open class Rpc(val url: String) {
 
         fun retryable(code: Int): Boolean = code == 429 || code in 500..599
 
-        /** The devnet proxy for the public devnet node; other clusters have no fallback. */
-        fun fallbackFor(url: String): String? =
-            if (url == net.solardepin.solarchik.core.SolarchikConfig.RPC_DEVNET) net.solardepin.solarchik.core.SolarchikConfig.RPC_DEVNET_FALLBACK else null
+        /** Devnet: the market proxy. Mainnet (1.1.0): PublicNode's free endpoint. Others: none. */
+        fun fallbackFor(url: String): String? = when (url) {
+            net.solardepin.solarchik.core.SolarchikConfig.RPC_DEVNET -> net.solardepin.solarchik.core.SolarchikConfig.RPC_DEVNET_FALLBACK
+            net.solardepin.solarchik.core.SolarchikConfig.RPC_MAINNET -> net.solardepin.solarchik.core.SolarchikConfig.RPC_MAINNET_FALLBACK
+            else -> null
+        }
 
         /** Throws [RpcException] (never NPE) when the node answers without a usable blockhash. */
         fun parseBlockhash(r: JsonElement): ByteArray {

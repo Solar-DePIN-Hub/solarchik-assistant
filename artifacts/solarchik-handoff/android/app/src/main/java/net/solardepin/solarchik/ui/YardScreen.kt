@@ -197,11 +197,11 @@ class YardScreen(host: MainActivity) : Screen(host) {
         }
         agentsState = tile(intArrayOf(android.graphics.Color.parseColor("#FFD86B"), android.graphics.Color.parseColor("#F5A524")), "home-agents", R.drawable.ic_nav_agents, R.string.home_agents_title) {
             host.select(MainActivity.Tab.AGENTS, animate = true)
-            (host.screen(MainActivity.Tab.AGENTS) as? AgentsScreen)?.openSection(0)
+            (host.screen(MainActivity.Tab.AGENTS) as? AgentsScreen)?.openSection(AgentsScreen.SEASON)
         }
         sliceState = tile(intArrayOf(android.graphics.Color.parseColor("#7CF0D0"), android.graphics.Color.parseColor("#2FB8C9")), "home-slice", R.drawable.ic_slice, R.string.home_slice_title) {
             host.select(MainActivity.Tab.AGENTS, animate = true)
-            (host.screen(MainActivity.Tab.AGENTS) as? AgentsScreen)?.openSection(3)
+            (host.screen(MainActivity.Tab.AGENTS) as? AgentsScreen)?.openSection(AgentsScreen.SAVER)
         }
         streakState = tile(intArrayOf(android.graphics.Color.parseColor("#FF9E6B"), android.graphics.Color.parseColor("#FF5E7E")), "home-streak", R.drawable.ic_flame, R.string.home_streak_title) {
             host.select(MainActivity.Tab.RUN, animate = true)

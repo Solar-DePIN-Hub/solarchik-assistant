@@ -55,6 +55,17 @@ object SolarchikConfig {
     /** Server proxy for devnet JSON-RPC: retries 429/5xx and falls back to a second node (0.21.7). */
     const val RPC_DEVNET_FALLBACK = "https://solarchik-market.vercel.app/solana-rpc"
     const val RPC_MAINNET = "https://api.mainnet-beta.solana.com"
+    /**
+     * 1.1.0: no paid RPC key exists for the app, so mainnet uses the public node with retries and falls
+     * back to PublicNode's free endpoint. Both are rate limited; heavy use can still see 429s.
+     */
+    const val RPC_MAINNET_FALLBACK = "https://solana-rpc.publicnode.com"
+    /** 1.1.0: Metaplex Core mints on mainnet need the mainnet collection (created by Vadym's funded key). */
+    val MAINNET_MINT_READY: Boolean = BuildConfig.MAINNET_MINT_READY
+    val MAINNET_COLLECTION: String = BuildConfig.MAINNET_COLLECTION
+    val MAINNET_COLLECTION_AUTHORITY: String = BuildConfig.MAINNET_COLLECTION_AUTHORITY
+    /** The worker checks a mainnet mint (tier from the asset name, Pro/Combo payment, Combo paid-only) before co-signing. */
+    const val MINT_COSIGN_URL = "https://solarchik-screen.davidbell1603.workers.dev/agent/mint-cosign"
     const val AIRDROP_SOL = 1.0
     const val LAMPORTS_PER_SOL = 1_000_000_000L
 
@@ -76,6 +87,14 @@ object SolarchikConfig {
     /** 1.0.1: tells the worker this is Solarchik Assistant, so /sol/chat uses the pocket-assistant prompt (runs keep the game prompt). */
     const val SOL_APP = "assistant"
     const val SOL_TTS_URL = "https://solarchik-screen.davidbell1603.workers.dev/sol/tts"
+
+    // --- Explorers (1.1.0: mainnet links go to Solscan, Orb as the second link) ---
+    fun solscanTx(sig: String, cluster: String): String =
+        if (cluster == "devnet") "https://solscan.io/tx/$sig?cluster=devnet" else "https://solscan.io/tx/$sig"
+    fun solscanAccount(addr: String, cluster: String): String =
+        if (cluster == "devnet") "https://solscan.io/account/$addr?cluster=devnet" else "https://solscan.io/account/$addr"
+    fun orbTx(sig: String): String = "https://orbmarkets.io/tx/$sig"
+    fun orbAccount(addr: String): String = "https://orbmarkets.io/address/$addr"
 
     fun lamports(sol: Double): Long = Math.round(sol * LAMPORTS_PER_SOL)
 }

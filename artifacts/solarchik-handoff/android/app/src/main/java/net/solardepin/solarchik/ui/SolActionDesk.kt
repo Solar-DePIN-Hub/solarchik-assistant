@@ -135,7 +135,7 @@ class SolActionDesk(
             paper += ActAgent(
                 id = key, name = sku.name, running = run?.running == true, trades = run?.let { it.wins + it.losses },
                 pnlSol = run?.pnl, skuId = sku.id, tier = tier, track = Track.PAPER,
-                owned = net.solardepin.solarchik.agents.Ownership.ownsSku(records, sku.id),
+                owned = host.paperOpen || net.solardepin.solarchik.agents.Ownership.ownsSku(records, sku.id),
             )
         }
         val agents = net.solardepin.solarchik.sol.SolActions.mergeAgents(devnet, paper, ctx.getString(R.string.sol_agent_practice)) { if (host.lang == "uk") AgentNames.uk(it) else it }

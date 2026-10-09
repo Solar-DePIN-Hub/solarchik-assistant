@@ -118,7 +118,7 @@ class SolanaWallet(context: Context) {
      * 0.21.9: the built-in devnet wallet ([LocalKey]) is in use. Chosen by the player when no wallet app
      * (Seed Vault, Phantom, Solflare) is installed; Mobile Wallet Adapter stays the preferred path.
      */
-    val isLocal: Boolean get() = prefs.getString("kind", "") == KIND_LOCAL && LocalKey.exists(app)
+    val isLocal: Boolean get() = !mainnet && prefs.getString("kind", "") == KIND_LOCAL && LocalKey.exists(app)
 
     /**
      * Asked when an action needs a wallet, none is connected and no MWA wallet app is installed (or MWA
@@ -134,6 +134,7 @@ class SolanaWallet(context: Context) {
 
     /** Switches to the built-in devnet wallet (creates the key once). Returns its address. */
     fun useBuiltIn(): String {
+        check(!mainnet) { "The built-in wallet is devnet dev mode only" }
         val addr = LocalKey.create(app)
         adapter.authToken = null
         prefs.edit().putString("kind", KIND_LOCAL).putString("address", addr).remove("auth").apply()
@@ -142,6 +143,8 @@ class SolanaWallet(context: Context) {
 
     /** Local wallet now, or offered now because there is no wallet app. False = use MWA. */
     private suspend fun useLocal(): Boolean {
+        // 1.1.0: mainnet is Mobile Wallet Adapter only (Seed Vault, Phantom, Solflare). No hot wallet, no offer.
+        if (mainnet) return false
         if (isLocal) return true
         if (connected) return false
         if (hasWalletApp()) return false
@@ -149,7 +152,7 @@ class SolanaWallet(context: Context) {
     }
 
     /** MWA said "no wallet": offer the built-in wallet before giving up. */
-    private suspend fun offerAfterNoWallet(): Boolean = !connected && offerBuiltIn?.invoke() == true && isLocal
+    private suspend fun offerAfterNoWallet(): Boolean = !mainnet && !connected && offerBuiltIn?.invoke() == true && isLocal
 
     private fun localKey(): org.sol4k.Keypair =
         LocalKey.keypair(app) ?: throw WalletError(WalletError.Kind.FAILED, "Built-in wallet key is unavailable")
@@ -169,7 +172,7 @@ class SolanaWallet(context: Context) {
 
     /** Built-in wallet: top up from the devnet faucet when the balance is below [minLamports]. */
     suspend fun ensureLocalFunds(minLamports: Long): Boolean {
-        if (!isLocal) return true
+        if (mainnet || !isLocal) return true
         val have = runCatching { rpc.balanceLamports(address) }.getOrElse { return false }
         if (have >= minLamports) return true
         return LocalFunding.fund(this, minLamports).isSuccess
@@ -208,21 +211,39 @@ class SolanaWallet(context: Context) {
     }
     val isSeeker: Boolean = SeekerDevice.isSeeker()
 
-    /** 1.0.0 Solarchik Assistant: devnet only, Seeker included (tests may flip it to check the old Seeker path). */
-    @Volatile internal var devnetOnly: Boolean = BuildConfig.DEVNET_ONLY
+    /**
+     * 1.1.0: false in release builds (mainnet by default). The unit suite sets the `solarchik.cluster=devnet`
+     * system property so the older devnet tests keep their cluster; mainnet tests flip this to false.
+     */
+    @Volatile internal var devnetOnly: Boolean = BuildConfig.DEVNET_ONLY || System.getProperty("solarchik.cluster") == "devnet"
 
-    /** Seeker defaults to mainnet; the player may force devnet. Everything else is devnet only. */
+    /**
+     * 1.1.0: hidden developer toggle (Settings → tap the version line 7 times). On = devnet dev mode, where
+     * the built-in hot wallet and the devnet faucet still work for testing. Off (default) = Solana mainnet.
+     * Switching drops the MWA session (the wallet authorized another cluster).
+     */
     var forceDevnet: Boolean
         get() = prefs.getBoolean("forceDevnet", false)
         set(value) {
-            prefs.edit().putBoolean("forceDevnet", value).apply()
+            if (value == prefs.getBoolean("forceDevnet", false)) return
+            prefs.edit().putBoolean("forceDevnet", value).remove("auth").apply()
+            adapter.authToken = null
             adapter.rpcCluster = rpcCluster()
         }
 
-    /** The built-in wallet is devnet only, always. */
-    val mainnet: Boolean get() = !devnetOnly && isSeeker && !forceDevnet && !isLocal
+    /** Hidden developer options are visible (7 taps on the version line in Settings). */
+    var devUnlocked: Boolean
+        get() = prefs.getBoolean("devUnlocked", false)
+        set(value) { prefs.edit().putBoolean("devUnlocked", value).apply() }
+
+    /** 1.1.0: mainnet-beta on every device unless dev devnet mode is on. */
+    val mainnet: Boolean get() = !devnetOnly && !forceDevnet
     val clusterName: String get() = if (mainnet) "mainnet" else "devnet"
     val rpcUrl: String get() = if (mainnet) SolarchikConfig.RPC_MAINNET else SolarchikConfig.RPC_DEVNET
+
+    /** Explorer links for this cluster (Solscan; Orb as the second link on mainnet). */
+    fun txUrl(sig: String): String = SolarchikConfig.solscanTx(sig, clusterName)
+    fun accountUrl(addr: String = address): String = SolarchikConfig.solscanAccount(addr, clusterName)
     val rpc: Rpc get() = rpcOverride ?: Rpc(rpcUrl)
 
     /** Tests: a scripted RPC instead of the public devnet/mainnet node. */
@@ -241,7 +262,7 @@ class SolanaWallet(context: Context) {
             identityName = "Solarchik",
         )
     ).apply {
-        rpcCluster = if (!devnetOnly && isSeeker && !prefs.getBoolean("forceDevnet", false)) RpcCluster.MainnetBeta else RpcCluster.Devnet
+        rpcCluster = if (!devnetOnly && !prefs.getBoolean("forceDevnet", false)) RpcCluster.MainnetBeta else RpcCluster.Devnet
         val saved = prefs.getString("auth", "").orEmpty()
         if (saved.isNotBlank()) authToken = saved
     }
@@ -402,8 +423,9 @@ class SolanaWallet(context: Context) {
         rpc.balanceLamports(addr) / SolarchikConfig.LAMPORTS_PER_SOL.toDouble()
     }
 
-    /** Devnet only. Never called on mainnet. */
+    /** Devnet only. Never called on mainnet (1.1.0: the faucet is refused before any request). */
     suspend fun airdrop(): Result<String> = runCatching {
+        check(!mainnet) { "airdrop is devnet only" }
         if (isLocal) return LocalFunding.fund(this, LOCAL_MIN_LAMPORTS)
         check(!mainnet) { "airdrop is devnet only" }
         val addr = address
@@ -418,7 +440,7 @@ class SolanaWallet(context: Context) {
         streak: Int,
         day: String = LocalDate.now(ZoneOffset.UTC).toString(),
     ): Result<ClockProof> {
-        val memo = "solarchik clock $day ${meters}m s$streak ${GameSave.dayModOf(day)}"
+        val memo = MemoTx.clockMemo(day, meters, streak)
         if (useLocal()) return localMemo(memo)
         val sent = sendMemo(sender, memo)
         if (sent.isSuccess) return sent
@@ -510,6 +532,43 @@ class SolanaWallet(context: Context) {
             }.recoverCatching { throw buildFailure(it) }
             is TransactionResult.NoWalletFound -> Result.failure(WalletError(WalletError.Kind.NO_WALLET))
             is TransactionResult.Failure -> Result.failure(fail(result))
+        }
+    }
+
+    /**
+     * 1.1.0: signs and sends one prebuilt transaction (a Jupiter v0 swap) through Mobile Wallet Adapter.
+     * The wallet shows it and the user approves or declines there; nothing is ever signed by the app.
+     * [prepare] runs after authorization with the wallet's account and returns the serialized unsigned tx
+     * (so the tx is built for the account the wallet actually picked). Mainnet MWA only.
+     */
+    suspend fun signAndSendPrebuilt(
+        sender: ActivityResultSender,
+        prepare: suspend (owner: String) -> ByteArray,
+    ): Result<SentTx> {
+        if (!mainnet && isLocal) return Result.failure(WalletError(WalletError.Kind.FAILED, "Real swaps need a mainnet wallet app"))
+        adapter.rpcCluster = rpcCluster()
+        val cluster = clusterName
+        var buildError: Throwable? = null
+        val result = try {
+            adapter.transact(sender) { auth ->
+                val owner = Base58.encode(accountKey(auth) ?: error("No account"))
+                val tx = try { prepare(owner) } catch (t: Throwable) { buildError = t; throw t }
+                signAndSendTransactions(arrayOf(tx))
+            }
+        } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException && buildError == null) throw t
+            return Result.failure(buildError?.let(::buildFailure) ?: WalletError.classify(t.message, t))
+        }
+        return when (result) {
+            is TransactionResult.Success -> {
+                val addr = accountKey(result.authResult)?.let { Base58.encode(it) }.orEmpty()
+                remember(result.authResult.authToken, addr)
+                val sig = result.payload.signatures.firstOrNull()?.let { Base58.encode(it) }.orEmpty()
+                if (sig.isBlank()) Result.failure(WalletError(WalletError.Kind.FAILED, "Wallet sent no signature"))
+                else Result.success(SentTx(addr, sig, cluster))
+            }
+            is TransactionResult.NoWalletFound -> Result.failure(WalletError(WalletError.Kind.NO_WALLET))
+            is TransactionResult.Failure -> Result.failure(buildError?.let(::buildFailure) ?: fail(result))
         }
     }
 

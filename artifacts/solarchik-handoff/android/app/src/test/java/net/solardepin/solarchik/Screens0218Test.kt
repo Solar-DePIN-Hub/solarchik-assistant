@@ -126,17 +126,10 @@ class Screens0218Test {
         a.select(MainActivity.Tab.AGENTS)
         idle()
         val agentsText = texts(a.window.decorView).joinToString("\n")
-        assertTrue(agentsText, agentsText.contains(a.getString(R.string.desk_owned)))
-        assertTrue(agentsText, agentsText.contains(a.getString(R.string.desk_not_owned_pill)))
-        shot(a, "04-agents$sfx", a.getString(R.string.desk_not_owned_pill))
-        val get = requireNotNull(findTag(a.window.decorView, "desk-get-agent")) { "no Get button for an unowned agent" }
-        get.performClick()
-        idle()
-        val dlg = requireNotNull((a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).offerDialog) { "no offer dialog" }
-        val card = requireNotNull(findTag(dlg.window!!.decorView, "offer-card"))
-        assertNotNull(findTag(card, "offer-buy-pro"))
-        shotView(card, "05-agents-offer$sfx")
-        dlg.dismiss()
+        // 1.1.0: three assistant agents, each with its Free/Pro NFT
+        for (n in listOf(R.string.aa_season, R.string.aa_saver, R.string.aa_watcher)) assertTrue(agentsText, agentsText.contains(a.getString(n)))
+        assertNotNull(findTag(a.window.decorView, "agent-season"))
+        shot(a, "04-agents$sfx", a.getString(R.string.aa_season))
     }
 
     @Test fun english() = run("-en")

@@ -2,6 +2,10 @@ package net.solardepin.solarchik.wallet
 
 /** Unsigned legacy Solana tx: Memo program, fee payer is the connected MWA account. */
 object MemoTx {
+    /** The daily check-in memo (unchanged since the game app; streak logic reads it back). */
+    fun clockMemo(day: String, meters: Int, streak: Int): String =
+        "solarchik clock $day ${meters}m s$streak ${net.solardepin.solarchik.game.GameSave.dayModOf(day)}"
+
     private val MEMO = Base58.decode("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
 
     fun build(payer: ByteArray, recentBlockhash: ByteArray, memo: String): ByteArray {

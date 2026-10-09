@@ -615,7 +615,7 @@ class RooftopScreen(host: MainActivity) : Screen(host) {
             RoofObject.CLOCK -> openShift()
             RoofObject.PLATE -> host.select(MainActivity.Tab.RUN, animate = true)
             RoofObject.SOL -> host.select(MainActivity.Tab.SOL, animate = true)
-            RoofObject.TICKER -> openAgents(3)
+            RoofObject.TICKER -> openAgents(AgentsScreen.WATCHER) // 1.1.0: prices live with the Watcher
             RoofObject.PANELS -> openAgents(0)
             RoofObject.ANTENNA -> host.openCalls()
             RoofObject.TOOLBOX -> host.select(MainActivity.Tab.SETTINGS, animate = true)

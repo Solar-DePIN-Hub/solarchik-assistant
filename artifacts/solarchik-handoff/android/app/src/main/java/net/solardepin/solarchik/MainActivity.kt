@@ -1,5 +1,7 @@
 package net.solardepin.solarchik
 
+import net.solardepin.solarchik.core.SolarchikConfig
+
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -203,6 +205,73 @@ class MainActivity : ComponentActivity() {
         })
         if (savedInstanceState == null) maybeOnboard()
         if (BuildConfig.DEBUG) debugRoof(intent)
+        if (savedInstanceState == null) intent?.getStringExtra(EXTRA_AUTOPILOT)?.let { id -> window.decorView.post { openAutopilot(id) } }
+        if (savedInstanceState == null) handleAssistantExtras(intent)
+        runCatching { net.solardepin.solarchik.autopilot.AutoRunner.sync(this) }
+        runCatching { net.solardepin.solarchik.sol.Briefing.schedule(this) }
+    }
+
+    /** 1.1.0: briefing and call-action notifications land on Today. */
+    private fun handleAssistantExtras(i: Intent?) {
+        if (i == null) return
+        if (i.getBooleanExtra(EXTRA_BRIEFING, false)) {
+            i.removeExtra(EXTRA_BRIEFING)
+            select(Tab.TODAY)
+            window.decorView.post { (screen(Tab.TODAY) as? net.solardepin.solarchik.ui.TodayScreen)?.playBriefing() }
+        }
+        i.getStringExtra(EXTRA_CALL_ACTION)?.let { id ->
+            i.removeExtra(EXTRA_CALL_ACTION)
+            select(Tab.TODAY)
+            window.decorView.post { (screen(Tab.TODAY) as? net.solardepin.solarchik.ui.TodayScreen)?.focusAction(id) }
+        }
+    }
+
+    /**
+     * 1.1.0: the user tapped an autopilot notification. Opens the matching review; nothing is signed here. A swap
+     * goes to Agents › Swaps with the quote and fees, and only the wallet app can approve it.
+     */
+    fun openAutopilot(id: String) {
+        val ap = net.solardepin.solarchik.autopilot.AutopilotStore(this)
+        val agentsTab = { sec: Int -> select(Tab.AGENTS, animate = true); (screen(Tab.AGENTS) as? net.solardepin.solarchik.ui.AgentsScreen)?.also { it.openSection(sec) } }
+        if (id == "delegate") { agentsTab(net.solardepin.solarchik.ui.AgentsScreen.SEASON); return }
+        if (id == "watcher") { agentsTab(net.solardepin.solarchik.ui.AgentsScreen.WATCHER); return }
+        if (id.startsWith("saver:")) {
+            // 1.1.0 Saver: the proposed save opens as a normal swap review; only the wallet app can approve it.
+            val agents = agentsTab(net.solardepin.solarchik.ui.AgentsScreen.SAVER) ?: return
+            val s = net.solardepin.solarchik.agents.SaverStore(this)
+            val a = s.find(id.removePrefix("saver:")) ?: return
+            if (a.status == net.solardepin.solarchik.agents.SaveAction.DONE || a.status == net.solardepin.solarchik.agents.SaveAction.SKIPPED || !s.policy().enabled) return
+            if (wallet.connected) agents.swapPanel.quote(net.solardepin.solarchik.agents.SaverRules.request(a))
+            return
+        }
+        val a = ap.find(id) ?: return
+        if (!ap.policy().active || a.status == net.solardepin.solarchik.autopilot.AutoAction.DONE) { select(Tab.SEASON, animate = true); return }
+        when (a.kind) {
+            net.solardepin.solarchik.autopilot.AutoKind.SWAP -> {
+                val to = net.solardepin.solarchik.swap.SwapTokens.bySymbol(a.to) ?: return
+                select(Tab.AGENTS, animate = true)
+                val agents = screen(Tab.AGENTS) as? net.solardepin.solarchik.ui.AgentsScreen ?: return
+                agents.openSection(net.solardepin.solarchik.ui.AgentsScreen.SAVER)
+                if (wallet.connected) agents.swapPanel.quote(net.solardepin.solarchik.swap.SwapRequest(net.solardepin.solarchik.swap.SwapTokens.SOL, to, a.lamports, by = "autopilot", reason = a.id))
+            }
+            net.solardepin.solarchik.autopilot.AutoKind.CHECKIN -> {
+                select(Tab.SHIFT, animate = true)
+                val shift = screen(Tab.SHIFT) as? net.solardepin.solarchik.ui.YardScreen ?: return
+                if (save.clockedToday() && !save.signedToday()) shift.signFromRun() else shift.focusToday()
+            }
+            net.solardepin.solarchik.autopilot.AutoKind.DAPP -> {
+                val d = net.solardepin.solarchik.season.SeasonDapps.all.firstOrNull { it.name == a.dapp } ?: net.solardepin.solarchik.season.SeasonDapps.all.first()
+                select(Tab.SEASON, animate = true)
+                (screen(Tab.SEASON) as? net.solardepin.solarchik.ui.SeasonScreen)?.openDapp(d)
+                ap.setStatus(a.id, net.solardepin.solarchik.autopilot.AutoAction.DONE)
+            }
+            net.solardepin.solarchik.autopilot.AutoKind.STAKING -> {
+                openUrl(net.solardepin.solarchik.season.Skr.STAKE_URL)
+                if (net.solardepin.solarchik.season.SeasonStore.explored(this) == null) net.solardepin.solarchik.season.SeasonStore.markExploredName(this, "SKR staking")
+                ap.setStatus(a.id, net.solardepin.solarchik.autopilot.AutoAction.DONE)
+                select(Tab.SEASON, animate = true)
+            }
+        }
     }
 
     /** Debug builds only (screenshots): fixed sky / tour step from adb extras. */
@@ -231,6 +300,8 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         intent.getStringExtra(EXTRA_TAB)?.let { name -> Tab.entries.firstOrNull { it.name == name } }?.let { select(it) }
         if (intent.getStringExtra(EXTRA_FOCUS) == "secretary") (screen(Tab.SETTINGS) as? net.solardepin.solarchik.ui.SettingsScreen)?.focusSecretary()
+        intent.getStringExtra(EXTRA_AUTOPILOT)?.let { openAutopilot(it) }
+        handleAssistantExtras(intent)
         if (BuildConfig.DEBUG) debugRoof(intent)
     }
 
@@ -330,6 +401,11 @@ class MainActivity : ComponentActivity() {
 
     /** Creates (or reuses) the built-in devnet wallet and fills it from the devnet faucet. */
     suspend fun setupBuiltInWallet(): Result<String> {
+        // 1.1.0: mainnet has no built-in hot wallet. Without a wallet app the user is pointed to one.
+        if (wallet.mainnet) {
+            showInstallWallet()
+            return Result.failure(net.solardepin.solarchik.wallet.WalletError(net.solardepin.solarchik.wallet.WalletError.Kind.NO_WALLET))
+        }
         wallet.useBuiltIn()
         renderAll()
         if (funding) return Result.success("")
@@ -636,8 +712,32 @@ class MainActivity : ComponentActivity() {
 
     fun explorerTx(sig: String, cluster: String): String = net.solardepin.solarchik.game.ClockIn.explorerTx(sig, cluster)
 
+    /** 1.1.0: mainnet accounts open on Solscan (Orb is the second link in Settings); devnet keeps Solana Explorer. */
     fun explorerAddress(addr: String, cluster: String): String =
-        if (cluster == "devnet") "https://explorer.solana.com/address/$addr?cluster=devnet" else "https://explorer.solana.com/address/$addr"
+        if (cluster == "devnet") "https://explorer.solana.com/address/$addr?cluster=devnet" else SolarchikConfig.solscanAccount(addr, cluster)
+
+    /** 1.1.0: last balances read on Today (for Sol's context); null until read. */
+    @Volatile var walletSol: Double? = null
+    @Volatile var walletSkr: Double? = null
+
+    /** 1.1.0: on mainnet, while NFT mints are "coming soon", paper agents run without owning an NFT. */
+    val paperOpen: Boolean get() = wallet.mainnet && !SolarchikConfig.MAINNET_MINT_READY
+
+    /** 1.1.0 mainnet: no wallet app installed. Seed Vault ships on Seeker; elsewhere Phantom or Solflare. */
+    fun showInstallWallet() {
+        if (isFinishing || isDestroyed) return
+        fun store(pkg: String) {
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg"))) }
+                .onFailure { openUrl("https://play.google.com/store/apps/details?id=$pkg") }
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.mn_install_title)
+            .setMessage(R.string.mn_install_body)
+            .setPositiveButton("Phantom") { _, _ -> store("app.phantom") }
+            .setNeutralButton("Solflare") { _, _ -> store("com.solflare.mobile") }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
 
     fun toast(message: CharSequence) {
         toastView.text = message
@@ -658,6 +758,7 @@ class MainActivity : ComponentActivity() {
             MintError.Kind.TOO_BIG -> getString(R.string.mint_err_big)
             MintError.Kind.WALLET_CHANGED -> getString(R.string.mint_err_wallet_changed)
             MintError.Kind.PAID_ONLY -> getString(R.string.mint_err_paid_only)
+            MintError.Kind.MAINNET_SOON -> getString(R.string.mn_mint_soon)
         }
         else -> WalletError.text(this, t)
     }
@@ -683,6 +784,12 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_TAB = "net.solardepin.solarchik.TAB"
         /** 0.22.0: "secretary" scrolls Settings to the secretary section (from the Calls list). */
         const val EXTRA_FOCUS = "net.solardepin.solarchik.FOCUS"
+        /** 1.1.0: a Season autopilot notification ("<action id>" or "delegate"). */
+        const val EXTRA_AUTOPILOT = "net.solardepin.solarchik.AUTOPILOT"
+        /** 1.1.0: the morning briefing notification (Today plays it). */
+        const val EXTRA_BRIEFING = "net.solardepin.solarchik.BRIEFING"
+        /** 1.1.0: a call-action reminder (Today shows its card). */
+        const val EXTRA_CALL_ACTION = "net.solardepin.solarchik.CALL_ACTION"
         /** Screenshot tests switch the live desk loop off so renders are deterministic. */
         @JvmStatic var tickerEnabled = true
     }

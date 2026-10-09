@@ -39,6 +39,11 @@ class Desk(
     private val feed: MarketFeed = HttpMarketFeed(),
     private val clock: () -> Long = System::currentTimeMillis,
     private val rpc: Rpc = Rpc(SolarchikConfig.RPC_DEVNET),
+    /**
+     * 1.1.0: on mainnet, while NFT mints are "coming soon", paper runs open without an owned agent
+     * (paper is simulated money; there is nothing to mint yet).
+     */
+    private val paperOpen: () -> Boolean = { net.solardepin.solarchik.wallet.SolanaWallet(context).mainnet && !SolarchikConfig.MAINNET_MINT_READY },
 ) {
     private val app = context.applicationContext
     val store = DeskStore(app)
@@ -52,7 +57,7 @@ class Desk(
             val owned = agents.agents().firstOrNull { it.asset == key && it.cluster == "devnet" && it.status != OwnedAgent.STATUS_MISSING }
                 ?: return@withLock Result.failure(DeskError(DeskError.Kind.NOT_OWNED))
             if (owned.tier != tier) return@withLock Result.failure(DeskError(DeskError.Kind.NOT_OWNED))
-        } else if (!net.solardepin.solarchik.agents.Ownership.ownsSku(agents.agents(), skuId)) {
+        } else if (!paperOpen() && !net.solardepin.solarchik.agents.Ownership.ownsSku(agents.agents(), skuId)) {
             // 0.21.8: paper runs need an owned agent as well (mint free or buy Pro first)
             return@withLock Result.failure(DeskError(DeskError.Kind.NOT_OWNED))
         }

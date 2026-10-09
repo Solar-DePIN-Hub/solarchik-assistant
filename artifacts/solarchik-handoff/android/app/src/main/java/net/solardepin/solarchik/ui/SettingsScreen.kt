@@ -55,14 +55,9 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         addView(section(R.string.settings_network, R.drawable.ic_nav_sol, Ui.CYAN).apply {
             networkBody = Ui.muted(ctx)
             addView(Ui.top(networkBody, 10))
-            if (host.wallet.isSeeker && !net.solardepin.solarchik.BuildConfig.DEVNET_ONLY) {
-                val sw = switchRow(ctx.getString(R.string.settings_force_devnet), host.wallet.forceDevnet) { _, on ->
-                    host.wallet.forceDevnet = on
-                    balance = null
-                    host.renderAll()
-                }
-                addView(Ui.top(sw, 10))
-            }
+            // 1.1.0: the devnet switch is a hidden developer option (tap the version line 7 times).
+            devBox = Ui.column(ctx)
+            addView(devBox)
         })
 
         addView(section(R.string.settings_fees, R.drawable.ic_gift, Ui.GOLD).apply {
@@ -148,7 +143,10 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         })
 
         addView(section(R.string.settings_about, R.drawable.ic_launcher, Ui.GOLD, tint = false).apply {
-            addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.settings_about_body, BuildConfig.VERSION_NAME)), 8))
+            addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.settings_about_body, BuildConfig.VERSION_NAME)).apply {
+                tag = "settings-version"
+                setOnClickListener { versionTap() }
+            }, 8))
         })
     }
 
@@ -245,6 +243,33 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         return r
     }
 
+    private lateinit var devBox: LinearLayout
+    private var versionTaps = 0
+    private var skr: Double? = null
+
+    /** Seven taps on the version line unlock the developer devnet switch (testing only). */
+    internal fun versionTap() {
+        if (host.wallet.devUnlocked) return
+        if (++versionTaps < 7) return
+        host.wallet.devUnlocked = true
+        host.toast(ctx.getString(R.string.mn_dev_unlocked))
+        render()
+    }
+
+    private fun renderDev() {
+        devBox.removeAllViews()
+        val w = host.wallet
+        if (!w.devUnlocked && !w.forceDevnet) return
+        val sw = switchRow(ctx.getString(R.string.mn_dev_toggle), w.forceDevnet) { _, on ->
+            w.forceDevnet = on
+            balance = null
+            skr = null
+            host.renderAll()
+        }.apply { tag = "settings-dev-devnet" }
+        devBox.addView(Ui.top(sw, 10))
+        devBox.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.mn_dev_note), 12f), 6))
+    }
+
     override fun onShow() {
         render()
         refreshBalance()
@@ -256,6 +281,12 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         if (!host.wallet.connected) return
         host.scope.launch {
             host.wallet.balanceSol().onSuccess { balance = it; render() }
+            // 1.1.0: real SKR next to SOL on mainnet (read-only token account read)
+            if (host.wallet.mainnet && MainActivity.tickerEnabled) {
+                val addr = host.wallet.address
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { net.solardepin.solarchik.season.Skr.fetch(addr) }
+                    .onSuccess { skr = it; render() }
+            }
         }
     }
 
@@ -273,8 +304,9 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         networkBody.text = ctx.getString(
             R.string.join_dot,
             ctx.getString(if (w.mainnet) R.string.network_mainnet else R.string.network_devnet),
-            ctx.getString(if (w.isSeeker && !net.solardepin.solarchik.BuildConfig.DEVNET_ONLY) R.string.settings_network_seeker else R.string.settings_network_other),
+            ctx.getString(if (w.mainnet) R.string.mn_network_mainnet else R.string.mn_network_devnet),
         )
+        renderDev()
 
         walletBox.removeAllViews()
         val head = Ui.row(ctx, gap = 12)
@@ -282,6 +314,14 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         head.addView(Ui.weight(Ui.h2(ctx, ctx.getString(R.string.settings_wallet))))
         head.addView(Ui.pill(ctx, w.clusterName, if (w.mainnet) Ui.GREEN else Ui.CYAN))
         walletBox.addView(head)
+        if (!w.connected && w.mainnet) {
+            // 1.1.0 mainnet: Mobile Wallet Adapter only (Seed Vault on Seeker, Phantom / Solflare elsewhere)
+            val hasApp = w.hasWalletApp()
+            walletBox.addView(Ui.top(Ui.muted(ctx, ctx.getString(if (hasApp) R.string.mn_connect_body else R.string.mn_no_app)).apply { setLineSpacing(0f, 1.25f) }, 10))
+            walletBox.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.wallet_connect), Ui.Btn.PRIMARY, R.drawable.ic_wallet) { connect() }.apply { tag = "settings-connect" }, 14))
+            if (!hasApp) walletBox.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.mn_get_wallet), Ui.Btn.SECONDARY, R.drawable.ic_open) { host.showInstallWallet() }, 10))
+            return
+        }
         if (!w.connected) {
             // 0.21.9: without a wallet app the built-in devnet wallet is the main path, not an error toast
             val hasApp = w.hasWalletApp()
@@ -303,6 +343,13 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             setOnClickListener { refreshBalance() }
         })
         walletBox.addView(Ui.top(balRow, 12))
+        if (w.mainnet) {
+            val skrRow = Ui.row(ctx)
+            skrRow.addView(Ui.weight(Ui.label(ctx, "SKR")))
+            skrRow.addView(Ui.text(ctx, skr?.let { Fmt.sol(it, 2) + " SKR" } ?: "—", 18f, Ui.TEXT, 800).apply { tag = "settings-skr" })
+            walletBox.addView(Ui.top(skrRow, 8))
+            walletBox.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.mn_real_funds), 12f).apply { setLineSpacing(0f, 1.2f) }, 8))
+        }
         if (w.isLocal) walletBox.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.lw_note), 12f).apply { setLineSpacing(0f, 1.2f) }, 8))
         if (!w.mainnet) walletBox.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.lw_paper_note), 12f), 8))
         if (!w.mainnet) {
@@ -326,6 +373,9 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             if (w.hasWalletApp()) connect()
         }))
         walletBox.addView(Ui.top(actions, 10))
+        if (w.mainnet) walletBox.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.mn_open_orb), Ui.Btn.GHOST, R.drawable.ic_open) {
+            host.openUrl(SolarchikConfig.orbAccount(w.address))
+        }.apply { tag = "settings-orb" }, 8))
     }
 
     private fun renderNotes() {

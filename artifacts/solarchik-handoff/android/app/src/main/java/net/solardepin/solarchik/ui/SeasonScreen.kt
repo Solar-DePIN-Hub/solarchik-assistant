@@ -25,7 +25,7 @@ import net.solardepin.solarchik.season.Skr
 /**
  * 1.0.0 Seeker Season helper: a daily plan whose items tick only from real state on this phone
  * (opened today, a suggested dApp opened from here today, today's check-in signed), plus the SKR
- * balance read from mainnet. Nothing here signs, repeats or automates a transaction.
+ * balance read from mainnet. 1.1.0: the optional autopilot (OFF by default) only plans and notifies; the wallet signs.
  */
 class SeasonScreen(host: MainActivity) : Screen(host) {
     private lateinit var progress: TextView
@@ -37,6 +37,8 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
     private var skrAt = 0L
     private var skrFailed = false
     private var skrLoading = false
+    internal val autopilot by lazy { AutopilotPanel(host) { render() } }
+    private lateinit var autoBox: LinearLayout
 
     override fun build(): View = page {
         val top = Ui.row(ctx, gap = 12).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -65,6 +67,9 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
             addView(Ui.top(planBox, 14))
         })
 
+        autoBox = Ui.column(ctx)
+        addView(autoBox)
+
         addView(Ui.card(ctx, accent = Ui.PURPLE).apply {
             tag = "season-skr"
             val head = Ui.row(ctx, gap = 12).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -83,7 +88,7 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
         })
     }
 
-    fun plan(): SeasonPlan = SeasonStore.plan(ctx, host.save.signedToday(), host.save.clockedToday())
+    fun plan(): SeasonPlan = SeasonStore.planFor(ctx, host.save, host.wallet.mainnet)
 
     override fun onShow() {
         render()
@@ -98,6 +103,8 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
         planBox.addView(useItem(p))
         planBox.addView(exploreItem(p))
         planBox.addView(chainItem(p))
+        autoBox.removeAllViews()
+        autoBox.addView(autopilot.card())
         renderSkr()
     }
 
@@ -158,6 +165,9 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
     private fun chainItem(p: SeasonPlan): View {
         val save = host.save
         val body = when {
+            p.mainnet && p.onchain == "swap" -> ctx.getString(R.string.mn_season_swap_done)
+            p.mainnet && p.onchain != null -> ctx.getString(R.string.mn_season_checkin_done)
+            p.mainnet && p.signedToday -> ctx.getString(R.string.mn_season_not_chain)
             p.signedToday -> ctx.getString(R.string.season_chain_signed)
             p.clockedToday -> ctx.getString(R.string.season_chain_sign)
             else -> ctx.getString(R.string.season_chain_run, GameSave.GOAL_M)
@@ -169,7 +179,11 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
                 val shift = host.screen(MainActivity.Tab.SHIFT) as? YardScreen
                 if (save.clockedToday() && !save.signedToday()) shift?.signFromRun() else shift?.focusToday()
             }.apply { tag = "season-chain-go" }, 10))
-            addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.season_chain_note), 11.5f, Ui.MUTED, 500).apply { setLineSpacing(0f, 1.2f) }, 8))
+            if (p.mainnet && !p.done(SeasonItem.ONCHAIN)) addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.mn_season_swap_btn), Ui.Btn.GHOST, R.drawable.ic_open) {
+                host.select(MainActivity.Tab.AGENTS, animate = true)
+                (host.screen(MainActivity.Tab.AGENTS) as? AgentsScreen)?.openSection(AgentsScreen.SAVER)
+            }.apply { tag = "season-chain-swap" }, 8))
+            addView(Ui.top(Ui.text(ctx, ctx.getString(if (p.mainnet) R.string.mn_season_chain_note else R.string.season_chain_note), 11.5f, Ui.MUTED, 500).apply { setLineSpacing(0f, 1.2f) }, 8))
         }
     }
 
@@ -207,7 +221,11 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
             if (w.isLocal) skrBody.addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.season_skr_local), 12.5f, Ui.AMBER, 600).apply { setLineSpacing(0f, 1.2f) }, 10))
         }
         skrBody.addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.season_skr_stake_note), 12.5f, Ui.MUTED, 500).apply { setLineSpacing(0f, 1.2f) }, 14))
-        skrBody.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.season_skr_stake), Ui.Btn.GHOST, R.drawable.ic_open) { host.openUrl(Skr.STAKE_URL) }.apply { tag = "season-skr-stake" }, 8))
+        skrBody.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.season_skr_stake), Ui.Btn.GHOST, R.drawable.ic_open) {
+            host.openUrl(Skr.STAKE_URL)
+            if (SeasonStore.explored(ctx) == null) SeasonStore.markExploredName(ctx, "SKR staking")
+            render()
+        }.apply { tag = "season-skr-stake" }, 8))
     }
 
     private fun connect() {

@@ -70,16 +70,28 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     private var balance: Double? = null
     private var balanceAt = 0L
     private var balanceFailed = false
+    private lateinit var briefingBody: LinearLayout
+    private lateinit var actionsBox: LinearLayout
+    private lateinit var actionsWrap: View
+    private var voice: net.solardepin.solarchik.sol.SolVoice? = null
+    internal var briefingBusy = false
+    internal var briefingPlaying = false
+    /** Tests: the worker call (POST) and the voice are scripted. */
+    internal var briefingPost: (String, String) -> Pair<Int, String> = { url, body -> (postOverride ?: defaultPost)(url, body) }
+    internal var speak: (String, String) -> Boolean = { text, lang -> (voice ?: net.solardepin.solarchik.sol.SolVoice(host).also { voice = it }).speak(text, lang) }
+    private var actionsSynced = 0L
 
     override fun build(): View = page {
         addView(header())
         addView(solCard())
+        addView(briefingCard())
         addView(secretaryCard())
+        addView(actionsCard())
         addView(todoCard())
         addView(seasonCard())
         addView(walletCard())
         addView(habitRow())
-        addView(Ui.text(ctx, ctx.getString(R.string.today_footer, BuildConfig.VERSION_NAME), 11f, Ui.withAlpha(Ui.MUTED, 0xAA), 600).apply {
+        addView(Ui.text(ctx, ctx.getString(R.string.today_footer, BuildConfig.VERSION_NAME, host.wallet.clusterName), 11f, Ui.withAlpha(Ui.MUTED, 0xAA), 600).apply {
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) }
         })
@@ -369,6 +381,134 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         }, 6))
     }
 
+    // ------------------------------------------------------------------ 1.1.0 morning briefing
+
+    private fun briefingCard(): View = Ui.card(ctx, accent = Ui.GOLD, pad = 16).apply {
+        tag = "today-briefing"
+        briefingBody = Ui.column(ctx)
+        addView(briefingBody)
+    }
+
+    private fun renderBriefing() {
+        val st = net.solardepin.solarchik.sol.BriefingStore(ctx)
+        val pol = st.policy()
+        briefingBody.removeAllViews()
+        val head = Ui.row(ctx, gap = 12).apply { gravity = Gravity.CENTER_VERTICAL }
+        head.addView(Ui.iconBadge(ctx, R.drawable.ic_timer, Ui.GOLD, 40))
+        head.addView(Ui.weight(Ui.column(ctx).apply {
+            addView(Ui.h2(ctx, ctx.getString(R.string.br_title)))
+            addView(Ui.text(ctx, if (pol.enabled) ctx.getString(R.string.br_at, pol.label) else ctx.getString(R.string.br_off), 12.5f, if (pol.enabled) Ui.GOLD else Ui.MUTED, 700).apply {
+                tag = "today-briefing-time"
+                isClickable = true
+                setOnClickListener { pickBriefingTime() }
+            })
+        }))
+        head.addView(android.widget.Switch(ctx).apply {
+            tag = "today-briefing-switch"
+            isChecked = pol.enabled
+            contentDescription = ctx.getString(R.string.br_title)
+            setOnCheckedChangeListener { _, on -> st.setPolicy(pol.copy(enabled = on)); net.solardepin.solarchik.sol.Briefing.schedule(ctx); if (on) host.requestNotifications(fromUser = true); render() }
+        })
+        briefingBody.addView(head)
+        val last = st.lastText
+        if (last.isNotBlank()) briefingBody.addView(Ui.top(Ui.muted(ctx, last, 13f).apply { tag = "today-briefing-text"; setLineSpacing(0f, 1.25f); maxLines = if (briefingPlaying) 30 else 3; ellipsize = TextUtils.TruncateAt.END }, 10))
+        val label = when {
+            briefingBusy -> ctx.getString(R.string.br_preparing)
+            briefingPlaying -> ctx.getString(R.string.br_stop)
+            else -> ctx.getString(R.string.br_play)
+        }
+        val b = Ui.button(ctx, label, Ui.Btn.PRIMARY) { if (briefingPlaying) stopBriefing() else playBriefing() }.apply { tag = "today-briefing-play" }
+        Ui.setEnabled(b, !briefingBusy)
+        briefingBody.addView(Ui.top(b, 12))
+    }
+
+    private fun pickBriefingTime() {
+        val st = net.solardepin.solarchik.sol.BriefingStore(ctx)
+        val pol = st.policy()
+        android.app.TimePickerDialog(ctx, { _, h, m ->
+            st.setPolicy(pol.copy(enabled = true, hour = h, minute = m))
+            net.solardepin.solarchik.sol.Briefing.schedule(ctx)
+            render()
+        }, pol.hour, pol.minute, true).show()
+    }
+
+    /** Builds the facts from this phone, gets Sol's text (worker; local template offline) and speaks it. */
+    fun playBriefing() {
+        if (briefingBusy) return
+        briefingBusy = true
+        render()
+        host.scope.launch {
+            val st = net.solardepin.solarchik.sol.BriefingStore(ctx)
+            val w = host.wallet
+            val now = System.currentTimeMillis()
+            var sol: Double? = balance
+            var skrNow: Double? = skr
+            if (w.connected) {
+                w.balanceSol().onSuccess { sol = it; balance = it; host.walletSol = it }
+                if (w.mainnet) withContext(Dispatchers.IO) { net.solardepin.solarchik.season.Skr.fetch(w.address) }.onSuccess { skrNow = it; skr = it; host.walletSkr = it }
+            }
+            val zone = java.time.ZoneId.systemDefault()
+            val facts = net.solardepin.solarchik.sol.Briefing.facts(
+                CallInbox.cached(ctx), FollowUps.list(ctx, now),
+                net.solardepin.solarchik.screen.CallActionStore(ctx).open().map { net.solardepin.solarchik.sol.AssistantExtras.actionLine(it) + " (needs your confirmation)" },
+                net.solardepin.solarchik.agents.WatcherStore(ctx).recent(now),
+                net.solardepin.solarchik.sol.AssistantContext.Wallet(w.connected, w.isLocal, if (w.connected) w.address else "", w.mainnet, sol.takeIf { w.connected }, skrNow.takeIf { w.connected && w.mainnet }),
+                st.snap(), net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, w.mainnet), now, zone,
+            )
+            val text = withContext(Dispatchers.IO) { net.solardepin.solarchik.sol.Briefing.fetch(facts, host.lang, briefingPost) }
+                ?: net.solardepin.solarchik.sol.Briefing.localText(facts, ctx)
+            st.lastText = text
+            st.playedAt = now
+            st.pendingDay = ""
+            if (w.connected && sol != null) st.setSnap(net.solardepin.solarchik.sol.WalletSnap(now, sol, skrNow))
+            briefingBusy = false
+            briefingPlaying = speak(text, host.lang)
+            if (!briefingPlaying) host.toast(ctx.getString(R.string.chat_tts_missing))
+            render()
+        }
+    }
+
+    private fun stopBriefing() {
+        voice?.stop()
+        briefingPlaying = false
+        render()
+    }
+
+    // ------------------------------------------------------------------ 1.1.0 actions from calls
+
+    private fun actionsCard(): View = Ui.column(ctx, gap = 10).apply {
+        tag = "today-actions"
+        actionsWrap = this
+        addView(Ui.label(ctx, ctx.getString(R.string.ca_title)))
+        actionsBox = Ui.column(ctx, gap = 10)
+        addView(actionsBox)
+    }
+
+    private fun renderActions() {
+        val open = net.solardepin.solarchik.screen.CallActionStore(ctx).open().takeLast(4).reversed()
+        actionsWrap.visibility = if (open.isEmpty()) View.GONE else View.VISIBLE
+        actionsBox.removeAllViews()
+        open.forEach { actionsBox.addView(CallActionCards.card(host, it) { render() }) }
+    }
+
+    /** Looks at new answered calls for requests (worker; local rules offline). At most once a minute. */
+    internal fun syncActions(post: (String, String) -> Pair<Int, String> = briefingPost) {
+        val now = System.currentTimeMillis()
+        if (now - actionsSynced < 60_000L) return
+        actionsSynced = now
+        val calls = CallInbox.cached(ctx)
+        host.scope.launch {
+            val found = withContext(Dispatchers.IO) { runCatching { net.solardepin.solarchik.screen.CallActionSync.run(ctx, calls, host.lang, post = post) }.getOrDefault(emptyList()) }
+            if (found.isNotEmpty()) render()
+        }
+    }
+
+    /** A reminder notification was tapped: show its card. */
+    fun focusAction(id: String) {
+        render()
+        actionsWrap.post { actionsWrap.parent?.requestChildFocus(actionsWrap, actionsWrap); actionsWrap.requestRectangleOnScreen(android.graphics.Rect(0, 0, actionsWrap.width, actionsWrap.height), false) }
+    }
+
     // ------------------------------------------------------------------ follow-ups
 
     private fun todoCard(): View = Ui.card(ctx).apply {
@@ -424,7 +564,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         val head = Ui.row(ctx, gap = 12).apply { gravity = Gravity.CENTER_VERTICAL }
         head.addView(Ui.iconBadge(ctx, R.drawable.ic_wallet, Ui.GOLD, 40))
         head.addView(Ui.weight(Ui.h2(ctx, ctx.getString(R.string.today_wallet_title))))
-        head.addView(Ui.pill(ctx, ctx.getString(R.string.today_devnet), Ui.CYAN))
+        head.addView(Ui.pill(ctx, ctx.getString(if (host.wallet.mainnet) R.string.network_mainnet else R.string.today_devnet), if (host.wallet.mainnet) Ui.GREEN else Ui.CYAN).apply { tag = "today-cluster" })
         addView(head)
         walletBody = Ui.column(ctx)
         addView(Ui.top(walletBody, 12))
@@ -434,7 +574,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         walletBody.removeAllViews()
         val w = host.wallet
         if (!w.connected) {
-            walletBody.addView(Ui.muted(ctx, ctx.getString(R.string.today_wallet_none), 13.5f).apply { setLineSpacing(0f, 1.25f) })
+            walletBody.addView(Ui.muted(ctx, ctx.getString(if (w.mainnet) R.string.mn_today_wallet_none else R.string.today_wallet_none), 13.5f).apply { setLineSpacing(0f, 1.25f) })
             walletBody.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.today_wallet_setup), Ui.Btn.PRIMARY, R.drawable.ic_wallet) { setupWallet() }.apply { tag = "today-wallet-setup" }, 14))
             return
         }
@@ -451,6 +591,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             else -> kind + " · " + Fmt.short(w.address)
         }
         walletBody.addView(Ui.top(Ui.muted(ctx, sub, 12.5f), 4))
+        if (w.mainnet) walletBody.addView(Ui.top(Ui.text(ctx, skr?.let { Fmt.sol(it, 2) + " SKR" } ?: "… SKR", 16f, Ui.TEXT, 800).apply { tag = "today-wallet-skr" }, 6))
 
         val desk = host.desk.state()
         val last = desk.log.lastOrNull() ?: desk.runs.mapNotNull { it.last }.maxByOrNull { it.at }
@@ -498,13 +639,16 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         balanceAt = now
         host.scope.launch {
             val r = withContext(Dispatchers.IO) { w.balanceSol() }
-            r.onSuccess { balance = it; balanceFailed = false }.onFailure { balanceFailed = balance == null }
+            r.onSuccess { balance = it; balanceFailed = false; host.walletSol = it }.onFailure { balanceFailed = balance == null }
+            // 1.1.0: real SKR on mainnet next to SOL (read-only)
+            if (w.mainnet) withContext(Dispatchers.IO) { net.solardepin.solarchik.season.Skr.fetch(w.address) }.onSuccess { skr = it; host.walletSkr = it }
             if (this@TodayScreen::walletBody.isInitialized) renderWallet()
         }
     }
 
     /** Tests: a known balance without the network. */
-    internal fun setBalanceForTest(sol: Double?) { balance = sol; balanceFailed = false }
+    internal fun setBalanceForTest(sol: Double?, skrBalance: Double? = null) { balance = sol; balanceFailed = false; skr = skrBalance }
+    private var skr: Double? = null
 
     // ------------------------------------------------------------------ Seeker Season
 
@@ -528,7 +672,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     }
 
     private fun renderSeason() {
-        val p = net.solardepin.solarchik.season.SeasonStore.plan(ctx, host.save.signedToday(), host.save.clockedToday())
+        val p = net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, host.wallet.mainnet)
         seasonSub.text = ctx.getString(R.string.season_card_sub, p.doneCount, p.total)
         seasonChecks.removeAllViews()
         listOf(
@@ -590,6 +734,10 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     override fun onShow() {
         render()
         refreshBalance()
+        syncActions()
+        // 1.1.0: a briefing posted this morning and not heard yet plays once when Today opens.
+        val st = net.solardepin.solarchik.sol.BriefingStore(ctx)
+        if (st.policy().enabled && st.pendingDay == net.solardepin.solarchik.sol.Briefing.today()) playBriefing()
     }
 
     override fun onHide() {
@@ -600,6 +748,8 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     override fun onDestroy() {
         ears?.stop()
         ears = null
+        voice?.shutdown()
+        voice = null
     }
 
     override fun render() {
@@ -621,6 +771,8 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         solLine.text = solLineFor(today, todos)
         renderMic()
         renderSecretary(calls, today)
+        renderBriefing()
+        renderActions()
         renderTodos(todos)
         renderSeason()
         renderWallet()
@@ -704,6 +856,12 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     private fun kyivClock(ms: Long): String = SimpleDateFormat("HH:mm", Locale.US).apply { timeZone = CallText.KYIV }.format(Date(ms))
 
     companion object {
+        /** Tests: scripted worker replies for the briefing and call actions. */
+        @androidx.annotation.VisibleForTesting
+        var postOverride: ((String, String) -> Pair<Int, String>)? = null
+        /** Unit tests never reach the live worker unless they script it (the local fallbacks run instead). */
+        private val defaultPost: (String, String) -> Pair<Int, String> =
+            if (android.os.Build.FINGERPRINT == "robolectric") { _, _ -> 0 to "" } else net.solardepin.solarchik.sol.Briefing::httpPost
         const val HOLD_MS = 350L
         const val MAX_TODOS = 3
 

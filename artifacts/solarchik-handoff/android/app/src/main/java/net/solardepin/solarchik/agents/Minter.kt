@@ -16,9 +16,11 @@ import net.solardepin.solarchik.wallet.SolanaWallet
 import net.solardepin.solarchik.wallet.WalletError
 import org.sol4k.Keypair
 import org.sol4k.PublicKey
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class MintError(val kind: Kind, detail: String = "") : Exception(detail.ifBlank { kind.name }) {
-    enum class Kind { FREE_USED, PRO_MAINNET_OFF, TOO_BIG, WALLET_CHANGED, PAID_ONLY }
+    enum class Kind { FREE_USED, PRO_MAINNET_OFF, TOO_BIG, WALLET_CHANGED, PAID_ONLY, MAINNET_SOON }
 }
 
 /** Builds and sends Metaplex Core strategy NFT mints through MWA. */
@@ -36,6 +38,11 @@ class Minter(
             Base58.decode(proof.signature)
         }
     },
+    /**
+     * 1.1.0 mainnet: the server's collection-authority signature for [tx] (null = not a mainnet collection mint).
+     * The server refuses a Combo without payment, so a patched app still cannot mint a free Combo.
+     */
+    private val cosign: suspend (LegacyTx) -> ByteArray = { tx -> MintCosign.request(tx) },
     /** Owner of an existing Core asset at this address, "" for another program's account, null when absent. */
     private val coreOwner: suspend (String) -> String? = { address ->
         wallet.rpc.accountInfo(address)?.let { info ->
@@ -47,6 +54,8 @@ class Minter(
     fun canMint(sku: AgentSku, tier: String): MintError.Kind? {
         // Combo is paid only: never a free mint, whatever the UI picked.
         if (tier == AgentTier.FREE && sku.paidOnly) return MintError.Kind.PAID_ONLY
+        // 1.1.0: mainnet mints wait for the mainnet collection (funded by Vadym); until then "coming soon", never a broken tx
+        if (wallet.mainnet && !SolarchikConfig.MAINNET_MINT_READY) return MintError.Kind.MAINNET_SOON
         if (tier == AgentTier.PRO && wallet.mainnet && !SolarchikConfig.MAINNET_PAID_MINT) return MintError.Kind.PRO_MAINNET_OFF
         if (tier == AgentTier.FREE && wallet.connected && store.freeClaimed(wallet.address, wallet.clusterName)) return MintError.Kind.FREE_USED
         return null
@@ -107,7 +116,9 @@ class Minter(
             if (tier == AgentTier.FREE && store.freeClaimed(payer.toBase58(), cluster()) && store.agents().none { it.asset == assetId }) {
                 throw MintError(MintError.Kind.FREE_USED)
             }
-            val tx = buildMintTx(payer, blockhash, sku, tier, asset)
+            val coll = if (wallet.mainnet) MintCollection.configured() else null
+            val tx = buildMintTx(payer, blockhash, sku, tier, asset, coll)
+            if (coll != null) tx.addSignature(coll.authority, cosign(tx))
             val rec = OwnedAgent(assetId, sku.skuId(tier), tier, sku.nameFor(tier), payer.toBase58(), cluster(), mintedAt = clock())
             store.upsert(rec)
             pending = rec
@@ -184,7 +195,7 @@ class Minter(
          * FREE: CreateV1 only. Both carry the 5% Royalties plugin.
          * The asset keypair partially signs; the wallet signs the fee payer slot.
          */
-        fun buildMintTx(payer: PublicKey, blockhash: ByteArray, sku: AgentSku, tier: String, asset: Keypair): LegacyTx {
+        fun buildMintTx(payer: PublicKey, blockhash: ByteArray, sku: AgentSku, tier: String, asset: Keypair, collection: MintCollection? = null): LegacyTx {
             val ixs = ArrayList<Ix>()
             val (offerTier, price) = Catalog.offerFor(sku.skuId(tier))
             if (offerTier == AgentTier.PRO && price > 0) {
@@ -197,10 +208,44 @@ class Minter(
                 name = sku.nameFor(offerTier),
                 uri = SolarchikConfig.AGENT_URI,
                 plugins = CoreIx.agentPlugins(sku.skuId(offerTier), offerTier, sku.agentClass.id, sku.agentClass.role, feeBps, sku.lanes),
+                collection = collection?.address,
+                authority = collection?.authority,
             )
             val tx = LegacyTx.compile(payer, blockhash, ixs).partialSign(asset)
             if (tx.serialize().size > LegacyTx.MAX_SIZE) throw MintError(MintError.Kind.TOO_BIG)
             return tx
+        }
+    }
+}
+
+/** 1.1.0: the mainnet Solarchik Agents collection (from BuildConfig once created). */
+data class MintCollection(val address: PublicKey, val authority: PublicKey) {
+    companion object {
+        fun configured(): MintCollection? {
+            if (!SolarchikConfig.MAINNET_MINT_READY) return null
+            val c = SolarchikConfig.MAINNET_COLLECTION
+            val a = SolarchikConfig.MAINNET_COLLECTION_AUTHORITY
+            if (c.isBlank() || a.isBlank()) return null
+            return MintCollection(PublicKey(c), PublicKey(a))
+        }
+    }
+}
+
+/** POST the unsigned mint to the worker; it answers the collection authority's signature after its checks. */
+object MintCosign {
+    suspend fun request(tx: LegacyTx): ByteArray = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val body = org.json.JSONObject().put("tx", java.util.Base64.getEncoder().encodeToString(tx.serialize())).toString()
+        val req = okhttp3.Request.Builder().url(SolarchikConfig.MINT_COSIGN_URL)
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        net.solardepin.solarchik.solana.Rpc.client.newCall(req).execute().use { res ->
+            val o = org.json.JSONObject(res.body?.string().orEmpty().ifBlank { "{}" })
+            if (!res.isSuccessful) throw MintError(if (o.optString("error") == "COMBO_PAID_ONLY") MintError.Kind.PAID_ONLY else MintError.Kind.MAINNET_SOON, o.optString("error"))
+            val sig = Base58.decode(o.getString("signature"))
+            // never trust blindly: the signature must verify against the authority and this exact message
+            val auth = PublicKey(o.getString("authority"))
+            check(auth.verify(sig, tx.message)) { "bad co-signature" }
+            sig
         }
     }
 }

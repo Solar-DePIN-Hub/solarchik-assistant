@@ -30,7 +30,7 @@ object ClockIn {
     }
 
     fun explorerTx(sig: String, cluster: String): String =
-        if (cluster == "devnet") "https://explorer.solana.com/tx/$sig?cluster=devnet" else "https://explorer.solana.com/tx/$sig"
+        if (cluster == "devnet") "https://explorer.solana.com/tx/$sig?cluster=devnet" else net.solardepin.solarchik.core.SolarchikConfig.solscanTx(sig, cluster)
 
     /** The day card's first line (web DayCard: "{m} m · streak {n}"). */
     fun dayLine(a: Activity, save: GameSave): String = a.getString(R.string.share_text, save.todayDistance(), save.streak)

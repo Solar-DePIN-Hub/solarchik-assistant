@@ -18,11 +18,22 @@ object AppLocale {
     private const val PREFS = "solarchik-lang"
     private const val KEY = "lang"
 
+    /**
+     * 1.1.0: English is the default (main) language; Ukrainian is picked in Settings (or "Phone" to follow the
+     * phone). Unit tests can start from "follow the phone" with -Dsolarchik.langDefault=phone.
+     */
+    val defaultChoice: String get() = if (System.getProperty("solarchik.langDefault") == "phone") FOLLOW else EN
+    private const val PHONE = "phone"
+
     fun choice(ctx: Context): String =
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, FOLLOW).takeIf { it == EN || it == UK } ?: FOLLOW
+        when (val v = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)) {
+            EN, UK -> v
+            PHONE, FOLLOW -> FOLLOW
+            else -> defaultChoice
+        }
 
     fun set(ctx: Context, choice: String) {
-        val v = if (choice == EN || choice == UK) choice else FOLLOW
+        val v = if (choice == EN || choice == UK) choice else PHONE
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, v).commit()
     }
 

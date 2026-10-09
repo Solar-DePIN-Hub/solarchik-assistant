@@ -81,7 +81,7 @@
     <string name="today_checkin_none">Start a streak</string>
     <string name="today_play_sub">Rooftop run · best %d m</string>
 
-    <string name="today_footer">Solarchik Assistant %s · Solana devnet</string>
+    <string name="today_footer">Solarchik Assistant %1$s · Solana %2$s</string>
 
     <string name="onb_skip">Skip</string>
     <string name="onb_next">Next</string>
@@ -91,8 +91,8 @@
     <string name="onb_2_title">It answers the phone for you</string>
     <string name="onb_2_body">The AI secretary picks up on a real phone line, takes a note, writes the transcript and can block spam numbers. You read a short summary later.</string>
     <string name="onb_3_title">An agent wallet on Solana</string>
-    <string name="onb_3_body">Sol can mint and run agents and sign your daily check-in on Solana devnet. Nothing moves without your tap on Confirm.</string>
-    <string name="as_skills">I answer your phone when you can\'t: the secretary picks up, takes a note and writes the transcript, and I tell you what mattered. I keep your follow-ups and reminders from those calls. I also look after your agent wallet on Solana devnet: I can start, stop or retune an agent, but every on-chain step waits for your Confirm. Ask me about your calls, your agents or your day.</string>
+    <string name="onb_3_body">Sol can prepare real Solana mainnet actions for you: the daily check-in and, if you opt in, small swaps within your own limits. Every transaction opens in your wallet app; nothing moves without your approval.</string>
+    <string name="as_skills">I answer your phone when you can\'t: the secretary picks up, takes a note and writes the transcript, and I tell you what mattered. I keep your follow-ups and reminders from those calls. I also look after your wallet on Solana mainnet: I show your SOL and SKR, prepare the daily check-in and, if you turn them on, small swaps within your limits. Every transaction waits for your approval in the wallet. Ask me about your calls, your wallet or your day.</string>
     <plurals name="as_calls_today">
         <item quantity="one">You had %d call today.</item>
         <item quantity="other">You had %d calls today.</item>

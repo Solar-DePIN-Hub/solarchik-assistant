@@ -152,16 +152,13 @@ class Fixes0220Test {
     // ---- 5: Slice says what it is and what to do ----
 
     @Test fun sliceExplainsItselfAndEveryRowHasABuyButton() {
+        // 1.1.0: Slice is no longer shown in the assistant (three agents only); its copy stays for the game
         val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get()
         a.select(MainActivity.Tab.AGENTS, animate = false)
         (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).openSection(3)
         ShadowLooper.idleMainLooper()
-        val how = find(a.window.decorView, "slice-how")
-        assertNotNull(how)
-        val all = texts(how!!).joinToString("\n")
-        assertTrue(all, all.contains("Як працює Slice", ignoreCase = true) && all.contains("уявних $1 000") && all.contains("це симуляція"))
-        assertNotNull(find(a.window.decorView, "slice-start-hint"))
-        assertTrue(texts(a.window.decorView).count { it.startsWith("Купити за $50") } >= 5)
+        assertNull(find(a.window.decorView, "slice-how"))
+        assertTrue(a.getString(R.string.slice_how_title).isNotBlank())
     }
 
     // ---- 1 (app side): honest reasons for a missed call ----

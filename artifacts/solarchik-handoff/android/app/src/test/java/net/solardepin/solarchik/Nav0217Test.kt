@@ -13,6 +13,7 @@ import net.solardepin.solarchik.agents.SlicePrices
 import net.solardepin.solarchik.agents.SliceStocks
 import net.solardepin.solarchik.ui.AgentsScreen
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -90,18 +91,17 @@ class Nav0217Test {
         assertEquals(net.solardepin.solarchik.ui.CallsActivity::class.java.name, next?.component?.className)
     }
 
-    @Test fun homeSliceCardOpensSliceUnderAgents() {
+    @Test fun sliceIsHiddenFromTheAssistantAgents() {
         val a = open()
-        // 1.0.0: Slice lives under Agents (the Home tile went away with the game-first home)
+        // 1.1.0: the assistant shows three agents; Slice (paper stocks) stays in code for the game but is not shown
         a.select(MainActivity.Tab.AGENTS, animate = false)
         (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).openSection(3)
         ShadowLooper.idleMainLooper()
         assertEquals(MainActivity.Tab.AGENTS, a.current)
-        assertEquals(3, (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).section)
+        assertEquals(AgentsScreen.WATCHER, (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).section)
         val all = texts(a.window.decorView).joinToString("\n")
-        assertTrue(all, all.contains("Paper portfolio · simulated, no real trades"))
-        assertTrue(all, all.contains("Apple") && all.contains("OpenAI") && all.contains("Open Slice site"))
-        shot(a, "en-6-slice")
+        assertFalse(all, all.contains("Paper portfolio · simulated, no real trades") || all.contains("Open Slice site"))
+        shot(a, "en-6-agents-watcher")
     }
 
     @Test @Config(qualifiers = "uk-w411dp-h914dp-xxhdpi")
@@ -114,9 +114,10 @@ class Nav0217Test {
         a.select(MainActivity.Tab.RUN, animate = false); shot(a, "uk-3-play")
         a.select(MainActivity.Tab.SOL, animate = false); shot(a, "uk-4-sol")
         a.select(MainActivity.Tab.SETTINGS, animate = false); shot(a, "uk-5-more")
-        (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).let { a.select(MainActivity.Tab.AGENTS); it.openSection(3) }
-        assertTrue(texts(d).joinToString("\n").contains("Паперовий портфель"))
-        shot(a, "uk-6-slice")
+        (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).let { a.select(MainActivity.Tab.AGENTS); it.openSection(AgentsScreen.SAVER) }
+        assertTrue(texts(d).joinToString("\n").contains("Скарбничка"))
+        assertFalse(texts(d).joinToString("\n").contains("Паперовий портфель"))
+        shot(a, "uk-6-saver")
     }
 
     @Test fun slicePaperBookAndPriceParsing() {

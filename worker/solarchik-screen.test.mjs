@@ -734,7 +734,9 @@ test("assistant flag: assistant prompt for chat, game prompt for runs and for re
   const uk = solAssistantSystem("uk", ctx, "", true);
   assert.match(uk, /кишеньковий помічник/);
   assert.match(uk, /ASSISTANT CONTEXT: none sent/);
-  assert.match(uk, /You CAN act on the player's agents/);
+  // 1.1.0: three assistant agents, described only; no game action rules in the assistant
+  assert.doesNotMatch(uk, /You CAN act on the player's agents/);
+  assert.match(uk, /Агент сезону/);
 });
 
 test("POST /sol/chat with app=assistant: assistant system, no agent tools for a general question, persona in the reply", async () => {
@@ -750,10 +752,13 @@ test("POST /sol/chat with app=assistant: assistant system, no agent tools for a 
   assert.equal(sent.max_tokens, 220);
   assert.equal(r.json.persona, "assistant");
   assert.equal(r.json.action, null);
-  // naming the wallet / agents brings the confirm-card tool back
-  await call({ BALANCES: kv(), OPENAI_API_KEY: "sk" }, "/sol/chat", { message: "stop my agent aloxa #11", language: "en", app: "assistant", ...CTX });
-  assert.equal(sent.tools[0].function.name, "propose_action");
-  assert.match(sent.messages[0].content, /agent a1 = "aloxa #11"/);
+  // 1.1.0: naming agents describes the three assistant agents, never offers the game's confirm-card tool
+  const r2 = await call({ BALANCES: kv(), OPENAI_API_KEY: "sk" }, "/sol/chat", { message: "stop my agent aloxa #11", language: "en", app: "assistant", ...CTX });
+  assert.equal(sent.tools, undefined);
+  assert.match(sent.messages[0].content, /Season Agent/);
+  assert.match(sent.messages[0].content, /Watcher/);
+  assert.doesNotMatch(sent.messages[0].content, /agent a1 = "aloxa #11"/);
+  assert.equal(r2.json.action, null);
 });
 
 test("POST /sol/chat without the flag: the game request is unchanged (game prompt, tools, 170 tokens, no persona)", async () => {
@@ -772,4 +777,19 @@ test("POST /sol/chat without the flag: the game request is unchanged (game promp
   await call({ BALANCES: kv(), OPENAI_API_KEY: "sk" }, "/sol/chat", { message: "how far?", language: "en", scene: "run", app: "assistant" });
   assert.match(sent.messages[0].content, /YOU ARE IN THE GAME NOW/);
   assert.equal(sent.max_tokens, 100);
+});
+
+test("1.1.0: the assistant prompt describes mainnet and the three agents; the game prompt is unchanged", () => {
+  const ctx = { agents: [], market: [], canMintFree: false };
+  for (const lang of ["en", "uk"]) {
+    const a = solAssistantSystem(lang, ctx, "", true);
+    assert.match(a, /mainnet/);
+    assert.match(a, /Jupiter/);
+    assert.doesNotMatch(a, /devnet with test money|You CAN act on/);
+    assert.match(a, lang === "uk" ? /Агент сезону.*Скарбничка.*Вартовий/s : /Season Agent.*Saver.*Watcher/s);
+    assert.match(a, lang === "uk" ? /ніколи не торгує/ : /never trades/);
+  }
+  const game = solSystem("en", "chat", ctx, "", null, true);
+  assert.match(game, /Everything runs on devnet with test money/);
+  assert.doesNotMatch(game, /Season Agent|Watcher/);
 });

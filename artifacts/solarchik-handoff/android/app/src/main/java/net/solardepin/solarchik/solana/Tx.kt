@@ -31,6 +31,15 @@ class LegacyTx private constructor(val keys: List<Meta>, val message: ByteArray)
 
     fun signature(i: Int): ByteArray = sigs[i].copyOf()
 
+    /** 1.1.0: a signature made elsewhere (the server's collection-authority co-sign), verified by the caller. */
+    fun addSignature(key: PublicKey, signature: ByteArray): LegacyTx {
+        val i = signerIndex(key)
+        require(i >= 0) { "Not a signer: ${key.toBase58()}" }
+        require(signature.size == 64) { "bad signature" }
+        sigs[i] = signature.copyOf()
+        return this
+    }
+
     fun serialize(): ByteArray {
         val out = ByteArrayOutputStream()
         shortVec(out, sigs.size)

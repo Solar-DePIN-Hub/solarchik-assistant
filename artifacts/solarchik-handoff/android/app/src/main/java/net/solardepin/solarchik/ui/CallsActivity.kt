@@ -332,6 +332,9 @@ class CallsActivity : ComponentActivity() {
             addView(Ui.top(Ui.text(this@CallsActivity, CallText.summary(this@CallsActivity, it), 16f, Ui.TEXT, 700).apply { setTextIsSelectable(true); setLineSpacing(0f, 1.2f); tag = "call-note" }, 6))
         })
 
+        // 1.1.0: requests found in this call (payment / callback / reminder); acted on from Today, never automatically
+        CallActionCards.rows(this, it.key, it.who)?.let { v -> column.addView(v) }
+
         // post-call actions
         val actions = Ui.card(this, pad = 14).apply { tag = "call-actions" }
         actions.addView(Ui.label(this, getString(R.string.calls_actions_label)))

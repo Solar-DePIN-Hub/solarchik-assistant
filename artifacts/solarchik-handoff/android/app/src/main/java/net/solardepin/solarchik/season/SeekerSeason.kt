@@ -18,7 +18,9 @@ import java.util.concurrent.TimeUnit
  * since 20 Aug 2026 discounts repetitive, bot-like transactions. This app only:
  *  - remembers on this phone the days you opened it and the suggested dApps you opened from here,
  *  - suggests real dApp Store apps (links out),
- *  - offers the daily check-in, which you sign yourself (devnet in this build, so it is a habit, not points),
+ *  - offers the daily check-in, which you sign yourself in your wallet (1.1.0: a real mainnet memo tx),
+ *  - 1.1.0: counts real mainnet actions only (a confirmed check-in memo tx or a confirmed Jupiter swap today),
+ *    never claims points,
  *  - reads your SKR balance on mainnet (read-only).
  */
 data class SeasonDapp(val name: String, val pkg: String, val url: String, val about: Int, val short: String = name)
@@ -46,11 +48,15 @@ data class SeasonPlan(
     val explored: String?,
     val signedToday: Boolean,
     val clockedToday: Boolean,
+    /** 1.1.0: today's real mainnet action ("check-in" or "swap"), null when none. */
+    val onchain: String? = null,
+    /** 1.1.0: on mainnet only a real mainnet action ticks the onchain item; dev devnet mode keeps the signed check-in. */
+    val mainnet: Boolean = false,
 ) {
     fun done(item: SeasonItem): Boolean = when (item) {
         SeasonItem.DAILY_USE -> openedToday
         SeasonItem.EXPLORE -> explored != null
-        SeasonItem.ONCHAIN -> signedToday
+        SeasonItem.ONCHAIN -> if (mainnet) onchain != null else signedToday
     }
 
     val doneCount: Int get() = SeasonItem.entries.count { done(it) }
@@ -63,6 +69,9 @@ data class SeasonPlan(
         if (!done(SeasonItem.EXPLORE)) parts += ctx.getString(R.string.season_say_explore, suggestion.name, ctx.getString(suggestion.about))
         else parts += ctx.getString(R.string.season_say_explored, explored ?: suggestion.name)
         parts += when {
+            mainnet && onchain == "swap" -> ctx.getString(R.string.mn_season_say_swap)
+            mainnet && onchain != null -> ctx.getString(R.string.season_say_signed)
+            mainnet && signedToday -> ctx.getString(R.string.mn_season_say_not_chain)
             signedToday -> ctx.getString(R.string.season_say_signed)
             clockedToday -> ctx.getString(R.string.season_say_sign)
             else -> ctx.getString(R.string.season_say_run)
@@ -100,6 +109,29 @@ object SeasonStore {
 
     fun explored(ctx: Context, day: LocalDate = today()): String? = p(ctx).getString("explored:$day", null)
 
+    /** 1.1.0: the SKR staking page opened from the plan counts as today's explore item (a link, nothing signed). */
+    fun markExploredName(ctx: Context, name: String, day: LocalDate = today()) {
+        p(ctx).edit().putString("explored:$day", name).apply()
+    }
+
+    /** 1.1.0: a confirmed real mainnet action today ("check-in" or "swap"). The first one of the day is kept. */
+    fun markOnchain(ctx: Context, kind: String, day: LocalDate = today()) {
+        if (onchainMarked(ctx, day) == null) p(ctx).edit().putString("onchain:$day", kind).apply()
+    }
+
+    fun onchainMarked(ctx: Context, day: LocalDate = today()): String? = p(ctx).getString("onchain:$day", null)
+
+    /**
+     * The plan for the current cluster. On mainnet the onchain item needs a real mainnet tx today: a check-in memo
+     * transaction (not a detached message signature) or a confirmed swap.
+     */
+    fun planFor(ctx: Context, save: net.solardepin.solarchik.game.GameSave, mainnet: Boolean, day: LocalDate = today()): SeasonPlan {
+        val signed = save.signedToday()
+        val checkin = signed && save.clockCluster == "mainnet" && save.clockKind == "tx"
+        val onchain = onchainMarked(ctx, day) ?: if (checkin) "check-in" else null
+        return plan(ctx, signed, save.clockedToday(), day).copy(onchain = onchain, mainnet = mainnet)
+    }
+
     fun plan(ctx: Context, signedToday: Boolean, clockedToday: Boolean, day: LocalDate = today()): SeasonPlan {
         val days = openedDays(ctx)
         return SeasonPlan(day, day.toString() in days, streak(days, day), SeasonDapps.forDay(day), explored(ctx, day), signedToday, clockedToday)
@@ -110,6 +142,8 @@ object SeasonStore {
 object Skr {
     const val MINT = "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3"
     const val RPC = "https://api.mainnet-beta.solana.com"
+    /** 1.1.0: second public mainnet node when the first is rate limited. */
+    const val RPC_FALLBACK = "https://solana-rpc.publicnode.com"
     const val STAKE_URL = "https://stake.solanamobile.com"
 
     class RpcError(message: String) : Exception(message)
@@ -136,8 +170,10 @@ object Skr {
 
     private val client by lazy { OkHttpClient.Builder().callTimeout(12, TimeUnit.SECONDS).build() }
 
-    /** Blocking; call from IO. */
-    fun fetch(owner: String, rpc: String = RPC): Result<Double> = runCatching {
+    /** Blocking; call from IO. 1.1.0: the public node first, PublicNode when it fails (429 / 5xx / network). */
+    fun fetch(owner: String): Result<Double> = fetch(owner, RPC).recoverCatching { fetch(owner, RPC_FALLBACK).getOrThrow() }
+
+    fun fetch(owner: String, rpc: String): Result<Double> = runCatching {
         val req = Request.Builder().url(rpc).post(body(owner).toRequestBody("application/json".toMediaType())).build()
         client.newCall(req).execute().use { res ->
             val text = res.body?.string().orEmpty()

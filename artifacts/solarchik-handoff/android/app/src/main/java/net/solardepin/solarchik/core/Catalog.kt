@@ -51,7 +51,10 @@ object Catalog {
         AgentSku("sku-dex-arb", "Backpack SOL Desk", AgentClass.DEX, "dex", R.string.sku_arb_blurb, R.drawable.robot_midnight, 0xFF5BD69A.toInt()),
     )
 
-    private val proIds = skus.map { "${it.id}-pro" }.toSet()
+    /** 1.1.0: game skus plus the three assistant agents (Season Agent, Saver, Watcher). */
+    private val allSkus: List<AgentSku> get() = skus + AssistantCatalog.skus
+
+    private val proIds: Set<String> get() = allSkus.map { "${it.id}-pro" }.toSet()
 
     /** Port of web offerFor: (tier, price). */
     /** Free ids that are never sold (web PAID_ONLY_BASE_SKUS). */
@@ -60,7 +63,7 @@ object Catalog {
     fun offerFor(id: String): Pair<String, Double> =
         if (id in proIds) AgentTier.PRO to SolarchikConfig.PRO_PRICE_SOL else AgentTier.FREE to 0.0
 
-    fun baseOf(skuId: String): AgentSku? = skus.firstOrNull { it.id == skuId.removeSuffix("-pro") }
+    fun baseOf(skuId: String): AgentSku? = allSkus.firstOrNull { it.id == skuId.removeSuffix("-pro") }
 
     /**
      * Names already minted on-chain before a rename. "Titan × Backpack" (until 0.20.4) promised an arbitrage, but the
@@ -76,7 +79,7 @@ object Catalog {
             if (clean == "$old Pro") return sku to AgentTier.PRO
             if (clean == old) return sku to AgentTier.FREE
         }
-        for (sku in skus) {
+        for (sku in allSkus) {
             if (clean == sku.nameFor(AgentTier.PRO)) return sku to AgentTier.PRO
             if (clean == sku.name) return sku to AgentTier.FREE
         }

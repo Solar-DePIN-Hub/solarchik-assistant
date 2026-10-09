@@ -1,0 +1,12 @@
+{
+  "name": "Solarchik Agents",
+  "symbol": "SOLAGENT",
+  "description": "Strategy agents from Solarchik Assistant (Solana Seeker). Free agents: user pays only rent and network fees, 5% fee on realized profit. Pro: 0.1 SOL once to the treasury, no profit fee. Combo is Pro-only.",
+  "image": "https://solardepin.net/favicon.ico",
+  "external_url": "https://github.com/Solar-DePIN-Hub/solarchik-assistant",
+  "seller_fee_basis_points": 500,
+  "properties": {
+    "category": "image",
+    "creators": [{ "address": "8J3hxf1XSYV1HKVUJtwtQtVwSvSeaAyW5RmL8EqC67ic", "share": 100 }]
+  }
+}
