@@ -55,6 +55,7 @@ Native Kotlin Android app. Sol for voice. Secretary on a real line with transcri
 - MunichTech and CLOCK IN used the game-shaped build; Colosseum is repositioned as Assistant in this repo.
 - No dApp Store publish yet. SKR is shown read-only (mainnet balance); staking is a link to stake.solanamobile.com. The Seeker Season plan never signs or repeats anything, and it can't show Season points.
 - 1.1.0 is on mainnet with real funds; swaps and agents are opt-in with small caps. Signed mainnet transactions were verified by building and simulating against mainnet, not by spending funds. Agent NFT mint on mainnet is not open yet.
+- No Seeker in hand: the demo video is filmed on an Android tablet with Phantom through Mobile Wallet Adapter. The app is built for Seeker and reaches Seed Vault through the same MWA flow, but Seed Vault on a real Seeker is not tested yet. Seeker Season counts Seed Vault activity, so the tablet's check-ins do not count for Season.
 - Prior accelerator wins were with a different project (answer No if the form means this product).
 
 ## Open before submit
