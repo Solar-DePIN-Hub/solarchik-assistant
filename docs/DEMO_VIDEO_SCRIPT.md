@@ -1,4 +1,4 @@
-# Solarchik Assistant 1.1.3: demo video shot list (2:20–2:30)
+# Solarchik Assistant 1.1.4: demo video shot list (2:20–2:30)
 
 This video plays right after the 2-minute speech (pitch-2min-en.md, kept with the Colosseum deliverables), and later on its own for Colosseum. It must work on its own: the speech explains the problem, why Seeker and the business model. The video **shows** it. Nothing from the speech is repeated word for word, so the captions below use different wording on purpose.
 
@@ -17,7 +17,7 @@ Nothing has been installed yet, so do the steps in this order. Allow about 40 mi
 
 1. **Phantom on the tablet.** Google Play → **Phantom** (publisher Phantom Technologies) → Install → **Create a new wallet**. Use a fresh wallet for the demo, not your personal one: its address and balance will be on camera. Write the recovery phrase on paper and keep it off camera. Phantom is on Solana mainnet by default; check that **Settings → Developer settings → Testnet mode is off**.
 2. **Fund Phantom with about 0.02–0.05 SOL.** In Phantom tap **Receive** → Solana → copy the address. Send 0.02–0.05 SOL to it from an exchange or another wallet (double-check the first and last 4 characters). Wait until Phantom shows the balance. 0.02 SOL is enough for the check-in, a small swap test and the swap on camera; 0.05 SOL leaves room for retakes. (SKR is optional; without it the SKR line shows 0, that's fine.)
-3. **Install the app.** On the tablet open https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.3 → **solarchik-assistant.apk** → open the download → allow "Install unknown apps" for the browser when Android asks → Install. Open it once, finish onboarding, allow **notifications** and the **microphone**.
+3. **Install the app.** On the tablet open https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.4 → **solarchik-assistant.apk** → open the download → allow "Install unknown apps" for the browser when Android asks → Install. Open it once, finish onboarding, allow **notifications** and the **microphone**.
 4. **Connect Phantom in the app.** Today → **Set up wallet** → choose **Phantom** if Android asks → Phantom shows "Connect" for Solarchik → **Connect**. Back in the app, Today must show the real SOL balance, not "—". (If the app says "No Solana wallet app found", Phantom isn't installed or the app was opened before it; close the app and open it again.)
 5. **Language:** More → Language → English. **Secretary language:** More → Secretary → "Secretary speaks" → **English**.
 6. **Your account and the call budget.** The tablet install is a new account. More → Secretary: if it says **"Owner · no credit needed"**, you're set. If it shows **Secretary credit** with a trial amount instead, the account has **3 starter calls**, and each caller number gets 3 trial calls a day. To lift that, send your **Account ID** (More → Secretary → Account ID) to the agent: it gets added to the owner list on the worker (`ADMIN_USER_IDS`, no app update). Do this before the test calls.
@@ -105,7 +105,7 @@ If Phantom fails: stop, fix, record this shot again. This one is not optional. D
 | 2:10–2:13 | **Season Agent** tab: autopilot line "1–2 real actions a day, you sign each". | **Season Agent: suggests, never signs for me.** |
 | 2:13–2:16 | **Saver** tab, then **Watcher** tab with one line in "Recent alerts" (two quick cuts). | **Saver: inside my caps. Watcher: alerts only.** |
 | 2:16–2:20 | (Optional, cut first if long) Sol answers one held-mic question: *"Sol, what's left for today?"* | **Ask Sol.** |
-| 2:20–2:25 | End card (still image, 5 s). | **Solarchik Assistant** · Android app built for Solana Seeker · v1.1.3 · Call the secretary: **+380 91 481 0885** · github.com/Solar-DePIN-Hub/solarchik-assistant |
+| 2:20–2:25 | End card (still image, 5 s). | **Solarchik Assistant** · Android app built for Solana Seeker · v1.1.4 · Call the secretary: **+380 91 481 0885** · github.com/Solar-DePIN-Hub/solarchik-assistant |
 
 ---
 
