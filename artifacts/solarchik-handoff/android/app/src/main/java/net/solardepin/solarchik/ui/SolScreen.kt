@@ -276,6 +276,22 @@ class SolScreen(host: MainActivity) : Screen(host) {
         act(msg, history)
     }
 
+    /** 1.0.1: calls, follow-ups, wallet and the Season plan for the assistant prompt, then the agent desk report. */
+    internal fun assistantContext(now: Long = System.currentTimeMillis()): String {
+        val sec = net.solardepin.solarchik.screen.Secretary
+        val secOn = runCatching { sec.supported() && net.solardepin.solarchik.screen.PlayerIds.screeningOn(ctx) && sec.holdsRole(ctx) }.getOrDefault(false)
+        val w = host.wallet
+        val line = net.solardepin.solarchik.sol.AssistantContext.build(
+            net.solardepin.solarchik.screen.CallInbox.cached(ctx),
+            net.solardepin.solarchik.screen.FollowUps.list(ctx, now),
+            net.solardepin.solarchik.sol.AssistantContext.Wallet(w.connected, w.isLocal, if (w.connected) w.address else ""),
+            net.solardepin.solarchik.season.SeasonStore.plan(ctx, host.save.signedToday(), host.save.clockedToday()),
+            secOn, now,
+        )
+        val report = currentReport().script.take(250)
+        return if (report.isBlank()) line else "$line Agent desk: $report"
+    }
+
     /* ---------------- one brain (0.21.8) ---------------- */
 
     private fun say(text: String, link: String = "", speakIt: Boolean = true) {
@@ -308,7 +324,7 @@ class SolScreen(host: MainActivity) : Screen(host) {
                 net.solardepin.solarchik.sol.SolLatency.request(actions.lastBuildMs)
                 // 0.22.0: fresh state on every message; chat lines from before today's signature are not resent
                 val st = net.solardepin.solarchik.sol.SolState.of(host.save)
-                val r = brain.ask(msg, host.lang, "yard", c, net.solardepin.solarchik.sol.SolState.freshHistory(history, st), currentReport().script.take(500), st) { soFar ->
+                val r = brain.ask(msg, host.lang, "yard", c, net.solardepin.solarchik.sol.SolState.freshHistory(history, st), assistantContext(), st) { soFar ->
                     if (streamed.isEmpty()) net.solardepin.solarchik.sol.SolLatency.firstToken()
                     streamed = soFar
                     status.text = soFar

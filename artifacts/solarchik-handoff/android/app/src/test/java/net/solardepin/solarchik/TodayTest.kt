@@ -149,7 +149,7 @@ class TodayTest {
 
     @Test fun installsNextToTheGameAndStaysOnDevnet() {
         assertEquals("net.solardepin.solarchik.assistant", BuildConfig.APPLICATION_ID)
-        assertEquals("1.0.0", BuildConfig.VERSION_NAME)
+        assertEquals("1.0.1", BuildConfig.VERSION_NAME)
         assertTrue(BuildConfig.DEVNET_ONLY)
         assertEquals("Solarchik Assistant", app.getString(R.string.app_name))
         val w = SolanaWallet(app)

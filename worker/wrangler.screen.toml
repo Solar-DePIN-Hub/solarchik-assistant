@@ -1,0 +1,51 @@
+# 1.0.1 (Solarchik Assistant repo): source copied from Solar-DePIN-Hub/Solarchik branch web-fees @ 021aaf6 (8 Oct 2026),
+# plus the assistant persona for /sol/chat (request field app: "assistant"; no field = the game prompt, unchanged).
+# NOT DEPLOYED YET: the live version is 1be24509 ("cache inbox reads, do not burn KV", 8 Oct 2026 22:16 UTC), whose source
+# is not in any repo I could find. Deploying this file would drop that change. Get that source (or an explicit OK) first.
+# Deploy: npx wrangler deploy --config worker/wrangler.screen.toml   Rollback: npx wrangler rollback <previous id> --name solarchik-screen
+# Call secretary Worker (solarchik-screen.davidbell1603.workers.dev). Source recovered from the Grok export
+# (artifacts/solar-depin-worldsfair/app/screen/cf/worker.js), which matches deployed version 744a4bf8
+# (compat date 2026-09-19, KV BALANCES, secret OPENAI_API_KEY). Optional var/secret SOLANA_RPC (mainnet RPC URL).
+# Secrets stay in Cloudflare; never put them here: OPENAI_API_KEY, OPENAI_WEBHOOK_SECRET (enforces /sip signatures),
+# SECRETARY_TOKEN (/expect /voicemail /phone), OWNER_USER_ID (default number +380914810885 -> owner/demo account).
+# Live 241bf359-f4d5-4e84-90df-3a13cd32a153 (2 Oct 2026, ~23:46 Kyiv): robust called-number detection + masked header log, webhook dedup,
+# /secretary-lang, starter credit + TRIAL_DAILY_CAP / TRIAL_CALLER_CAP / TRIAL_SESSIONS (optional vars), demo line budget.
+# Rollback: npx wrangler rollback 71b66276-8aad-4cc8-890c-f2d33a72e1ba --name solarchik-screen (78069545 code + current secrets;
+# older: 58787520, base 744a4bf8).
+# Live 79a77437-e167-4f58-88dc-50905b082e88 (3 Oct 2026, ~00:40 Kyiv, native 0.21.8 job): CallRoom Durable Object (strict
+# once-only incoming calls + realtime sideband transcript -> fallback note), call:<id> markers (a duplicate delivery never
+# charges, refunds or rewrites the inbox), note tool first in the instructions, no company field; /topup RPC fall-through on
+# empty history + GET /rpc-health; Sol routes POST /sol/chat (OpenAI gpt-4.1-mini, streamed NDJSON, propose_action) and
+# GET /sol/tts (gpt-4o-mini-tts, Cloudflare-cached). Includes the owner's 81e336fa edits (app_seen logs, no-company prompts).
+# Rollback: npx wrangler rollback 81e336fa-670a-4e95-b818-e67a1ce609f2 --name solarchik-screen (the DO binding stays
+# deployed but unused by that code; older: 241bf359, 71b66276).
+# Live 75c667e3-57eb-4529-b923-d8e6479ae999: the version that was live when the 0.21.9 job started (not logged here before).
+# Live 79f83fac-12cf-499c-87ad-ecc43801f1b1 (3 Oct 2026, ~02:10 Kyiv, native 0.21.9 job): Calls archive support:
+# canonical call ids (rtc_/live_ twins share one CallRoom, session-only deliveries wait for the rtc_ twin), /inbox
+# drops the failed ghost twin, transcripts kept in KV (transcript:<callId>, 60 days) + durationSec, GET /call
+# (item + transcript, falls back to the old DO lines), GET/POST /block (blocked callers get 486, no charge, inbox
+# status "blocked"), POST /call-claim (demo line routes the next call within 180 s to the claiming player id),
+# Sol prompt copy fixes («ти», no gendered past tense, CLOCK IN = 1200 m + "Підписати сьогодні"), speakable() TTS
+# text (#11 -> "номер 11", no symbols), phone secretary uses polite «ви» consistently with callers.
+# Rollback: npx wrangler rollback 75c667e3-57eb-4529-b923-d8e6479ae999 --name solarchik-screen (pre-0.21.9; the
+# 0.21.9 app then loses /call, /block and /call-claim and shows its offline/empty states). Intermediate 0.21.9
+# deploy without the «ви» change: 41870b78-5c07-4bde-8352-48177bb6fdda.
+name = "solarchik-screen"
+main = "solarchik-screen.js"
+compatibility_date = "2026-09-19"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "BALANCES"
+id = "39853e1695f04f52999da250e215e4e8"
+
+# One Durable Object per call id: strict once-only handling of realtime.call.incoming (OpenAI delivered one call
+# twice, 166 ms apart, on 2 Oct) and the realtime sideband that writes a note from the transcript when the model
+# never called save_call_note. SQLite-backed class (works on the Workers Free plan).
+[[durable_objects.bindings]]
+name = "CALLS"
+class_name = "CallRoom"
+
+[[migrations]]
+tag = "v1-call-room"
+new_sqlite_classes = ["CallRoom"]

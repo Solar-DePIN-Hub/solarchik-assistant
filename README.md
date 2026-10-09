@@ -123,7 +123,7 @@ cd artifacts/solarchik-handoff/android
 | Screenshots in this README | Real app views rendered in tests, with sample calls and a sample balance. |
 
 Some known rough edges:
-- When a question goes to the model, Sol's persona on the worker still sometimes talks like the game character. I left the live worker alone for this build.
+- When a question goes to the model, Sol can still talk like the game character. The fix is in this repo: since 1.0.1 the app sends `app: "assistant"` with a short summary of the phone's state, and [worker/solarchik-screen.js](worker/solarchik-screen.js) then uses an assistant prompt. It goes live once I deploy that worker version.
 - I tested on the Robolectric renders and the unit tests. I didn't have an emulator for this release. The full secretary flow and the voice need a real phone.
 
 ## Roadmap

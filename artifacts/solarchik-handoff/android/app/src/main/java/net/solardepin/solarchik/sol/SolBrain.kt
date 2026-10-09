@@ -52,9 +52,10 @@ class SolBrain(
         put("language", if (language == "uk") "uk" else "en")
         put("scene", scene)
         put("stream", true)
+        put("app", net.solardepin.solarchik.core.SolarchikConfig.SOL_APP)
         // 0.22.0: the fresh player state goes first (never cut by the length cap) and as JSON for the worker
         val full = listOfNotNull(state?.line(), context.takeIf { it.isNotBlank() }).joinToString("\n")
-        if (full.isNotBlank()) put("context", full.take(800))
+        if (full.isNotBlank()) put("context", full.take(if (scene == "run") 800 else 1200))
         state?.let { put("state", it.toJson()) }
         val c = ctx.toJson()
         c["agents"]?.let { put("agents", it) }
