@@ -1,13 +1,11 @@
-# Pitch
+# Pitch — Solarchik Assistant
 
-Solarchik is not another chat box.
+Solarchik Assistant is a pocket AI on your phone, not another chat box.
 
-He is a small solar robot who lives in a room on your phone. You pick his voice once. After that he is with you.
+Sol lives on the home screen. You hold one big mic button. He answers in your language, short and out loud.
 
-In the room you talk. He answers in your language, two sentences, out loud.
+When you cannot take a call, the AI secretary picks up on a real line, talks to the caller, and leaves you a short summary: who, why, what to do next.
 
-In the roof run he runs next to you. He does not flood the session. About every half minute he throws one clear line. If you already opened the mic, he stays quiet until you are done.
+Agent NFTs on Solana (devnet for the hackathon) hold strategy and a small wallet path. A daily check-in keeps the habit. The roof run stays as a small bonus, not the product.
 
-If someone calls and you cannot pick up, you tap the red phone on the booth. That is the secretary. He writes who called, why, and what you should do next. Then he reads the report back.
-
-Same friend. Same voice. Play, talk, handle the call.
+Same friend. Same voice. Talk, handle the call, keep the on-chain habit.
