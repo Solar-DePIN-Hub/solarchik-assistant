@@ -8,6 +8,7 @@ import com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter
 import com.solana.mobilewalletadapter.clientlib.RpcCluster
 import com.solana.mobilewalletadapter.clientlib.TransactionResult
 import com.solana.mobilewalletadapter.clientlib.protocol.MobileWalletAdapterClient
+import net.solardepin.solarchik.BuildConfig
 import net.solardepin.solarchik.core.SolarchikConfig
 import net.solardepin.solarchik.game.GameSave
 import net.solardepin.solarchik.solana.LegacyTx
@@ -207,6 +208,9 @@ class SolanaWallet(context: Context) {
     }
     val isSeeker: Boolean = SeekerDevice.isSeeker()
 
+    /** 1.0.0 Solarchik Assistant: devnet only, Seeker included (tests may flip it to check the old Seeker path). */
+    @Volatile internal var devnetOnly: Boolean = BuildConfig.DEVNET_ONLY
+
     /** Seeker defaults to mainnet; the player may force devnet. Everything else is devnet only. */
     var forceDevnet: Boolean
         get() = prefs.getBoolean("forceDevnet", false)
@@ -216,7 +220,7 @@ class SolanaWallet(context: Context) {
         }
 
     /** The built-in wallet is devnet only, always. */
-    val mainnet: Boolean get() = isSeeker && !forceDevnet && !isLocal
+    val mainnet: Boolean get() = !devnetOnly && isSeeker && !forceDevnet && !isLocal
     val clusterName: String get() = if (mainnet) "mainnet" else "devnet"
     val rpcUrl: String get() = if (mainnet) SolarchikConfig.RPC_MAINNET else SolarchikConfig.RPC_DEVNET
     val rpc: Rpc get() = rpcOverride ?: Rpc(rpcUrl)
@@ -237,7 +241,7 @@ class SolanaWallet(context: Context) {
             identityName = "Solarchik",
         )
     ).apply {
-        rpcCluster = if (isSeeker && !prefs.getBoolean("forceDevnet", false)) RpcCluster.MainnetBeta else RpcCluster.Devnet
+        rpcCluster = if (!devnetOnly && isSeeker && !prefs.getBoolean("forceDevnet", false)) RpcCluster.MainnetBeta else RpcCluster.Devnet
         val saved = prefs.getString("auth", "").orEmpty()
         if (saved.isNotBlank()) authToken = saved
     }

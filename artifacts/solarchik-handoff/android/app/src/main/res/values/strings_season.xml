@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="season_title">Seeker Season</string>
+    <string name="season_sub">A short daily plan for using your Seeker the normal way. Sol never signs for you, never repeats transactions and can\'t give you points.</string>
+    <string name="season_card_sub">%1$d of %2$d done today</string>
+    <string name="season_card_open">Open plan</string>
+    <string name="season_progress">%1$d/%2$d today</string>
+    <string name="season_chip_use">Daily use</string>
+    <string name="season_chip_explore">Explore</string>
+    <string name="season_chip_chain">Onchain</string>
+    <string name="season_plan">Today\'s plan</string>
+    <string name="season_use_title">Use your phone today</string>
+    <string name="season_use_done">Opened today · %1$s</string>
+    <string name="season_use_todo">Open Solarchik once a day</string>
+    <plurals name="season_streak">
+        <item quantity="one">%d day in a row</item>
+        <item quantity="other">%d days in a row</item>
+    </plurals>
+    <string name="season_explore_title">Explore a dApp</string>
+    <string name="season_explore_todo">Suggestion for today: %1$s. %2$s</string>
+    <string name="season_explore_done">You opened %1$s from here today.</string>
+    <string name="season_explore_open">Open %1$s</string>
+    <string name="season_explore_more">Other suggestions</string>
+    <string name="season_explore_note">Suggestions from the Solana dApp Store, not ads and not sponsored. If the app is installed it opens; otherwise its website opens.</string>
+    <string name="season_chain_title">One useful onchain action</string>
+    <string name="season_chain_signed">Today\'s check-in is signed.</string>
+    <string name="season_chain_sign">You clocked in. Sign today\'s check-in with your wallet.</string>
+    <string name="season_chain_run">Clock in (one %1$d m run), then sign it with your wallet.</string>
+    <string name="season_chain_btn_sign">Sign check-in</string>
+    <string name="season_chain_btn_run">Clock in</string>
+    <string name="season_chain_note">This build signs on Solana devnet, so the check-in is a habit, not Season activity. Your wallet asks before anything is signed.</string>
+    <string name="season_skr">SKR</string>
+    <string name="season_skr_mainnet">Mainnet · read-only</string>
+    <string name="season_skr_none">Connect a wallet to see its SKR balance. Reading a balance never signs anything.</string>
+    <string name="season_skr_connect">Connect wallet</string>
+    <string name="season_skr_loading">Reading SKR balance…</string>
+    <string name="season_skr_error">Couldn\'t reach Solana mainnet right now. Nothing was changed.</string>
+    <string name="season_skr_retry">Try again</string>
+    <string name="season_skr_addr">Wallet %1$s</string>
+    <string name="season_skr_local">This is the built-in devnet key. Your SKR lives in Seed Vault Wallet; connect it to see the real balance.</string>
+    <string name="season_skr_stake_note">Staked SKR and rewards are shown on the Solana Mobile staking page.</string>
+    <string name="season_skr_stake">Manage staking</string>
+    <string name="season_fair_title">How it\'s scored</string>
+    <string name="season_fair_body">Season 2 looks at Seed Vault Wallet activity on mainnet: onchain activity, dApp exploration and daily use. Repetitive or bot-like transactions count for less. So this plan only suggests one real thing per day, and every transaction needs your tap in the wallet.</string>
+    <string name="season_dapp_orb">Helius\'s Solana explorer and markets tracker.</string>
+    <string name="season_dapp_jupiter">Swaps and DeFi on Solana.</string>
+    <string name="season_dapp_loopscale">Lend and borrow SOL and USDC.</string>
+    <string name="season_dapp_tokenrun">Walk around and collect treasures (GEODNET).</string>
+    <string name="season_say_head">Seeker Season today: %1$d of %2$d done.</string>
+    <string name="season_say_explore">Try %1$s. %2$s</string>
+    <string name="season_say_explored">You already opened %1$s today.</string>
+    <string name="season_say_signed">Your check-in is signed.</string>
+    <string name="season_say_sign">You clocked in; sign the check-in when you\'re ready.</string>
+    <string name="season_say_run">Clock in and sign the check-in if you like.</string>
+    <string name="season_say_fair">I won\'t sign or repeat anything for you; use the apps like you normally would.</string>
+</resources>

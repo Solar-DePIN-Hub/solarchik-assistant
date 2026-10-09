@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_today">Сьогодні</string>
+    <string name="nav_calls">Дзвінки</string>
+    <string name="nav_talk">Сол</string>
+
+    <string name="today_morning">Доброго ранку</string>
+    <string name="today_afternoon">Добрий день</string>
+    <string name="today_evening">Добрий вечір</string>
+    <string name="today_night">Ще не спиш?</string>
+    <string name="today_devnet">Devnet</string>
+    <string name="today_settings">Налаштування</string>
+    <string name="today_summary_quiet">Сьогодні ще ніхто не дзвонив. Я на зв\'язку.</string>
+    <plurals name="today_summary_calls">
+        <item quantity="one">%d дзвінок сьогодні</item>
+        <item quantity="few">%d дзвінки сьогодні</item>
+        <item quantity="many">%d дзвінків сьогодні</item>
+        <item quantity="other">%d дзвінка сьогодні</item>
+    </plurals>
+    <plurals name="today_summary_followups">
+        <item quantity="one">%d справа</item>
+        <item quantity="few">%d справи</item>
+        <item quantity="many">%d справ</item>
+        <item quantity="other">%d справи</item>
+    </plurals>
+
+    <string name="today_sol_name">Сол</string>
+    <string name="today_sol_role">Твій асистент</string>
+    <string name="today_mic_hint">Утримуй, щоб говорити · торкнись для режиму без рук</string>
+    <string name="today_mic_desc">Поговорити з Солом</string>
+    <string name="today_listening">Слухаю…</string>
+    <string name="today_mic_release">Відпусти, щоб надіслати</string>
+    <string name="today_chip_type">Написати</string>
+    <string name="today_chip_ask">Що ти вмієш?</string>
+    <string name="today_chip_ask_msg">Що ти можеш для мене зробити?</string>
+    <string name="today_chip_calls">Хтось дзвонив?</string>
+    <string name="today_chip_calls_msg">Хтось мені сьогодні дзвонив?</string>
+
+    <string name="today_sec_title">Телефонний секретар</string>
+    <string name="today_sec_on">Увімкнено</string>
+    <string name="today_sec_off">Вимкнено</string>
+    <string name="today_sec_handled">Відповів</string>
+    <string name="today_sec_missed">Пропущені</string>
+    <string name="today_sec_blocked">Заблоковані</string>
+    <string name="today_sec_latest_today">Сьогодні</string>
+    <string name="today_sec_latest">Останні</string>
+    <string name="today_sec_empty">Дзвінків ще не було. Подзвони на лінію секретаря сам і подивись, як він відповідає, записує нотатку й транскрипт.</string>
+    <string name="today_sec_inbox">Усі дзвінки</string>
+    <string name="today_sec_try">Спробувати</string>
+
+    <string name="today_todo_title">Справи</string>
+    <string name="today_todo_empty">Справ немає. Коли хтось просить передзвонити або ти ставиш нагадування на дзвінок, воно з\'явиться тут.</string>
+    <string name="today_todo_callback">Передзвонити: %s</string>
+    <string name="today_todo_reminder">Нагадування · %s</string>
+    <string name="today_todo_done">Готово</string>
+    <string name="today_todo_done_toast">Готово, прибрав зі списку.</string>
+    <string name="today_todo_more">Ще %d у Дзвінках</string>
+
+    <string name="today_wallet_title">Гаманець агента</string>
+    <string name="today_wallet_none">Гаманця ще немає. Створи його, і Сол зможе діяти за тебе в Solana devnet, завжди після твого підтвердження.</string>
+    <string name="today_wallet_setup">Створити гаманець</string>
+    <string name="today_wallet_balance_loading">Перевіряю баланс…</string>
+    <string name="today_wallet_balance_off">Баланс недоступний офлайн</string>
+    <string name="today_wallet_builtin">Вбудований гаманець</string>
+    <string name="today_wallet_app">Застосунок гаманця</string>
+    <string name="today_wallet_did">Остання дія</string>
+    <string name="today_wallet_did_none">Поки нічого. Жоден агент не працює.</string>
+    <string name="today_wallet_next">Чекає на тебе</string>
+    <string name="today_wallet_next_none">Нічого. Сол питає перед кожним кроком у блокчейні.</string>
+    <string name="today_wallet_next_pending">%s · підтверди в чаті</string>
+    <string name="today_wallet_agents">Агенти</string>
+    <string name="today_wallet_explorer">Explorer</string>
+
+    <string name="today_checkin_title">Щоденна відмітка</string>
+    <string name="today_checkin_run">Пробіжи %d м, щоб відкрити</string>
+    <string name="today_checkin_sign">Можна підписати</string>
+    <string name="today_checkin_signed">Підписано в Solana ✓</string>
+    <plurals name="today_checkin_streak">
+        <item quantity="one">%d день поспіль</item>
+        <item quantity="few">%d дні поспіль</item>
+        <item quantity="many">%d днів поспіль</item>
+        <item quantity="other">%d дня поспіль</item>
+    </plurals>
+    <string name="today_play_title">Грати</string>
+    <string name="today_play_new">Міні-гра «Забіг дахами»</string>
+    <string name="today_checkin_none">Почни серію</string>
+    <string name="today_play_sub">Забіг дахами · рекорд %d м</string>
+
+    <string name="today_footer">Solarchik Assistant %s · Solana devnet</string>
+
+    <string name="onb_skip">Пропустити</string>
+    <string name="onb_next">Далі</string>
+    <string name="onb_start">Почати</string>
+    <string name="onb_1_title">Знайомся: Сол, твій кишеньковий асистент</string>
+    <string name="onb_1_body">Утримуй мікрофон і просто говори. Сол знає про твої дзвінки, нагадування й гаманець, українською чи англійською.</string>
+    <string name="onb_2_title">Він відповідає на дзвінки за тебе</string>
+    <string name="onb_2_body">AI-секретар бере слухавку на справжній лінії, записує нотатку й транскрипт і може блокувати спам-номери. Ти потім читаєш коротке резюме.</string>
+    <string name="onb_3_title">Гаманець агента в Solana</string>
+    <string name="onb_3_body">Сол може створювати й запускати агентів і підписувати твою щоденну відмітку в Solana devnet. Без твого «Підтвердити» нічого не відбувається.</string>
+    <string name="as_skills">Я відповідаю на дзвінки, коли ти не можеш: секретар бере слухавку, записує нотатку й транскрипт, а я кажу тобі, що важливо. Я тримаю справи й нагадування з цих дзвінків. Ще я дивлюсь за гаманцем агента в Solana devnet: можу запустити, зупинити чи перелаштувати агента, але кожен крок у блокчейні чекає на твоє «Підтвердити». Питай про дзвінки, агентів чи свій день.</string>
+    <plurals name="as_calls_today">
+        <item quantity="one">Сьогодні був %d дзвінок.</item>
+        <item quantity="few">Сьогодні було %d дзвінки.</item>
+        <item quantity="many">Сьогодні було %d дзвінків.</item>
+        <item quantity="other">Сьогодні було %d дзвінка.</item>
+    </plurals>
+    <string name="as_call_one">%1$s, %2$s: %3$s</string>
+    <string name="as_calls_none_today">Сьогодні дзвінків не було.</string>
+    <string name="as_calls_last">Останній:</string>
+    <string name="as_calls_never">Дзвінків ще не було. Подзвони на лінію секретаря %s, і я покажу нотатку тут.</string>
+    <string name="today_line_call">%2$s · %1$s: %3$s</string>
+    <plurals name="today_line_todo">
+        <item quantity="one">У тебе %d справа з дзвінків. Розповісти?</item>
+        <item quantity="few">У тебе %d справи з дзвінків. Розповісти?</item>
+        <item quantity="many">У тебе %d справ з дзвінків. Розповісти?</item>
+        <item quantity="other">У тебе %d справи з дзвінків. Розповісти?</item>
+    </plurals>
+    <string name="today_line_idle">Привіт! Утримуй мікрофон і питай що завгодно: про дзвінки, агентів чи твій день.</string>
+    <string name="today_line_signed">Усе спокійно. Сьогоднішня відмітка вже підписана. Утримуй мікрофон, якщо я потрібен.</string>
+    <string name="today_sec_setup">Налаштувати</string>
+    <string name="today_call_open">Відкрити нотатку дзвінка</string>
+    <string name="today_chip_chat">Відкрити чат</string>
+</resources>

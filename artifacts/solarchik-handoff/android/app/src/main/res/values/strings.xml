@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Solarchik</string>
+    <string name="app_name">Solarchik Assistant</string>
     <string name="brand">Solarchik</string>
 
     <!-- Navigation -->
@@ -143,7 +143,7 @@
 
     <!-- Sol -->
     <string name="sol_title">Sol</string>
-    <string name="sol_sub">Your pocket solar friend. Talk or type; Sol answers in your language.</string>
+    <string name="sol_sub">Your pocket assistant. Talk or type; Sol answers in your language.</string>
     <string name="sol_tip_1">Run first, then sign. The streak only counts signed days.</string>
     <string name="sol_tip_2">Save a fee-free window for the days your agents trade the most.</string>
     <string name="sol_tip_3" formatted="false">Pro agents never pay a performance fee. Free agents pay 5% only on profit.</string>

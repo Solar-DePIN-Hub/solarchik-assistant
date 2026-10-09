@@ -133,11 +133,13 @@ class Screens0219Test {
             .putString("source", "openai:marin").putLong("ms", 640).putString("lat", "1,420,430,1180,1760,12,300").commit()
 
         val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get()
-        // Home: the Calls card with the unread badge
-        a.select(MainActivity.Tab.SHIFT)
+        // 1.0.0 Home is Today: the secretary card with today's / latest calls, unread dot on the Calls nav item
+        a.select(MainActivity.Tab.TODAY)
         idle()
-        assertNotNull(findTag(a.window.decorView, "home-calls"))
-        shotRoot(a.window.decorView, "01-home-calls$sfx", a.getString(R.string.home_calls_title))
+        assertNotNull(findTag(a.window.decorView, "today-secretary"))
+        assertTrue(texts(findTag(a.window.decorView, "today-sec-latest")!!).any { it.contains("Вадим") })
+        assertTrue(findTag(a.window.decorView, "nav-calls-dot")!!.visibility == View.VISIBLE)
+        shotRoot(a.window.decorView, "01-home-calls$sfx", a.getString(R.string.today_sec_title))
 
         // Settings: secretary section opens Calls; wallet card without a wallet app; voice timing line
         a.select(MainActivity.Tab.SETTINGS)

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Solarchik</string>
+    <string name="app_name">Соларчик Асистент</string>
     <string name="brand">Соларчик</string>
 
     <string name="nav_yard">Дім</string>
@@ -135,7 +135,7 @@
     <string name="sku_arb_blurb" formatted="false">Прогнозує напрямок SOL/USDC за цінами Backpack у вікнах по 10 хв. Паперовий прогноз, не арбітраж: діє лише коли рух більший за поріг і впевненість ≥65%.</string>
 
     <string name="sol_title">Сол</string>
-    <string name="sol_sub">Твій кишеньковий сонячний друг. Говори або пиши; Sol відповідає твоєю мовою.</string>
+    <string name="sol_sub">Твій кишеньковий асистент. Говори або пиши; Сол відповідає твоєю мовою.</string>
     <string name="sol_tip_1">Спершу забіг, потім підпис. Стрік рахує лише підписані дні.</string>
     <string name="sol_tip_2">Бережи вікно без комісії для днів, коли агенти торгують найбільше.</string>
     <string name="sol_tip_3" formatted="false">Pro-агенти не платять комісію з прибутку. Free — 5% лише з прибутку.</string>

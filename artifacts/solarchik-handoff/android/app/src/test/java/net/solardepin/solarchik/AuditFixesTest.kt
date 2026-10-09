@@ -323,7 +323,9 @@ class AuditFixesTest {
         assertEquals(MainActivity.Tab.SOL, MainActivity.startTab("SOL", "AGENTS"))
         assertEquals(MainActivity.Tab.AGENTS, MainActivity.startTab(null, "AGENTS"))
         assertEquals(MainActivity.Tab.AGENTS, MainActivity.startTab("GONE", "AGENTS"))
-        assertEquals(MainActivity.Tab.YARD, MainActivity.startTab(null, "nope"))
+        assertEquals(MainActivity.Tab.TODAY, MainActivity.startTab(null, "nope"))
+        // 1.0.0: Calls is a shortcut to the inbox, never a restored screen
+        assertEquals(MainActivity.Tab.TODAY, MainActivity.startTab("CALLS", null))
     }
 
     // ---- Call screening ----

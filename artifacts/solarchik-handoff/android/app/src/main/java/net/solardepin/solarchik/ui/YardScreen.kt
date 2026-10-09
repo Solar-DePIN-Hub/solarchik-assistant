@@ -59,7 +59,7 @@ class YardScreen(host: MainActivity) : Screen(host) {
 
     override fun build(): View = page {
         addView(hero())
-        addView(homeCards())
+        // 1.0.0: secretary / calls / agents cards live on Today now; this screen is the daily check-in
         addView(todayCard().also { todayView = it })
         addView(feeCard())
         addView(weekCard())

@@ -20,12 +20,15 @@ android {
     layout.buildDirectory.set(file((project.findProperty("buildRoot") as String?) ?: "/tmp/solarchik-apk-build"))
 
     defaultConfig {
-        applicationId = "net.solardepin.solarchik"
+        // 1.0.0: Solarchik Assistant installs next to the Solarchik game build (net.solardepin.solarchik).
+        applicationId = "net.solardepin.solarchik.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 78
-        versionName = "0.22.3"
+        versionCode = 100
+        versionName = "1.0.0"
         buildConfigField("boolean", "MAINNET_PAID_MINT", "false")
+        // The assistant build never talks to mainnet, Seeker included.
+        buildConfigField("boolean", "DEVNET_ONLY", "true")
     }
 
     buildFeatures { buildConfig = true }
@@ -34,6 +37,8 @@ android {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
             it.maxHeapSize = "1536m"
+            // First-launch onboarding stays off in older screen tests; TodayTest switches it on.
+            it.systemProperty("solarchik.onboarding", "0")
             it.systemProperty("solarchik.devnet", (project.findProperty("devnet") as String?) ?: "0")
             it.systemProperty("solarchik.live", (project.findProperty("live") as String?) ?: "")
             it.systemProperty("solarchik.chat", (project.findProperty("chat") as String?) ?: "")

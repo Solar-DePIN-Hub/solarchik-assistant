@@ -55,7 +55,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         addView(section(R.string.settings_network, R.drawable.ic_nav_sol, Ui.CYAN).apply {
             networkBody = Ui.muted(ctx)
             addView(Ui.top(networkBody, 10))
-            if (host.wallet.isSeeker) {
+            if (host.wallet.isSeeker && !net.solardepin.solarchik.BuildConfig.DEVNET_ONLY) {
                 val sw = switchRow(ctx.getString(R.string.settings_force_devnet), host.wallet.forceDevnet) { _, on ->
                     host.wallet.forceDevnet = on
                     balance = null
@@ -273,7 +273,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         networkBody.text = ctx.getString(
             R.string.join_dot,
             ctx.getString(if (w.mainnet) R.string.network_mainnet else R.string.network_devnet),
-            ctx.getString(if (w.isSeeker) R.string.settings_network_seeker else R.string.settings_network_other),
+            ctx.getString(if (w.isSeeker && !net.solardepin.solarchik.BuildConfig.DEVNET_ONLY) R.string.settings_network_seeker else R.string.settings_network_other),
         )
 
         walletBox.removeAllViews()

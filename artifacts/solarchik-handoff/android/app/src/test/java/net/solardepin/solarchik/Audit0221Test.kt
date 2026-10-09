@@ -72,7 +72,8 @@ class Audit0221Test {
         return out
     }
 
-    private fun open(): MainActivity = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get().also { idle() }
+    // 1.0.0: Today is home; the rooftop is the game behind the Play tile
+    private fun open(): MainActivity = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get().also { idle(); it.select(MainActivity.Tab.YARD); idle() }
 
     @Test fun everyRooftopObjectOpensItsPlace() {
         fun roof(a: MainActivity) = a.screen(MainActivity.Tab.YARD) as RooftopScreen

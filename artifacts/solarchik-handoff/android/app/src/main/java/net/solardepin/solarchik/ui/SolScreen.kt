@@ -71,9 +71,6 @@ class SolScreen(host: MainActivity) : Screen(host) {
         })
         addView(stage)
 
-        report = Ui.card(ctx, accent = Ui.CYAN)
-        addView(report)
-
         addView(Ui.card(ctx, accent = Ui.GOLD).apply {
             val head = Ui.row(ctx, gap = 12)
             head.addView(Ui.iconBadge(ctx, R.drawable.ic_nav_sol, Ui.GOLD, 36))
@@ -124,6 +121,30 @@ class SolScreen(host: MainActivity) : Screen(host) {
             }, 10))
         })
 
+        // 1.0.0: the conversation comes first; today's note follows it
+        report = Ui.card(ctx, accent = Ui.CYAN)
+        addView(report)
+
+    }
+
+    /** 1.0.0 Today wallet card: the action waiting for the player's Confirm, if any. */
+    fun pendingTitle(): String? = pending?.let { planTitle(it) }
+
+    /** 1.0.0: a question asked on Today lands here; bring the chat into view. */
+    fun askFromToday(text: String, voice: Boolean) {
+        send(text, voice)
+        if (this::chatList.isInitialized) chatList.post { scrollToView(chatList) }
+    }
+
+    /** 1.0.0 Today chips: "Type instead" focuses the box and opens the keyboard. */
+    fun focusInput() {
+        if (!this::input.isInitialized) return
+        input.requestFocus()
+        input.post {
+            scrollToView(input)
+            (ctx.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                ?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
     }
 
     private fun round(color: Int, onClick: () -> Unit): TextView = Ui.text(ctx, "", 18f, Ui.TEXT, 800).apply {
@@ -243,7 +264,10 @@ class SolScreen(host: MainActivity) : Screen(host) {
         val history = store.turns()
         store.add(ChatTurn("user", msg, System.currentTimeMillis()))
         input.setText("")
-        net.solardepin.solarchik.sol.SolRules.answer(ctx, msg, net.solardepin.solarchik.sol.SolState.of(host.save))?.let { rule ->
+        // 1.0.0: calls / "what can you do" are answered from this phone (call archive), instantly and offline
+        (net.solardepin.solarchik.sol.AssistantRules.answer(ctx, msg, net.solardepin.solarchik.screen.CallInbox.cached(ctx),
+                season = { net.solardepin.solarchik.season.SeasonStore.plan(ctx, host.save.signedToday(), host.save.clockedToday()) })
+            ?: net.solardepin.solarchik.sol.SolRules.answer(ctx, msg, net.solardepin.solarchik.sol.SolState.of(host.save)))?.let { rule ->
             store.add(ChatTurn("assistant", rule, System.currentTimeMillis(), local = true))
             render()
             speak(rule, auto = true)

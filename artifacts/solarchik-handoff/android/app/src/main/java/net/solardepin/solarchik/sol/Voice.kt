@@ -482,6 +482,16 @@ class SolEars(private val context: Context) {
     private var lastPartialAt = 0L
     private var endTimer: Runnable? = null
     private var stableTimer: Runnable? = null
+    private var finishHook: ((String?) -> Unit)? = null
+
+    /** 1.0.0 hold-to-talk: the finger left the mic. Use what was heard so far; keep listening if nothing yet. */
+    fun finishNow(): Boolean {
+        if (finished || lastPartial.isBlank()) return false
+        finishHook?.invoke(lastPartial)
+        return true
+    }
+
+    val listening: Boolean get() = !finished
 
     fun available(): Boolean = SpeechRecognizer.isRecognitionAvailable(context)
 
@@ -500,6 +510,7 @@ class SolEars(private val context: Context) {
             onDone(text)
             stop()
         }
+        finishHook = { finish(it) }
         fun speechEnd() {
             // t0 = when the last new word arrived (closest the app can see to "the player stopped talking")
             if (SolLatency.current?.let { it.voice && it.stt < 0 } != true) SolLatency.speechEnded(lastPartialAt.takeIf { it > 0 })

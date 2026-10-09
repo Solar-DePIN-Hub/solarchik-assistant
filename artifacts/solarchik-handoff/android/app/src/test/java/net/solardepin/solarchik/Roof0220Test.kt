@@ -76,7 +76,8 @@ class Roof0220Test {
         return true
     }
 
-    private fun open(): MainActivity = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get().also { idle() }
+    // 1.0.0: Today is home; the rooftop is the game behind the Play tile
+    private fun open(): MainActivity = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get().also { idle(); it.select(MainActivity.Tab.YARD); idle() }
 
     // ---- tour state ----
 
@@ -190,7 +191,8 @@ class Roof0220Test {
         val roof = a.screen(MainActivity.Tab.YARD) as RooftopScreen
         roof.debugTap(RoofObject.CLOCK); idle()
         assertEquals(MainActivity.Tab.SHIFT, a.current)
-        assertNotNull(find(a.window.decorView, "home-secretary"))
+        // 1.0.0: the check-in screen keeps today's CLOCK IN card (the secretary card moved to Today)
+        assertNotNull(find(a.window.decorView, "yard-day-reset"))
     }
 
     @Test fun solRemindsUntilCheckedIn() {

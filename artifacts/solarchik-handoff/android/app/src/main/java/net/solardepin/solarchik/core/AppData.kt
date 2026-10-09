@@ -32,12 +32,15 @@ object AppData {
         "solarchik-roof",
         "solarchik.calls.remind",
         "solarchik-local-wallet",
+        // 1.0.0 assistant: onboarding seen, wallet balance cache, follow-ups done
+        "solarchik.assistant",
+        "solarchik.followups", "solarchik.season",
     )
 
     /** Background jobs that would otherwise keep ticking with old state. */
     val WORKS = listOf("solarchik-desk", "solarchik-notes", "solarchik-calls-poll")
 
-    const val PRIVACY_URL = "https://github.com/Solar-DePIN-Hub/Solarchik/blob/native-full/PRIVACY.md"
+    const val PRIVACY_URL = "https://github.com/Solar-DePIN-Hub/solarchik-assistant/blob/main/PRIVACY.md"
 
     // commit(), not apply(): the activity is recreated right after, so the wipe must be on disk first.
     @SuppressLint("ApplySharedPref")

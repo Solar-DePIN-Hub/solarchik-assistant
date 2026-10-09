@@ -32,6 +32,11 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="solana" />
         </intent>
+        <!-- 1.0.0 Seeker Season: open a suggested dApp if it is installed (else its website) -->
+        <package android:name="dev.helius.orb" />
+        <package android:name="ag.jup.jupiter.android" />
+        <package android:name="com.loopscale.app" />
+        <package android:name="com.tokenrun.app" />
     </queries>
 
     <application

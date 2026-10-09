@@ -42,6 +42,7 @@ Native Kotlin Android app. Sol for voice. Secretary on a real line with transcri
 - CLOCK IN game repo (separate): https://github.com/Solar-DePIN-Hub/Solarchik
 - API / market: https://solarchik-market.vercel.app
 - Demo (CLOCK IN cut, reuse until Assistant cut): https://youtu.be/oAxoliLwUXo
+- APK: https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.0.0/solarchik-assistant.apk
 - Deck PDF (CLOCK IN frames; refresh for Assistant): docs/clockin-deck.pdf in this repo
 - X: https://x.com/SolarDePin
 - Email: team.solardepinhub@gmail.com
@@ -50,13 +51,13 @@ Native Kotlin Android app. Sol for voice. Secretary on a real line with transcri
 
 - Started Sep 19, 2026 on the Solarchik line; older Jul Telegram prototype is unrelated.
 - MunichTech and CLOCK IN used the game-shaped build; Colosseum is repositioned as Assistant in this repo.
-- No SKR / dApp Store publish yet.
+- No dApp Store publish yet. SKR is shown read-only (mainnet balance); staking is a link to stake.solanamobile.com. The Seeker Season plan never signs or repeats anything, and it can't show Season points.
 - No live mainnet trading; agents are paper/devnet.
 - Prior accelerator wins were with a different project (answer No if the form means this product).
 
 ## Open before submit
 
-- [ ] New `applicationId` so Assistant installs beside the game APK
-- [ ] Home UI: Sol + large mic (not rooftop-first)
+- [x] New `applicationId` (`net.solardepin.solarchik.assistant`) so Assistant installs beside the game APK (v1.0.0)
+- [x] Home UI: Today with Sol + large mic, secretary, follow-ups, wallet, Seeker Season (v1.0.0)
 - [ ] Fresh demo video + deck frames for Assistant story
 - [ ] Update Colosseum project page links to this repo

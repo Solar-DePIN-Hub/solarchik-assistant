@@ -60,7 +60,7 @@ class ComplianceTest {
     }
 
     @Test fun releaseFacts() {
-        assertEquals("net.solardepin.solarchik", BuildConfig.APPLICATION_ID)
+        assertEquals("net.solardepin.solarchik.assistant", BuildConfig.APPLICATION_ID)
         assertFalse("paid mainnet mint must stay off", BuildConfig.MAINNET_PAID_MINT)
         val info = ctx.packageManager.getApplicationInfo(ctx.packageName, 0)
         assertEquals(35, info.targetSdkVersion)

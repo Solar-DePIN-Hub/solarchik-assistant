@@ -65,17 +65,18 @@ class Nav0217Test {
     @Test fun floatingNavHomeCardsAndEveryTab() {
         val a = open()
         val d = a.window.decorView
-        a.select(MainActivity.Tab.SHIFT, animate = false) // 0.22.0: the old Home cards moved behind the rooftop punch clock
+        // 1.0.0: Today is home; Sol's mic is the raised centre button; the game sits behind a small tile
+        assertEquals(MainActivity.Tab.TODAY, a.current)
         assertNotNull(find(d, "nav-bar"))
         assertNotNull(find(d, "nav-pill"))
-        assertEquals(listOf("Home", "Agents", "Play", "Sol", "More"), listOf("nav-yard", "nav-agents", "nav-run", "nav-sol", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
-        assertNotNull("Secretary is on Home", find(d, "home-secretary"))
-        assertTrue(texts(find(d, "home-secretary")!!).contains("Call Secretary"))
+        assertEquals(listOf("Today", "Calls", "Sol", "Agents", "More"), listOf("nav-today", "nav-calls", "nav-sol", "nav-agents", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
+        assertNotNull("Secretary is on Today", find(d, "today-secretary"))
+        assertTrue(texts(find(d, "today-secretary")!!).contains("Phone secretary"))
         shot(a, "en-1-home")
         a.select(MainActivity.Tab.AGENTS, animate = false); shot(a, "en-2-agents")
         a.select(MainActivity.Tab.RUN, animate = false); shot(a, "en-3-play")
-        assertEquals(0f, find(d, "nav-pill")!!.alpha)
         a.select(MainActivity.Tab.SOL, animate = false); shot(a, "en-4-sol")
+        assertEquals(0f, find(d, "nav-pill")!!.alpha)
         a.select(MainActivity.Tab.SETTINGS, animate = false); shot(a, "en-5-more")
         assertEquals(1f, find(d, "nav-pill")!!.alpha)
     }
@@ -83,8 +84,7 @@ class Nav0217Test {
     @Test fun homeSecretaryCardOpensTheCallsListDirectly() {
         // 0.22.0 (owner): no intermediate Settings screen on the way to the calls
         val a = open()
-        a.select(MainActivity.Tab.SHIFT, animate = false)
-        find(a.window.decorView, "home-secretary")!!.performClick()
+        find(a.window.decorView, "today-sec-inbox")!!.performClick()
         ShadowLooper.idleMainLooper()
         val next = org.robolectric.Shadows.shadowOf(a).nextStartedActivity
         assertEquals(net.solardepin.solarchik.ui.CallsActivity::class.java.name, next?.component?.className)
@@ -92,8 +92,9 @@ class Nav0217Test {
 
     @Test fun homeSliceCardOpensSliceUnderAgents() {
         val a = open()
-        a.select(MainActivity.Tab.SHIFT, animate = false)
-        find(a.window.decorView, "home-slice")!!.performClick()
+        // 1.0.0: Slice lives under Agents (the Home tile went away with the game-first home)
+        a.select(MainActivity.Tab.AGENTS, animate = false)
+        (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).openSection(3)
         ShadowLooper.idleMainLooper()
         assertEquals(MainActivity.Tab.AGENTS, a.current)
         assertEquals(3, (a.screen(MainActivity.Tab.AGENTS) as AgentsScreen).section)
@@ -107,7 +108,7 @@ class Nav0217Test {
     fun ukrainianNavAndTabs() {
         val a = open()
         val d = a.window.decorView
-        assertEquals(listOf("Дім", "Агенти", "Грати", "Сол", "Ще"), listOf("nav-yard", "nav-agents", "nav-run", "nav-sol", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
+        assertEquals(listOf("Сьогодні", "Дзвінки", "Сол", "Агенти", "Ще"), listOf("nav-today", "nav-calls", "nav-sol", "nav-agents", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
         shot(a, "uk-1-home")
         a.select(MainActivity.Tab.AGENTS, animate = false); shot(a, "uk-2-agents")
         a.select(MainActivity.Tab.RUN, animate = false); shot(a, "uk-3-play")

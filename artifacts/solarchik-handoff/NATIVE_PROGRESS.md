@@ -665,3 +665,14 @@ Owner feedback from the 0.21.7 phone test (9 items) plus the secretary's duplica
 - In-game Sol talks about the game. The worker only offers agent tools/context when the player names agents. The app never falls back to the agent desk in a run, retries one failed first call, and is never silent (empty reply or empty voice -> "Не розчув…").
 - The first rooftop visit starts the tour automatically, once (persisted), after the activity is resumed. Skip on every step, replay from "?".
 - Tests 348 / 11 skipped / 0 failed.
+
+## 1.0.0 (100): Solarchik Assistant (Colosseum), 9 Oct 2026
+
+- New app id `net.solardepin.solarchik.assistant` ("Solarchik Assistant"), installs next to the CLOCK IN game. `DEVNET_ONLY=true`: no mainnet signing in this build (the Seeker mainnet default and the force-devnet switch are off/hidden).
+- New home **Today**: greeting, Sol with a hold-to-talk mic (tap = hands-free) plus type/chat buttons, secretary card (today's answered/missed/blocked, latest two notes, inbox, "Try a call" dials the demo line), follow-ups from call notes (callbacks + reminders, tick to done), agent wallet card (devnet balance, last action, what waits for confirmation), Seeker Season card, small check-in and Play tiles.
+- Nav: Today · Calls · [Sol] · Agents · More. The rooftop game is reached only from the Play tile. Back walks home to Today.
+- First-launch onboarding (3 pages, skip), EN + UK.
+- Local assistant answers (`AssistantRules`): calls today, "what can you do", the Seeker Season plan. Everything else goes to the brain as before.
+- **Seeker Season helper** (`season/SeekerSeason.kt`, `ui/SeasonScreen.kt`): daily plan that ticks only from local state (opened today + streak, a suggested dApp opened from the plan today, today's check-in signed). Suggestions verified in the dApp Store catalog: Orb (`dev.helius.orb`), Jupiter Mobile, Loopscale, TokenRun. SKR balance read-only from mainnet `getTokenAccountsByOwner` (mint `SKRbvo6G…hW3`), parser tested on a captured real RPC answer; staking is a link to stake.solanamobile.com (layout not verified, so no numbers). Nothing signs or repeats.
+- Tests: `TodayTest` (16), `SeasonTest` (6); full suite 370 run, 11 skipped, 0 failed. Renders in `docs/screens/`.
+- Not verified here: emulator (no KVM permission on the box), real phone, voice by ear. The worker persona is still game-flavoured for brain answers (live worker untouched).

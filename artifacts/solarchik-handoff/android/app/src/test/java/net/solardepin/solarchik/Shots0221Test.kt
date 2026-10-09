@@ -84,7 +84,8 @@ class Shots0221Test {
     /** Let transient toasts run out before the next shot. */
     private fun settle() { ShadowLooper.idleMainLooper(8, java.util.concurrent.TimeUnit.SECONDS); idle() }
 
-    private fun open(): MainActivity = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get().also { idle() }
+    // 1.0.0: Today is home; the rooftop is the game behind the Play tile
+    private fun open(): MainActivity = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get().also { idle(); it.select(MainActivity.Tab.YARD); idle() }
 
     private fun click(a: Activity, tag: String) { requireNotNull(find(a.window.decorView, tag)) { tag }.performClick(); idle() }
 

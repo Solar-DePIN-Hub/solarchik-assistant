@@ -47,14 +47,18 @@ import net.solardepin.solarchik.wallet.WalletError
 /** Single activity: five native tabs over one MWA sender. No WebView anywhere. */
 class MainActivity : ComponentActivity() {
     enum class Tab(val label: Int, val icon: Int, val inNav: Boolean = true) {
-        // 0.21.7 nav: Home · Agents · [Play] · Sol · More, Play raised in the middle.
-        // 0.22.0: Home is the rooftop scene (nav hidden there); the old Home cards + today's CLOCK IN live on SHIFT.
-        YARD(R.string.nav_yard, R.drawable.ic_nav_yard),
+        // 1.0.0 Solarchik Assistant nav: Today · Calls · [Sol] · Agents · More, Sol's mic raised in the middle.
+        // Calls is a shortcut to CallsActivity, not a screen. The game (rooftop YARD, garage RUN, check-in SHIFT)
+        // is reached from the small tiles on Today.
+        TODAY(R.string.nav_today, R.drawable.ic_nav_yard),
+        CALLS(R.string.nav_calls, R.drawable.ic_call),
+        SOL(R.string.nav_talk, R.drawable.ic_mic),
         AGENTS(R.string.nav_agents, R.drawable.ic_nav_agents),
-        RUN(R.string.nav_run, R.drawable.ic_nav_run),
-        SOL(R.string.nav_sol, R.drawable.ic_nav_sol),
         SETTINGS(R.string.nav_settings, R.drawable.ic_nav_settings),
+        YARD(R.string.nav_yard, R.drawable.ic_nav_yard, inNav = false),
+        RUN(R.string.nav_run, R.drawable.ic_nav_run, inNav = false),
         SHIFT(R.string.nav_yard, R.drawable.ic_nav_yard, inNav = false),
+        SEASON(R.string.season_title, R.drawable.ic_flame, inNav = false),
     }
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -78,11 +82,13 @@ class MainActivity : ComponentActivity() {
     private lateinit var navPill: View
     private lateinit var navWrap: View
     private lateinit var playBtn: FrameLayout
+    private var callsDot: View? = null
+    private var onboarding: View? = null
     private val navCells = HashMap<Tab, View>()
     private lateinit var toastView: TextView
     private val navItems = HashMap<Tab, Pair<ImageView, TextView>>()
     private val main = Handler(Looper.getMainLooper())
-    var current: Tab = Tab.YARD
+    var current: Tab = Tab.TODAY
         private set
     var topInset = 0
         private set
@@ -183,17 +189,19 @@ class MainActivity : ComponentActivity() {
         // so the run opens straight into the countdown instead of a black surface.
         runCatching { val g = net.solardepin.solarchik.game.RunGarage(this); net.solardepin.solarchik.game.run.RunPreload.start(this, g.robot, g.skin) }
         select(startTab(savedInstanceState?.getString("tab"), intent?.getStringExtra(EXTRA_TAB)))
-        // 0.22.0: Back walks home to the roof (closing its list / tour first) before leaving the app.
+        // 1.0.0: Back walks home to Today (the roof closes its list / tour first) before leaving the app.
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val roof = screens[Tab.YARD] as? net.solardepin.solarchik.ui.roof.RooftopScreen
                 when {
+                    onboarding != null -> (onboarding as? net.solardepin.solarchik.ui.Onboarding)?.back()
                     current == Tab.YARD && roof?.onBack() == true -> Unit
-                    current != Tab.YARD -> select(Tab.YARD, animate = true)
+                    current != Tab.TODAY -> select(Tab.TODAY, animate = true)
                     else -> { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
                 }
             }
         })
+        if (savedInstanceState == null) maybeOnboard()
         if (BuildConfig.DEBUG) debugRoof(intent)
     }
 
@@ -233,6 +241,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Seeker Season plan: remember (on this phone only) that the app was opened today
+        net.solardepin.solarchik.season.SeasonStore.markOpened(this)
         screens[current]?.onShow()
         startTicker()
         pollCalls()
@@ -248,12 +258,44 @@ class MainActivity : ComponentActivity() {
             runCatching { kotlinx.coroutines.withContext(Dispatchers.IO) { net.solardepin.solarchik.screen.CallNotes.check(this@MainActivity) } }
             callsPolling = false
             (screens[Tab.SHIFT] as? YardScreen)?.renderCalls()
+            (screens[Tab.TODAY] as? net.solardepin.solarchik.ui.TodayScreen)?.render()
+            renderCallsDot()
             (screens[Tab.YARD] as? net.solardepin.solarchik.ui.roof.RooftopScreen)?.renderCalls()
             if (current == Tab.SETTINGS) screens[current]?.render()
         }
     }
 
     fun openCalls() = net.solardepin.solarchik.ui.CallsActivity.open(this)
+
+    private fun renderCallsDot() {
+        val dot = callsDot ?: return
+        dot.visibility = if (runCatching { net.solardepin.solarchik.screen.CallInbox.unreadCount(this) }.getOrDefault(0) > 0) View.VISIBLE else View.GONE
+    }
+
+    /** 1.0.0: three short pages on the very first launch, framed as the assistant. Skip any time. */
+    private fun maybeOnboard() {
+        if (!onboardingEnabled) return
+        val prefs = getSharedPreferences(ASSISTANT_PREFS, MODE_PRIVATE)
+        if (prefs.getBoolean("onboarded", false)) return
+        showOnboarding()
+    }
+
+    fun showOnboarding() {
+        if (onboarding != null) return
+        val root = content.parent as? FrameLayout ?: return
+        val v = net.solardepin.solarchik.ui.Onboarding(this) {
+            getSharedPreferences(ASSISTANT_PREFS, MODE_PRIVATE).edit().putBoolean("onboarded", true).apply()
+            val o = onboarding
+            onboarding = null
+            o?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction { root.removeView(o) }?.start()
+            select(Tab.TODAY)
+        }
+        onboarding = v
+        root.addView(v, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        v.applyInsets(topInset, bottomInset)
+    }
+
+    val onboardingShown: Boolean get() = onboarding != null
 
     /**
      * 0.21.9: asked by [SolanaWallet] when a mint / buy / CLOCK IN needs a wallet and no MWA wallet app is
@@ -322,7 +364,7 @@ class MainActivity : ComponentActivity() {
                 if (desk.state().anyRunning) {
                     val report = runCatching { desk.tick() }.getOrNull()
                     if (report != null) {
-                        if (current == Tab.AGENTS || current == Tab.YARD || current == Tab.SHIFT) screens[current]?.render()
+                        if (current == Tab.AGENTS || current == Tab.YARD || current == Tab.SHIFT || current == Tab.TODAY) screens[current]?.render()
                     }
                 } else if (current == Tab.AGENTS) {
                     screens[current]?.render()
@@ -382,7 +424,7 @@ class MainActivity : ComponentActivity() {
             clipToPadding = false
             setPadding(dp(6), 0, dp(6), 0)
         }
-        for (tab in Tab.entries.filter { it.inNav }) nav.addView(if (tab == Tab.RUN) playItem() else navItem(tab), LinearLayout.LayoutParams(0, dp(66), 1f))
+        for (tab in Tab.entries.filter { it.inNav }) nav.addView(if (tab == CENTER) playItem() else navItem(tab), LinearLayout.LayoutParams(0, dp(66), 1f))
         bar.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)))
         val navWrap = FrameLayout(this).apply {
             tag = "nav-wrap"
@@ -417,6 +459,7 @@ class MainActivity : ComponentActivity() {
             navWrap.setPadding(0, 0, 0, bars.bottom)
             (toastView.layoutParams as FrameLayout.LayoutParams).bottomMargin = dp(104) + bars.bottom
             screens.values.forEach { it.applyInsets() }
+            (onboarding as? net.solardepin.solarchik.ui.Onboarding)?.applyInsets(bars.top, bars.bottom)
             insets
         }
         return root
@@ -434,31 +477,43 @@ class MainActivity : ComponentActivity() {
             background = Ui.ripple(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT), dp(22).toFloat(), 0x22F5C542)
             setOnClickListener {
                 tick(it)
-                select(tab, animate = true)
+                if (tab == Tab.CALLS) openCalls() else select(tab, animate = true)
             }
             contentDescription = getString(tab.label)
             tag = "nav-" + tab.name.lowercase()
         }
-        val icon = ImageView(this).apply { setImageResource(tab.icon) }
+        val icon = ImageView(this).apply { setImageResource(tab.icon); setColorFilter(Ui.MUTED) }
         val label = Ui.text(this, getString(tab.label), 11f, Ui.MUTED, 800).apply {
             gravity = Gravity.CENTER
             maxLines = 1
         }
-        col.addView(icon, LinearLayout.LayoutParams(dp(26), dp(26)))
+        if (tab == Tab.CALLS) {
+            // unread secretary notes: a small gold dot on the Calls icon
+            val box = FrameLayout(this)
+            box.addView(icon, FrameLayout.LayoutParams(dp(26), dp(26)))
+            val dot = View(this).apply {
+                background = Ui.rounded(Ui.GOLD, dp(5).toFloat(), Ui.BG, dp(2))
+                tag = "nav-calls-dot"
+                visibility = View.GONE
+            }
+            box.addView(dot, FrameLayout.LayoutParams(dp(11), dp(11), Gravity.TOP or Gravity.END))
+            callsDot = dot
+            col.addView(box, LinearLayout.LayoutParams(dp(28), dp(26)))
+        } else col.addView(icon, LinearLayout.LayoutParams(dp(26), dp(26)))
         col.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(3) })
         navItems[tab] = icon to label
         navCells[tab] = col
         return col
     }
 
-    /** Play: the raised sun button in the middle of the bar. */
+    /** 1.0.0: Sol's mic is the raised gold button in the middle of the bar. */
     private fun playItem(): View {
-        val tab = Tab.RUN
+        val tab = CENTER
         val cell = FrameLayout(this).apply {
             clipChildren = false
             clipToPadding = false
             contentDescription = getString(tab.label)
-            tag = "nav-run"
+            tag = "nav-" + tab.name.lowercase()
         }
         playBtn = FrameLayout(this).apply {
             background = android.graphics.drawable.GradientDrawable(
@@ -489,14 +544,14 @@ class MainActivity : ComponentActivity() {
     /** The gold pill slides under the picked tab; on Play it hides and the sun button glows instead. */
     private fun movePill(tab: Tab, animate: Boolean) {
         if (!this::navPill.isInitialized) return
-        val cell = navCells[if (tab == Tab.SHIFT) Tab.YARD else tab] ?: return
+        val cell = navCells[if (tab.inNav) tab else Tab.TODAY] ?: return
         if (cell.width == 0) return
         val w = cell.width - dp(10)
         if (navPill.layoutParams.width != w) {
             navPill.layoutParams = (navPill.layoutParams as FrameLayout.LayoutParams).apply { width = w }
         }
         val x = (nav.left + cell.left + dp(5)).toFloat()
-        val show = tab != Tab.RUN
+        val show = tab != CENTER
         if (animate) {
             navPill.animate().translationX(x).alpha(if (show) 1f else 0f).setDuration(260)
                 .setInterpolator(android.view.animation.OvershootInterpolator(0.9f)).start()
@@ -513,6 +568,7 @@ class MainActivity : ComponentActivity() {
     }
 
     fun select(tab: Tab, animate: Boolean = false) {
+        if (tab == Tab.CALLS) { openCalls(); return }
         val changed = current != tab
         val from = current
         if (screens.containsKey(current) && changed) screens[current]?.onHide()
@@ -525,7 +581,7 @@ class MainActivity : ComponentActivity() {
         if (this::navWrap.isInitialized) navWrap.visibility = if (tab == Tab.YARD) View.GONE else View.VISIBLE
         if (animate && changed) {
             // Slide from the side of the tab we came from, with a soft fade.
-            val dir = if (tab == Tab.SHIFT || from == Tab.YARD) 1 else if (tab == Tab.YARD) -1 else if (tab.ordinal > from.ordinal) 1 else -1
+            val dir = if (tab == Tab.TODAY) -1 else if (from == Tab.TODAY) 1 else if (tab.ordinal > from.ordinal) 1 else -1
             screen.view.alpha = 0f
             screen.view.translationX = dp(28).toFloat() * dir
             screen.view.animate().alpha(1f).translationX(0f).setDuration(220)
@@ -536,8 +592,8 @@ class MainActivity : ComponentActivity() {
             screen.view.translationY = 0f
         }
         for ((t, pair) in navItems) {
-            val on = t == tab || (tab == Tab.SHIFT && t == Tab.YARD)
-            if (t == Tab.RUN) {
+            val on = t == tab || (!tab.inNav && t == Tab.TODAY)
+            if (t == CENTER) {
                 pair.second.setTextColor(if (on) Ui.GOLD else Ui.withAlpha(Ui.GOLD, 0xB0))
                 continue
             }
@@ -545,20 +601,23 @@ class MainActivity : ComponentActivity() {
             pair.second.setTextColor(if (on) Ui.GOLD else Ui.MUTED)
         }
         if (this::playBtn.isInitialized) {
-            playBtn.animate().scaleX(if (tab == Tab.RUN) 1.08f else 1f).scaleY(if (tab == Tab.RUN) 1.08f else 1f).setDuration(200).start()
+            playBtn.animate().scaleX(if (tab == CENTER) 1.08f else 1f).scaleY(if (tab == CENTER) 1.08f else 1f).setDuration(200).start()
         }
         movePill(tab, animate && changed)
-        if (animate && changed) navItems[tab]?.first?.let { bounce(if (tab == Tab.RUN && this::playBtn.isInitialized) playBtn else it) }
+        if (animate && changed) navItems[tab]?.first?.let { bounce(if (tab == CENTER && this::playBtn.isInitialized) playBtn else it) }
         screen.onShow()
+        renderCallsDot()
     }
 
     private fun create(tab: Tab): Screen = when (tab) {
+        Tab.TODAY, Tab.CALLS -> net.solardepin.solarchik.ui.TodayScreen(this)
         Tab.YARD -> net.solardepin.solarchik.ui.roof.RooftopScreen(this)
         Tab.SHIFT -> YardScreen(this)
         Tab.RUN -> RunScreen(this)
         Tab.AGENTS -> AgentsScreen(this)
         Tab.SOL -> SolScreen(this)
         Tab.SETTINGS -> SettingsScreen(this)
+        Tab.SEASON -> net.solardepin.solarchik.ui.SeasonScreen(this)
     }
 
     fun screen(tab: Tab): Screen? = screens[tab]
@@ -610,7 +669,14 @@ class MainActivity : ComponentActivity() {
          */
         /** The tab restored after rotation / process death wins over the launch intent; unknown names fall through. */
         fun startTab(saved: String?, fromIntent: String?): Tab =
-            listOfNotNull(saved, fromIntent).firstNotNullOfOrNull { name -> Tab.entries.firstOrNull { it.name == name } } ?: Tab.YARD
+            listOfNotNull(saved, fromIntent).firstNotNullOfOrNull { name -> Tab.entries.firstOrNull { it.name == name && it != Tab.CALLS } } ?: Tab.TODAY
+
+        /** The raised button in the middle of the bar. */
+        val CENTER = Tab.SOL
+        const val ASSISTANT_PREFS = "solarchik.assistant"
+
+        /** First-launch onboarding; unit tests switch it off with -Dsolarchik.onboarding=0 unless they test it. */
+        @JvmStatic var onboardingEnabled = System.getProperty("solarchik.onboarding") != "0"
 
         private val TOAST = Any()
         private const val TICK_MS = 30_000L

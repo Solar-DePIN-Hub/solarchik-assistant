@@ -94,6 +94,11 @@ class CallsActivity : ComponentActivity() {
     }
 
     private fun openFromIntent(i: Intent?) {
+        // 1.0.0: "Call secretary" on Today arms the demo line and opens the dialer straight away
+        if (i?.getBooleanExtra(EXTRA_TRY, false) == true) {
+            i.removeExtra(EXTRA_TRY)
+            callSecretary()
+        }
         val key = i?.getStringExtra(EXTRA_KEY) ?: return
         items.firstOrNull { it.key == key }?.let { openCall(it) } ?: run { pendingKey = key }
     }
@@ -534,6 +539,14 @@ class CallsActivity : ComponentActivity() {
     companion object {
         const val EXTRA_KEY = "net.solardepin.solarchik.CALL_KEY"
 
+        const val EXTRA_TRY = "net.solardepin.solarchik.CALL_TRY"
+
         fun open(ctx: Context) = ctx.startActivity(Intent(ctx, CallsActivity::class.java))
+
+        /** 1.0.0 Today: open one call's note and transcript. */
+        fun openCall(ctx: Context, key: String) = ctx.startActivity(Intent(ctx, CallsActivity::class.java).putExtra(EXTRA_KEY, key))
+
+        /** 1.0.0 Today: arm the demo line for this phone and open the dialer. */
+        fun trySecretary(ctx: Context) = ctx.startActivity(Intent(ctx, CallsActivity::class.java).putExtra(EXTRA_TRY, true))
     }
 }

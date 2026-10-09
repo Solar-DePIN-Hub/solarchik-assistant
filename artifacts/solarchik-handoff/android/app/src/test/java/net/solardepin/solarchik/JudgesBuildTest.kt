@@ -30,12 +30,12 @@ class JudgesBuildTest {
         "market-prepare-list", "market-confirm-list", "market-unlist", "market-prepare-buy", "market-confirm-buy", "faucet-drip",
     )
 
-    @Test fun launcherIsPlainSolarchik() {
-        assertEquals("Solarchik", ctx.getString(R.string.app_name))
+    @Test fun launcherIsSolarchikAssistant() {
+        assertEquals("Solarchik Assistant", ctx.getString(R.string.app_name))
     }
 
-    @Test @Config(qualifiers = "uk") fun launcherIsPlainSolarchikUk() {
-        assertEquals("Solarchik", ctx.getString(R.string.app_name))
+    @Test @Config(qualifiers = "uk") fun launcherIsSolarchikAssistantUk() {
+        assertEquals("Соларчик Асистент", ctx.getString(R.string.app_name))
     }
 
     @Test fun serverIsTheJudgesDeployment() {
