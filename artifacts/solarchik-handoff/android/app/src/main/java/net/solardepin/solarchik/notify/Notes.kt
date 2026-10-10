@@ -124,9 +124,33 @@ object Notes {
     }
 }
 
+/** 1.2.5: the morning stack note, once a day from 08:00, only when cards from calls are waiting. */
+object StackNote {
+    @android.annotation.SuppressLint("MissingPermission")
+    fun check(ctx: Context, now: Long = System.currentTimeMillis()): Boolean {
+        val n = net.solardepin.solarchik.stack.MorningStack.notificationDue(ctx, now)
+        if (n <= 0 || !Notes.allowed(ctx)) return false
+        val open = Intent(ctx, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(MainActivity.EXTRA_TAB, MainActivity.Tab.TODAY.name)
+        }
+        val pi = PendingIntent.getActivity(ctx, 140, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val text = ctx.resources.getQuantityString(R.plurals.stack_note_body, n, n)
+        val note = NotificationCompat.Builder(ctx, Notes.CHANNEL).setSmallIcon(R.drawable.ic_flame)
+            .setContentTitle(ctx.getString(R.string.stack_note_title)).setContentText(text)
+            .setContentIntent(pi).setAutoCancel(true).setColor(0xFFF5C542.toInt()).build()
+        return try {
+            NotificationManagerCompat.from(ctx).notify(140, note)
+            net.solardepin.solarchik.stack.MorningStack.markNotified(ctx, now)
+            true
+        } catch (_: SecurityException) { false }
+    }
+}
+
 class NoteWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result {
         runCatching { Notes.check(applicationContext) }
+        runCatching { StackNote.check(applicationContext) }
         runCatching { DeskNotes.flush(applicationContext) }
         return Result.success()
     }

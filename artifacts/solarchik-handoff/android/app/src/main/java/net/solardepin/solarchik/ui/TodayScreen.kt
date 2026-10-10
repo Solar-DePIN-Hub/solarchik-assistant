@@ -21,6 +21,7 @@ import net.solardepin.solarchik.BuildConfig
 import net.solardepin.solarchik.MainActivity
 import net.solardepin.solarchik.R
 import net.solardepin.solarchik.game.GameSave
+import net.solardepin.solarchik.screen.CallAction
 import net.solardepin.solarchik.screen.CallInbox
 import net.solardepin.solarchik.screen.CallItem
 import net.solardepin.solarchik.screen.CallText
@@ -57,7 +58,6 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     private lateinit var walletBody: LinearLayout
     private lateinit var checkStreak: TextView
     private lateinit var checkState: TextView
-    private lateinit var playSub: TextView
     private lateinit var seasonSub: TextView
     private lateinit var seasonChecks: LinearLayout
     private lateinit var seasonTasksLine: TextView
@@ -89,15 +89,18 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     private var actionsSynced = 0L
 
     override fun build(): View = page {
+        // 1.2.5: a clean Today: what calls left you to do (cards, then what you owe) first, then wallet,
+        // briefing and Season; Sol and the secretary below; the game moved to More.
         addView(header())
-        addView(solCard())
-        addView(briefingCard())
-        addView(secretaryCard())
         addView(actionsCard())
-        addView(todoCard())
-        addView(seasonCard())
+        addView(circleCard())
         addView(walletCard())
-        addView(habitRow())
+        addView(briefingCard())
+        addView(seasonCard())
+        addView(solCard())
+        addView(secretaryCard())
+        addView(todoCard())
+        addView(habitRow().also { habitView = it })
         addView(Ui.text(ctx, ctx.getString(R.string.today_footer, BuildConfig.VERSION_NAME, host.wallet.clusterName), 11f, Ui.withAlpha(Ui.MUTED, 0xAA), 600).apply {
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) }
@@ -488,6 +491,33 @@ class TodayScreen(host: MainActivity) : Screen(host) {
 
     // ------------------------------------------------------------------ 1.1.0 actions from calls
 
+    private lateinit var circleBox: LinearLayout
+    private var actionsShown: Set<String> = emptySet()
+    private var habitView: View? = null
+
+    /** 1.2.5: Circle on Today: "You owe Ira 0.01 SOL" (open debts from calls), tap for Circle in More. Hidden when none. */
+    private fun circleCard(): View = Ui.card(ctx, accent = Ui.CYAN, pad = 14).apply {
+        tag = "today-circle"
+        circleBox = this
+        isClickable = true
+        setOnClickListener { host.select(MainActivity.Tab.SETTINGS, animate = true) }
+    }
+
+    private fun renderCircle() {
+        // 1.2.5: a debt already shown as a pay card above is not repeated; this lists the rest (older calls, more people)
+        val shownCards = actionsShown
+        val debts = net.solardepin.solarchik.circle.Circle.current(ctx).filter { it.open && it.action.id !in shownCards }
+        circleBox.removeAllViews()
+        circleBox.visibility = if (debts.isEmpty()) View.GONE else View.VISIBLE
+        if (debts.isEmpty()) return
+        circleBox.addView(Ui.label(ctx, ctx.getString(R.string.circle_title), Ui.CYAN))
+        debts.groupBy { it.who }.entries.take(3).forEach { (who, l) ->
+            val amt = l.groupBy { it.token }.entries.joinToString(" + ") { (t, x) -> net.solardepin.solarchik.circle.Circle.amount(x.sumOf { it.amount }) + " " + t }
+            circleBox.addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.circle_you_owe, who, amt, "").trim(), 15f, Ui.TEXT, 800).apply { tag = "today-circle-line" }, 6))
+        }
+        circleBox.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.today_circle_open), 12f), 6))
+    }
+
     private fun actionsCard(): View = Ui.column(ctx, gap = 10).apply {
         tag = "today-actions"
         actionsWrap = this
@@ -497,12 +527,153 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     }
 
     private fun renderActions() {
-        // 1.2.4: newest first, but an open payment request is never pushed out by call-back cards
-        val all = net.solardepin.solarchik.screen.CallActionStore(ctx).open().reversed()
-        val open = (all.filter { it.payment } + all.filterNot { it.payment }).take(4)
-        actionsWrap.visibility = if (open.isEmpty()) View.GONE else View.VISIBLE
+        // 1.2.5 Morning stack: one card at a time (pay first), Do it / Later, swipe right / left, or read aloud
+        val items = net.solardepin.solarchik.stack.MorningStack.items(ctx)
+        actionsShown = items.map { it.id }.toSet()
         actionsBox.removeAllViews()
-        open.forEach { actionsBox.addView(CallActionCards.card(host, it) { render() }) }
+        val stackLabel = (actionsWrap as? ViewGroup)?.getChildAt(0) as? TextView
+        if (items.isEmpty()) {
+            val clocked = net.solardepin.solarchik.stack.MorningStack.settle(ctx)
+            actionsWrap.visibility = if (clocked) View.VISIBLE else View.GONE
+            stackLabel?.text = ctx.getString(R.string.stack_label).uppercase()
+            if (clocked) actionsBox.addView(clockedCard())
+            habitView?.visibility = if (clocked) View.GONE else View.VISIBLE // the clocked-in card has the sign button
+            renderCircle()
+            return
+        }
+        actionsWrap.visibility = View.VISIBLE
+        habitView?.visibility = View.VISIBLE
+        stackLabel?.text = ctx.getString(R.string.stack_label_n, 1, items.size).uppercase()
+        val top = items.first()
+        val card = CallActionCards.card(host, top) { net.solardepin.solarchik.stack.MorningStack.touched(ctx); render() }
+        swipe(card, onRight = { stackDo(top) }, onLeft = { stackLater(top) })
+        actionsBox.addView(card)
+        val row = Ui.row(ctx, gap = 8)
+        row.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.stack_later), Ui.Btn.GHOST) { stackLater(top) }.apply { tag = "stack-later"; textSize = 14f }))
+        row.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.stack_read), Ui.Btn.GHOST, R.drawable.ic_mic) { readStack() }.apply { tag = "stack-voice"; textSize = 14f }))
+        actionsBox.addView(row)
+        actionsBox.addView(Ui.muted(ctx, ctx.getString(R.string.stack_hint), 11.5f).apply { tag = "stack-hint"; gravity = Gravity.CENTER })
+        renderCircle()
+    }
+
+    /** Swipe the card right (do it) or left (later); a short drag springs back. */
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
+    private fun swipe(v: View, onRight: () -> Unit, onLeft: () -> Unit) {
+        var x0 = 0f
+        var dragging = false
+        v.setOnTouchListener { view, e ->
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> { x0 = e.rawX; dragging = false; true }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val dx = e.rawX - x0
+                    if (kotlin.math.abs(dx) > dp(12)) { dragging = true; view.parent?.requestDisallowInterceptTouchEvent(true) }
+                    if (dragging) { view.translationX = dx; view.rotation = dx / 60f; view.alpha = 1f - kotlin.math.min(0.5f, kotlin.math.abs(dx) / view.width.coerceAtLeast(1)) }
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    val dx = view.translationX
+                    val far = view.width * 0.33f
+                    when {
+                        dragging && dx > far -> view.animate().translationX(view.width.toFloat()).alpha(0f).setDuration(150).withEndAction { onRight() }.start()
+                        dragging && dx < -far -> view.animate().translationX(-view.width.toFloat()).alpha(0f).setDuration(150).withEndAction { onLeft() }.start()
+                        else -> view.animate().translationX(0f).rotation(0f).alpha(1f).setDuration(150).start()
+                    }
+                    dragging = false
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /** Do it: the dialer for a call-back, the prefilled wallet confirm for a payment, the reminder for a reminder. */
+    internal fun stackDo(a: CallAction) {
+        val MS = net.solardepin.solarchik.stack.MorningStack
+        when (a.type) {
+            CallAction.PAYMENT -> {
+                val call = CallInbox.cached(ctx).firstOrNull { it.key == a.callKey }
+                val who = call?.who?.takeIf { it.isNotBlank() } ?: a.recipient
+                val c = net.solardepin.solarchik.circle.Circle.match(net.solardepin.solarchik.circle.CircleStore(ctx).all(), who, call?.dialNumber.orEmpty())
+                val after = { MS.touched(ctx); render() }
+                if (c != null && c.address.isNotBlank()) CallActionCards.payContact(host, a, c, after)
+                else CirclePanel.edit(host, c ?: net.solardepin.solarchik.circle.Contact("", who, call?.dialNumber.orEmpty()), ctx.getString(R.string.circle_add_wallet, who)) { saved ->
+                    render()
+                    if (saved.address.isNotBlank()) CallActionCards.payContact(host, a, saved, after)
+                }
+                render()
+            }
+            CallAction.CALLBACK -> { if (a.number.isNotBlank()) CallActionCards.dial(ctx, a); MS.done(ctx, a.id); render() }
+            CallAction.REMINDER -> {
+                CallActionCards.remind(host, a, CallInbox.cached(ctx).firstOrNull { it.key == a.callKey }?.at ?: System.currentTimeMillis())
+                MS.touched(ctx); render()
+            }
+            else -> { MS.done(ctx, a.id); render() }
+        }
+    }
+
+    internal fun stackLater(a: CallAction) {
+        net.solardepin.solarchik.stack.MorningStack.snooze(ctx, a.id)
+        host.toast(ctx.getString(R.string.stack_snoozed))
+        render()
+    }
+
+    private fun clockedCard(): View = Ui.card(ctx, accent = Ui.GREEN, pad = 16).apply {
+        tag = "stack-clocked"
+        val MS = net.solardepin.solarchik.stack.MorningStack
+        val streak = MS.streak(ctx)
+        addView(Ui.text(ctx, ctx.getString(R.string.stack_clocked_title), 18f, Ui.GREEN, 800))
+        addView(Ui.top(Ui.text(ctx, ctx.resources.getQuantityString(R.plurals.stack_streak, streak, streak), 14f, Ui.TEXT, 700).apply { tag = "stack-streak" }, 6))
+        val left = MS.BONUS_DAYS - streak % MS.BONUS_DAYS
+        addView(Ui.top(Ui.muted(ctx, if (streak >= MS.BONUS_DAYS && streak % MS.BONUS_DAYS == 0) ctx.getString(R.string.stack_week_done)
+            else ctx.resources.getQuantityString(R.plurals.stack_week_left, left, left), 12.5f).apply { setLineSpacing(0f, 1.2f) }, 4))
+        val save = host.save
+        if (save.signedToday()) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.stack_signed), 12.5f, Ui.GREEN, 700), 8))
+        else {
+            addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.stack_local_only), 12f).apply { setLineSpacing(0f, 1.2f) }, 8))
+            addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.stack_sign), Ui.Btn.SECONDARY, R.drawable.ic_flame) { openCheckIn() }.apply { tag = "stack-sign"; maxLines = 2 }, 10))
+        }
+    }
+
+    // ------------------------------------------------------------------ 1.2.5 the stack, hands-free
+
+    private var stackVoice: net.solardepin.solarchik.sol.SolVoice? = null
+    private var stackEars: net.solardepin.solarchik.sol.SolEars? = null
+    private var stackMisses = 0
+
+    /** Sol reads the top card and asks "done, later or do it?"; the answer acts and the next card follows. */
+    private fun readStack() {
+        host.withPermission(android.Manifest.permission.RECORD_AUDIO) { ok ->
+            stackMisses = 0
+            readTop(listen = ok)
+        }
+    }
+
+    private fun readTop(listen: Boolean) {
+        val a = net.solardepin.solarchik.stack.MorningStack.items(ctx).firstOrNull()
+        val v = stackVoice ?: net.solardepin.solarchik.sol.SolVoice(host).also { stackVoice = it }
+        if (a == null) {
+            v.onIdle = null
+            v.speak(ctx.getString(R.string.stack_spoken_zero), host.lang)
+            return
+        }
+        val who = CallInbox.cached(ctx).firstOrNull { it.key == a.callKey }?.who.orEmpty()
+        val ask = ctx.getString(if (a.type == CallAction.PAYMENT) R.string.stack_spoken_ask_pay else R.string.stack_spoken_ask)
+        v.onIdle = { _ -> if (listen) hear(a) }
+        if (!v.speak(CallActionCards.title(ctx, a, who) + ". " + ask, host.lang)) host.toast(ctx.getString(R.string.chat_tts_missing))
+    }
+
+    private fun hear(a: CallAction) {
+        val ears = stackEars ?: net.solardepin.solarchik.sol.SolEars(host).also { stackEars = it }
+        if (!ears.available()) return
+        ears.listen(host.lang, onPartial = {}) { heard ->
+            val MS = net.solardepin.solarchik.stack.MorningStack
+            when (MS.answer(heard)) {
+                net.solardepin.solarchik.stack.MorningStack.Answer.LATER -> { MS.snooze(ctx, a.id); render(); readTop(true) }
+                net.solardepin.solarchik.stack.MorningStack.Answer.DONE -> { MS.done(ctx, a.id); render(); readTop(true) }
+                net.solardepin.solarchik.stack.MorningStack.Answer.DO -> { stackDo(a); if (a.type == CallAction.REMINDER) readTop(true) } // a call or a payment leaves the app: stop here
+                null -> if (++stackMisses < 2) readTop(true) else host.toast(ctx.getString(R.string.stack_not_heard))
+            }
+        }
     }
 
     /** Looks at new answered calls for requests (worker; local rules offline). At most once a minute. */
@@ -644,7 +815,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         addView(Ui.top(Ui.text(ctx, value, 13.5f, Ui.TEXT, 600).apply { maxLines = 3; ellipsize = TextUtils.TruncateAt.END; setLineSpacing(0f, 1.2f) }, 4))
     }
 
-    private fun setupWallet() {
+    internal fun setupWallet() {
         val w = host.wallet
         val started = host.current
         host.scope.launch {
@@ -751,10 +922,6 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         checkStreak = check.second
         checkState = check.third
         addView(check.first, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
-        val play = habitTile("today-play", R.drawable.ic_nav_run, Ui.GREEN, R.string.today_play_title) { host.playGame() }
-        playSub = play.third
-        play.second.visibility = View.GONE
-        addView(play.first, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
     }
 
     private fun habitTile(tagName: String, icon: Int, color: Int, title: Int, onTap: () -> Unit): Triple<View, TextView, TextView> {
@@ -818,11 +985,17 @@ class TodayScreen(host: MainActivity) : Screen(host) {
 
         val calls = CallInbox.cached(ctx)
         val today = AssistantRules.today(calls, now)
-        val todos = FollowUps.list(ctx, now)
+        // 1.2.5: a follow-up that already has its own action card at the top is not listed twice
+        val openCards = net.solardepin.solarchik.stack.MorningStack.items(ctx, now) // snoozed cards wait for tomorrow
+        val carded = net.solardepin.solarchik.screen.CallActionStore(ctx).open().map { it.callKey + "|" + it.type }.toSet()
+        val todos = FollowUps.list(ctx, now).filterNot { f ->
+            f.item.key + "|" + (if (f.kind == FollowUp.Kind.CALLBACK) CallAction.CALLBACK else CallAction.REMINDER) in carded
+        }
+        val toDo = todos.size + openCards.size
         val parts = ArrayList<String>()
         val real = today.count { !it.blocked }
         if (real > 0) parts += ctx.resources.getQuantityString(R.plurals.today_summary_calls, real, real)
-        if (todos.isNotEmpty()) parts += ctx.resources.getQuantityString(R.plurals.today_summary_followups, todos.size, todos.size)
+        if (toDo > 0) parts += ctx.resources.getQuantityString(R.plurals.today_summary_followups, toDo, toDo)
         summary.text = if (parts.isEmpty()) ctx.getString(R.string.today_summary_quiet) else parts.joinToString(" · ")
 
         solLine.text = solLineFor(today, todos)
@@ -875,6 +1048,9 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     }
 
     private fun renderTodos(todos: List<FollowUp>) {
+        // 1.2.5: nothing left beyond the cards at the top: no empty "Follow-ups" box under them
+        (todoBox.parent as? View)?.let { card -> var c: View = card; while (c.tag != "today-todos" && c.parent is View) c = c.parent as View
+            c.visibility = if (todos.isEmpty() && net.solardepin.solarchik.screen.CallActionStore(ctx).open().isNotEmpty()) View.GONE else View.VISIBLE }
         todoCount.text = Fmt.count(todos.size)
         todoCount.visibility = if (todos.isEmpty()) View.GONE else View.VISIBLE
         todoBox.removeAllViews()
@@ -906,7 +1082,6 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             save.checkInOpen() -> Ui.GOLD
             else -> Ui.MUTED
         })
-        playSub.text = if (save.bestDistance <= 0) ctx.getString(R.string.today_play_new) else ctx.getString(R.string.today_play_sub, save.bestDistance)
     }
 
     /** HH:mm in the secretary's time zone, like every other call time in the app. */

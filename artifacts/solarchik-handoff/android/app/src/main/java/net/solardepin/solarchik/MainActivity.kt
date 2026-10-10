@@ -361,12 +361,26 @@ class MainActivity : ComponentActivity() {
     fun showOnboarding() {
         if (onboarding != null) return
         val root = content.parent as? FrameLayout ?: return
-        val v = net.solardepin.solarchik.ui.Onboarding(this) {
+        val finish = {
             getSharedPreferences(ASSISTANT_PREFS, MODE_PRIVATE).edit().putBoolean("onboarded", true).apply()
             val o = onboarding
             onboarding = null
             o?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction { root.removeView(o) }?.start()
             select(Tab.TODAY)
+        }
+        val v = net.solardepin.solarchik.ui.Onboarding(this, finish) { action ->
+            when (action) {
+                // 1.2.5: arm the demo line for this phone and open the dialer; the tour moves on to "it lands on Today"
+                net.solardepin.solarchik.ui.Onboarding.ACTION_CALL -> {
+                    (onboarding as? net.solardepin.solarchik.ui.Onboarding)?.advance()
+                    net.solardepin.solarchik.ui.CallsActivity.trySecretary(this)
+                }
+                net.solardepin.solarchik.ui.Onboarding.ACTION_WALLET -> {
+                    finish()
+                    if (wallet.hasWalletApp()) (screen(Tab.TODAY) as? net.solardepin.solarchik.ui.TodayScreen)?.setupWallet()
+                    else openUrl("https://play.google.com/store/apps/details?id=app.phantom")
+                }
+            }
         }
         onboarding = v
         root.addView(v, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -781,7 +795,7 @@ class MainActivity : ComponentActivity() {
      * shows its error on the tab it was started from, never on a tab the user moved to since.
      */
     fun walletFailed(startedOn: Tab, t: Throwable) {
-        if (current == startedOn) toast(errorText(t))
+        if (current == startedOn) toast(WalletError.connectText(this, t))
         else runCatching { android.util.Log.w("SolanaWallet", "late wallet failure dropped (started on ${startedOn.name}, now ${current.name}): ${t.message?.take(200)}") }
     }
 

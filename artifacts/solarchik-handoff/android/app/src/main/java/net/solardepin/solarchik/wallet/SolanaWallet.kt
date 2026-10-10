@@ -51,6 +51,23 @@ class WalletError(val kind: Kind, detail: String = "", val signOnlyMayHelp: Bool
         }
 
         /**
+         * 1.2.5: a connect failure in plain words (Test connect and Connect): not "the wallet did not sign",
+         * which is about payments. -32603 is Phantom's own "Internal error" answer to the request.
+         */
+        fun connectText(ctx: android.content.Context, t: Throwable?): String {
+            val m = listOfNotNull(t?.message, t?.cause?.message).joinToString(" ").lowercase()
+            val code = ((t as? WalletError)?.cause ?: t?.cause ?: t).let { (it as? com.solana.mobilewalletadapter.clientlib.protocol.JsonRpc20Client.JsonRpc20RemoteException)?.code }
+            return when {
+                t is WalletError && t.kind == Kind.NO_WALLET -> ctx.getString(net.solardepin.solarchik.R.string.err_no_wallet)
+                code == -32603 || m.contains("-32603") || m.contains("internal error") -> ctx.getString(net.solardepin.solarchik.R.string.wc_internal)
+                m.contains("local association") || m.contains("websocket") -> ctx.getString(net.solardepin.solarchik.R.string.wc_no_session)
+                t is WalletError && t.kind == Kind.DECLINED -> ctx.getString(net.solardepin.solarchik.R.string.wc_declined)
+                m.contains("timed out") -> ctx.getString(net.solardepin.solarchik.R.string.wc_timeout)
+                else -> text(ctx, t)
+            }
+        }
+
+        /**
          * 0.21.7: the English detail inside the localized sentence ("Помилка гаманця: Wallet sent no
          * signature") comes from string resources for every message the app itself raises; a raw
          * wallet/RPC text is never appended (generic localized line, raw text only in logcat).

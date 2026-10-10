@@ -60,7 +60,8 @@ class CirclePanel(private val host: MainActivity) {
     private fun debtRow(d: Debt): View = Ui.card(ctx, accent = Ui.GOLD, pad = 12).apply {
         tag = "circle-debt"
         addView(Ui.text(ctx, ctx.getString(R.string.circle_you_owe, d.who, Circle.amount(d.amount), d.token), 15f, Ui.TEXT, 800))
-        val src = d.call?.let { ctx.getString(R.string.circle_from_call, CallText.time(it.at)) } ?: ctx.getString(R.string.circle_from_you)
+        val src = d.call?.let { ctx.getString(R.string.circle_from_call, CallText.time(it.at)) }
+            ?: ctx.getString(if (d.action.callKey.startsWith(Circle.CONTACT_KEY)) R.string.circle_from_you else R.string.circle_from_a_call)
         addView(Ui.top(Ui.text(ctx, src, 12f, Ui.CYAN, 700).apply {
             tag = "circle-debt-call"
             if (d.call != null) { minHeight = dp(36); gravity = android.view.Gravity.CENTER_VERTICAL; setOnClickListener { CallsActivity.open(ctx) } }
@@ -98,7 +99,7 @@ class CirclePanel(private val host: MainActivity) {
                 }.apply { tag = "circle-settle"; maxLines = 2 })
             } else {
                 col.addView(Ui.button(ctx, ctx.getString(R.string.circle_add_wallet, d.who), Ui.Btn.PRIMARY, R.drawable.ic_wallet) {
-                    edit(host, c ?: Contact("", d.who, d.call?.dialNumber.orEmpty())) { saved ->
+                    edit(host, c ?: Contact("", d.who, d.call?.dialNumber.orEmpty()), ctx.getString(R.string.circle_add_wallet, d.who)) { saved ->
                         onChange()
                         if (saved.address.isNotBlank()) CallActionCards.payContact(host, d.action, saved, onChange)
                     }
@@ -120,7 +121,7 @@ class CirclePanel(private val host: MainActivity) {
         var lastForm: android.app.AlertDialog? = null
 
         /** Add / edit form: name (required), phone, Solana address (pasted; a solana: link works too). */
-        fun edit(host: MainActivity, c: Contact, onSaved: (Contact) -> Unit) {
+        fun edit(host: MainActivity, c: Contact, title: String? = null, onSaved: (Contact) -> Unit) {
             val ctx: Context = host
             val box = Ui.column(ctx, gap = 6).apply { setPadding(dp(20), dp(8), dp(20), 0) }
             fun field(tag: String, hint: Int, value: String, type: Int) = EditText(ctx).apply {
@@ -137,7 +138,7 @@ class CirclePanel(private val host: MainActivity) {
             }.apply { tag = "circle-f-paste"; textSize = 14f })
             box.addView(Ui.muted(ctx, ctx.getString(R.string.circle_f_note), 11.5f).apply { setLineSpacing(0f, 1.2f) })
             val dlg = android.app.AlertDialog.Builder(ctx)
-                .setTitle(if (c.id.isBlank()) R.string.circle_add else R.string.circle_edit_title)
+                .setTitle(title ?: ctx.getString(if (c.id.isBlank()) R.string.circle_add else R.string.circle_edit_title))
                 .setView(android.widget.ScrollView(ctx).apply { addView(box) })
                 .setPositiveButton(R.string.circle_save, null)
                 .setNegativeButton(android.R.string.cancel, null)

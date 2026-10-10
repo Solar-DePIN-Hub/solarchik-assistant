@@ -36,7 +36,7 @@ class Release116Test {
 
     @org.junit.After fun restore() { MainActivity.tickerEnabled = true }
 
-    @Test fun versionIs117() = assertEquals("1.2.4", BuildConfig.VERSION_NAME)
+    @Test fun versionIs117() = assertEquals("1.2.5", BuildConfig.VERSION_NAME)
 
     @Test fun associationFailuresAreNotDeclinesAndSayTheWalletNeverAsked() {
         val assoc = app.getString(R.string.err_d_assoc)
@@ -63,7 +63,8 @@ class Release116Test {
         val a = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         shadowOf(Looper.getMainLooper()).idle()
         val err = WalletError.classify("Timed out waiting for local association to be ready", null)
-        val msg = a.errorText(err)
+        val msg = WalletError.connectText(a, err) // 1.2.5: connect failures in plain words
+        assertTrue(msg, msg.startsWith("The wallet opened but didn't start the connection"))
         val other = if (a.current == MainActivity.Tab.AGENTS) MainActivity.Tab.TODAY else MainActivity.Tab.AGENTS
         a.walletFailed(other, err)
         shadowOf(Looper.getMainLooper()).idle()

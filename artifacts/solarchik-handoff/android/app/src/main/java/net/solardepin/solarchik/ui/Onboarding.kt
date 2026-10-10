@@ -19,14 +19,19 @@ import net.solardepin.solarchik.ui.Ui.dp
  * dots, Next / Get started. Shown once over the app; [onDone] persists it.
  */
 @SuppressLint("ViewConstructor")
-class Onboarding(ctx: Context, private val onDone: () -> Unit) : FrameLayout(ctx) {
-    private data class Page(val title: Int, val body: Int, val icon: Int, val color: Int, val robot: Boolean)
+class Onboarding(ctx: Context, private val onDone: () -> Unit, private val onAction: (String) -> Unit = {}) : FrameLayout(ctx) {
+    private data class Page(val title: Int, val body: Int, val icon: Int, val color: Int, val robot: Boolean, val action: String? = null, val actionLabel: Int = 0)
 
+    /**
+     * 1.2.5: a first run in 30 s. 1) call the secretary now (tap to dial the demo line), 2) the note and the
+     * action cards land on Today, 3) optionally connect Phantom. Skip on every page.
+     */
     private val pages = listOf(
-        Page(R.string.onb_1_title, R.string.onb_1_body, R.drawable.ic_mic, Ui.CYAN, robot = true),
-        Page(R.string.onb_2_title, R.string.onb_2_body, R.drawable.ic_call, Ui.PURPLE, robot = false),
-        Page(R.string.onb_3_title, R.string.onb_3_body, R.drawable.ic_wallet, Ui.GOLD, robot = false),
+        Page(R.string.onb5_1_title, R.string.onb5_1_body, R.drawable.ic_call, Ui.PURPLE, robot = false, action = ACTION_CALL, actionLabel = R.string.onb5_1_action),
+        Page(R.string.onb5_2_title, R.string.onb5_2_body, R.drawable.ic_mic, Ui.CYAN, robot = true),
+        Page(R.string.onb5_3_title, R.string.onb5_3_body, R.drawable.ic_wallet, Ui.GOLD, robot = false, action = ACTION_WALLET, actionLabel = R.string.onb5_3_action),
     )
+    private lateinit var action: TextView
     var index = 0
         private set
     private val art = FrameLayout(ctx)
@@ -60,8 +65,10 @@ class Onboarding(ctx: Context, private val onDone: () -> Unit) : FrameLayout(ctx
         column.addView(body, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(14) })
         column.addView(View(ctx), LinearLayout.LayoutParams(1, 0, 1f))
         column.addView(dots, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        action = Ui.button(ctx, "", Ui.Btn.PRIMARY) { pages[index].action?.let { onAction(it) } }.apply { tag = "onb-action"; maxLines = 2 }
+        column.addView(action, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(22) })
         next = Ui.button(ctx, "", Ui.Btn.PRIMARY) { advance() }.apply { tag = "onb-next" }
-        column.addView(next, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(22) })
+        column.addView(next, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
         addView(column, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         applyInsets(0, 0)
         show(0, animate = false)
@@ -103,7 +110,12 @@ class Onboarding(ctx: Context, private val onDone: () -> Unit) : FrameLayout(ctx
         }
         title.text = context.getString(p.title)
         body.text = context.getString(p.body)
-        next.text = context.getString(if (i == pages.size - 1) R.string.onb_start else R.string.onb_next)
+        next.text = context.getString(if (i == pages.size - 1) (if (p.action != null) R.string.onb5_later else R.string.onb_start) else R.string.onb_next)
+        // the page's own action is the main button; Next / Not now becomes the quiet one
+        action.visibility = if (p.action != null) View.VISIBLE else View.GONE
+        if (p.action != null) action.text = context.getString(p.actionLabel)
+        Ui.styleButton(next, if (p.action != null) Ui.Btn.GHOST else Ui.Btn.PRIMARY)
+        next.setTextColor(if (p.action != null) Ui.TEXT else Ui.INK)
         skip.visibility = if (i == pages.size - 1) View.INVISIBLE else View.VISIBLE
         dots.removeAllViews()
         pages.indices.forEach { d ->
@@ -117,5 +129,10 @@ class Onboarding(ctx: Context, private val onDone: () -> Unit) : FrameLayout(ctx
                 v.animate().alpha(1f).translationX(0f).setDuration(240).start()
             }
         }
+    }
+
+    companion object {
+        const val ACTION_CALL = "call"
+        const val ACTION_WALLET = "wallet"
     }
 }

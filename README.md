@@ -6,7 +6,9 @@ I'm Vadym, and I build Solarchik on my own under Solar DePIN. Solarchik Assistan
 
 I built this repo for the Colosseum Crypto World's Fair (Solana track, AI / agents). Submissions close 12 Oct 2026, 11:59pm PT (13 Oct, 09:59 Kyiv). My older game build, CLOCK IN, lives in [Solar-DePIN-Hub/Solarchik](https://github.com/Solar-DePIN-Hub/Solarchik), and I didn't change it for this. In this app the game is only a small "Play" tile.
 
-**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.4/solarchik-assistant.apk) (v1.2.4, Android 8+, sha256 `f2b6395245d2cdb2e47108092adbfbc871fc966183b98916a4ba0ef9da9b705a`)
+**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.5/solarchik-assistant.apk) (v1.2.4, Android 8+, sha256 `8a2a3c5ac07e331500c496bff2bc43a5a18f4760e6911e914088af61e38d6801`)
+
+**New in 1.2.5:** **Morning stack**: Today shows the cards your calls left you (pay, call back, remind) one at a time, payments first. Swipe right or use the card's button to do it (opens the dialer, the prefilled wallet confirm, or sets the reminder), swipe left or tap Later to push it to tomorrow morning, or tap Read aloud and answer "done", "later" or "pay". When nothing is left, Today says you're clocked in and shows your streak. That clock-in is stored on this phone; signing today's CLOCK IN memo on Solana is optional and done in your wallet. A notification at 8:00 appears only when cards are waiting, and you can turn it off in More → Reminders. A **first-run tour** walks through calling the secretary (tap to dial the demo line), where the note shows up, and connecting Phantom (optional). On **Today**, cards come first, then the wallet, briefing and Season; the game moved to More. Wallet connect errors now read in plain words (for example Phantom's -32603 "internal error"). Not in this version: bonus secretary minutes for a 7-day streak. The streak is counted on the phone, so the server can't check it yet.
 
 **New in 1.2.4:** **Circle**, a call-driven list of who you owe (More → Circle). When a caller asks you to send money ("send me 0.01 SOL for lunch"), it shows up as "You owe Ira 0.01 SOL" with a link to the call. Settle sends it to an address you saved yourself (matched by phone, then name), with one confirm in the app and the approval in your wallet. Once it's confirmed on chain, the debt shows as settled with a Solscan link, and the secretary can tell Ira it was already sent. With no address yet, you get Add Ira's wallet (prefilled name and phone; paste an address or a solana: link) or Ask Ira for wallet (a share message). Sol answers "who do I owe?" and "send Ira what I owe" from the list, and the morning briefing says "You owe Ira 0.01 SOL from yesterday's call." An address heard on a call is never used. Also: wallet connect asks again for approval when the wallet refuses a saved token; the Today balance matches Settings; duplicate call-back cards are cleaned up; old-language card text is hidden; the diagnostics log is shorter. Only "you owe" debts exist for now (no "owes you"), there is no QR scan yet (paste works), and Circle is not yet tested on a device.
 
@@ -127,7 +129,7 @@ These are from the devnet builds before 1.1.0. I checked every signature below w
 
 ## Install
 
-1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.4/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.4).
+1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.5/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.5).
 2. Allow installs from your browser or file manager when Android asks.
 3. Open the app. It installs as **Solarchik Assistant** (`net.solardepin.solarchik.assistant`), next to the CLOCK IN game if you have it.
 4. To connect a wallet, tap "Set up wallet" on Today. You need Phantom, Solflare or Seed Vault; it's a mainnet wallet with real funds. Without a wallet app you can still use Sol, the secretary, the briefing and the Watcher's prices.
@@ -181,7 +183,7 @@ What I couldn't verify myself, because it needs a real wallet with real money: t
 | Item | URL |
 | --- | --- |
 | This repo | https://github.com/Solar-DePIN-Hub/solarchik-assistant |
-| Release v1.2.4 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.4 |
+| Release v1.2.4 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.5 |
 | Game repo (CLOCK IN, unchanged) | https://github.com/Solar-DePIN-Hub/Solarchik |
 | API / market (devnet) | https://solarchik-market.vercel.app |
 | Demo video (CLOCK IN cut, an Assistant cut is coming) | https://youtu.be/oAxoliLwUXo |

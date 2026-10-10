@@ -60,9 +60,9 @@ class Release114Test {
     @Test fun playTileStartsTheRunAndNeverShowsTheYard() {
         val a = launch()
         assertEquals(MainActivity.Tab.TODAY, a.current)
-        find(a.window.decorView, "today-play")!!.performClick(); idle()
+        a.select(MainActivity.Tab.SETTINGS); idle(); find(a.window.decorView, "more-play")!!.performClick(); idle()
         assertRunStarted(a)
-        assertEquals(MainActivity.Tab.TODAY, a.current)
+        assertEquals(MainActivity.Tab.SETTINGS, a.current) // 1.2.5: Play lives in More; the run returns to Today
         assertNull("the rooftop yard was built", a.screen(MainActivity.Tab.YARD))
         assertFalse(a.screen(MainActivity.Tab.TODAY) == null)
     }
@@ -83,7 +83,7 @@ class Release114Test {
         val a = launch()
         a.select(MainActivity.Tab.AGENTS); idle()
         find(a.window.decorView, "nav-today")!!.performClick(); idle()
-        find(a.window.decorView, "today-play")!!.performClick(); idle()
+        a.select(MainActivity.Tab.SETTINGS); idle(); find(a.window.decorView, "more-play")!!.performClick(); idle()
         val run = shadowOf(a).nextStartedActivity
         // the player is somewhere else when the run ends (e.g. the run was started from another screen)
         a.select(MainActivity.Tab.AGENTS); idle()
@@ -131,7 +131,7 @@ class Release114Test {
     }
 
     @Test fun versionIs114() {
-        assertEquals("1.2.4", BuildConfig.VERSION_NAME) // 1.1.5 keeps every 1.1.4 rule
-        assertEquals(124, BuildConfig.VERSION_CODE)
+        assertEquals("1.2.5", BuildConfig.VERSION_NAME) // 1.1.5 keeps every 1.1.4 rule
+        assertEquals(125, BuildConfig.VERSION_CODE)
     }
 }

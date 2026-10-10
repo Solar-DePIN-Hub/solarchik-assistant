@@ -58,6 +58,10 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         walletBox = Ui.card(ctx, accent = Ui.GOLD)
         addView(walletBox)
 
+        // 1.2.4: Circle, right under the wallet (people you pay, what calls say you owe them)
+        circlePanel = CirclePanel(host).also { it.render() }
+        addView(section(R.string.circle_title, R.drawable.ic_wallet, Ui.CYAN).apply { tag = "settings-circle"; addView(circlePanel!!.view) })
+
         addView(section(R.string.settings_network, R.drawable.ic_nav_sol, Ui.CYAN).apply {
             networkBody = Ui.muted(ctx)
             addView(Ui.top(networkBody, 10))
@@ -95,6 +99,11 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                     if (on) host.requestNotifications(fromUser = false)
                 }, 8))
             }
+            // 1.2.5: the morning stack note (08:00, only with cards waiting)
+            addView(Ui.top(switchRow(ctx.getString(R.string.stack_note_toggle), net.solardepin.solarchik.stack.MorningStack.notifyOn(ctx)) { _, on ->
+                net.solardepin.solarchik.stack.MorningStack.setNotify(ctx, on)
+                if (on) host.requestNotifications(fromUser = false)
+            }.apply { tag = "settings-stack-note" }, 8))
         })
 
         addView(section(R.string.sec_title, R.drawable.ic_mic, Ui.PURPLE).apply {
@@ -135,9 +144,13 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             addView(Ui.top(r, 12))
         })
 
-        // 1.2.4: Circle (people you pay, what calls say you owe them)
-        circlePanel = CirclePanel(host).also { it.render() }
-        addView(section(R.string.circle_title, R.drawable.ic_wallet, Ui.CYAN).apply { tag = "settings-circle"; addView(circlePanel!!.view) })
+
+        // 1.2.5: the game lives in More now (Today is for calls, money and the day)
+        addView(section(R.string.more_game_title, R.drawable.ic_nav_run, Ui.GREEN).apply {
+            tag = "settings-game"
+            addView(Ui.top(Ui.muted(ctx, if (host.save.bestDistance <= 0) ctx.getString(R.string.today_play_new) else ctx.getString(R.string.today_play_sub, host.save.bestDistance), 12.5f), 6))
+            addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.today_play_title), Ui.Btn.SECONDARY, R.drawable.ic_nav_run) { host.playGame() }.apply { tag = "more-play" }, 10))
+        })
 
         // 1.2.0: Verified Seeker (Seeker Genesis Token via SIWS); not verified is a normal state
         addView(section(R.string.sk_title, R.drawable.ic_wallet, Ui.GREEN).apply {
@@ -304,6 +317,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     }
 
     override fun onShow() {
+        circlePanel?.render()
         render()
         refreshBalance()
         // 0.21.8: the live balance is read every time Settings opens (it showed a stale or empty value)

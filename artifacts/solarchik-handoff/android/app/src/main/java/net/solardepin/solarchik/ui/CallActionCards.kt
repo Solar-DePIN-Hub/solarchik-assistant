@@ -215,7 +215,8 @@ object CallActionCards {
 
     /** Compact rows for the call screen: what was found, and a way to act on it from Today. */
     fun rows(ctx: Context, key: String, who: String): View? {
-        val list = CallActionStore(ctx).forCall(key).filter { it.status == CallAction.OPEN }
+        // 1.2.5: call-backs are already "What next → Call back" right below; list only what that does not cover
+        val list = CallActionStore(ctx).forCall(key).filter { it.status == CallAction.OPEN && it.type != CallAction.CALLBACK }
         if (list.isEmpty()) return null
         return Ui.card(ctx, accent = Ui.PURPLE, pad = 14).apply {
             tag = "call-found-actions"

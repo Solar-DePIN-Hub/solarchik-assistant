@@ -56,6 +56,7 @@ class WalletDiagPanel(private val host: MainActivity) {
         actions2.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.wd_share), Ui.Btn.GHOST) { share() }.apply { tag = "wd-share"; textSize = 13f }))
         actions2.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.wd_clear), Ui.Btn.GHOST) { WalletDiag.clear(); host.toast(ctx.getString(R.string.wd_cleared)); render() }.apply { tag = "wd-clear"; textSize = 13f }))
         view.addView(Ui.top(actions2, 8))
+        lastResult?.let { view.addView(Ui.top(Ui.text(ctx, it, 13f, Ui.GOLD, 700).apply { tag = "wd-result"; setLineSpacing(0f, 1.2f) }, 10)) }
         val lines = WalletDiag.text().trimEnd().lines().filter { it.isNotBlank() }
         val shown = if (lines.isEmpty()) ctx.getString(R.string.wd_empty) else lines.takeLast(40).joinToString("\n")
         view.addView(Ui.top(Ui.text(ctx, shown, 10.5f, Ui.MUTED, 500).apply {
@@ -69,6 +70,9 @@ class WalletDiagPanel(private val host: MainActivity) {
 
     private fun dp(v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
 
+    /** 1.2.5: the last Test connect failure in words, shown under the buttons. */
+    var lastResult: String? = null
+
     private fun test() {
         if (busy) return
         val w = host.wallet
@@ -77,8 +81,8 @@ class WalletDiagPanel(private val host: MainActivity) {
         render()
         host.scope.launch {
             val r = if (w.hasWalletApp() || w.installedWallets().isNotEmpty()) w.connect(host.sender) else Result.failure(net.solardepin.solarchik.wallet.WalletError(net.solardepin.solarchik.wallet.WalletError.Kind.NO_WALLET))
-            r.onSuccess { WalletDiag.log("test result", "connected " + WalletDiag.shortAddr(it.address)); host.toast(ctx.getString(R.string.mn_wallet_connected, Fmt.short(it.address))) }
-                .onFailure { WalletDiag.log("test result", "failed: " + WalletDiag.chain(it)); host.toast(host.errorText(it)) }
+            r.onSuccess { lastResult = null; WalletDiag.log("test result", "connected " + WalletDiag.shortAddr(it.address)); host.toast(ctx.getString(R.string.mn_wallet_connected, Fmt.short(it.address))) }
+                .onFailure { WalletDiag.log("test result", "failed: " + WalletDiag.chain(it)); lastResult = net.solardepin.solarchik.wallet.WalletError.connectText(ctx, it); host.toast(lastResult!!) }
             busy = false
             host.renderAll()
         }

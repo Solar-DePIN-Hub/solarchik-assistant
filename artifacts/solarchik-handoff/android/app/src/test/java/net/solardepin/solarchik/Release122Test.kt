@@ -29,7 +29,7 @@ class Release122Test {
     private val spec = Regex("^solana-wallet:/v1/associate/local\\?association=[A-Za-z0-9_-]{87}&port=(\\d{5})(&v=[A-Za-z0-9.]+)*$")
 
     @Test fun version() {
-        assertEquals("1.2.4", BuildConfig.VERSION_NAME)
+        assertEquals("1.2.5", BuildConfig.VERSION_NAME)
         assertTrue(BuildConfig.VERSION_CODE >= 122)
     }
 

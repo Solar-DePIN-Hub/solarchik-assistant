@@ -149,7 +149,7 @@ class TodayTest {
 
     @Test fun installsNextToTheGameAndStaysOnDevnet() {
         assertEquals("net.solardepin.solarchik.assistant", BuildConfig.APPLICATION_ID)
-        assertEquals("1.2.4", BuildConfig.VERSION_NAME)
+        assertEquals("1.2.5", BuildConfig.VERSION_NAME)
         // 1.1.0: the release defaults to mainnet; this suite runs in dev devnet mode (solarchik.cluster=devnet)
         assertFalse(BuildConfig.DEVNET_ONLY)
         assertEquals("Solarchik Assistant", app.getString(R.string.app_name))
@@ -169,7 +169,7 @@ class TodayTest {
         assertEquals(listOf("Today", "Calls", "Sol", "Agents", "More"),
             listOf("nav-today", "nav-calls", "nav-sol", "nav-agents", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
         assertNull("the game has no nav slot", find(d, "nav-run"))
-        listOf("today-greeting", "today-mic", "today-secretary", "today-todos", "today-wallet", "today-checkin", "today-play").forEach {
+        listOf("today-greeting", "today-mic", "today-secretary", "today-todos", "today-wallet", "today-checkin").forEach {
             assertNotNull("$it missing", find(d, it))
         }
         // secretary: 2 answered, 1 missed, 1 blocked today; latest two non-blocked calls with AI summaries
@@ -228,9 +228,10 @@ class TodayTest {
         assertEquals(CallsActivity::class.java.name, sa.nextStartedActivity.component!!.className)
         assertEquals(MainActivity.Tab.TODAY, a.current)
         // 1.1.4: Play starts the rooftop run straight away (no game hub); Today stays underneath
-        find(a.window.decorView, "today-play")!!.performClick(); idle()
+        a.select(MainActivity.Tab.SETTINGS); idle(); find(a.window.decorView, "more-play")!!.performClick(); idle()
         assertEquals(net.solardepin.solarchik.game.RunActivity::class.java.name, sa.nextStartedActivity.component!!.className)
-        assertEquals(MainActivity.Tab.TODAY, a.current)
+        a.select(MainActivity.Tab.TODAY); idle()
+        assertNull("1.2.5: no game tile on Today", find(a.window.decorView, "today-play"))
         // check-in opens today's CLOCK IN card
         find(a.window.decorView, "today-checkin")!!.performClick(); idle()
         assertEquals(MainActivity.Tab.SHIFT, a.current)
@@ -304,20 +305,35 @@ class TodayTest {
         assertTrue(a.onboardingShown)
         val d = a.window.decorView
         val o = find(d, "onboarding") as Onboarding
-        assertEquals("Meet Sol, your pocket assistant", (find(o, "onb-title") as TextView).text.toString())
+        assertEquals("Call your secretary", (find(o, "onb-title") as TextView).text.toString())
+        assertTrue((find(o, "onb-body") as TextView).text.contains("+380 91 481 0885"))
+        assertEquals("Call the secretary now", (find(o, "onb-action") as TextView).text.toString())
         shot(d, "00-onboarding-en")
         find(o, "onb-next")!!.performClick(); idle()
-        assertTrue((find(o, "onb-title") as TextView).text.contains("answers the phone"))
+        assertTrue((find(o, "onb-title") as TextView).text.contains("lands on Today"))
+        assertEquals(View.GONE, find(o, "onb-action")!!.visibility)
         a.onBackPressedDispatcher.onBackPressed(); idle()
         assertEquals("Back goes to the previous page", 0, o.index)
         find(o, "onb-next")!!.performClick(); find(o, "onb-next")!!.performClick(); idle()
-        assertEquals("Get started", (find(o, "onb-next") as TextView).text.toString())
+        assertEquals("Not now", (find(o, "onb-next") as TextView).text.toString())
+        assertEquals("Connect Phantom", (find(o, "onb-action") as TextView).text.toString())
         find(o, "onb-next")!!.performClick(); idle()
         assertFalse(a.onboardingShown)
         assertEquals(MainActivity.Tab.TODAY, a.current)
         // never again
         val b = launch()
         assertFalse(b.onboardingShown)
+    }
+
+    @Test fun onboardingCallButtonDialsTheDemoLineAndMovesOn() {
+        MainActivity.onboardingEnabled = true
+        val a = launch()
+        val o = find(a.window.decorView, "onboarding") as Onboarding
+        find(o, "onb-action")!!.performClick(); idle()
+        val next = shadowOf(a).nextStartedActivity
+        assertEquals(CallsActivity::class.java.name, next.component!!.className)
+        assertTrue(next.getBooleanExtra(CallsActivity.EXTRA_TRY, false))
+        assertEquals(1, o.index)
     }
 
     @Test fun onboardingSkip() {

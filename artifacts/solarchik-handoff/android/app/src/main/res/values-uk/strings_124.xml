@@ -47,4 +47,40 @@
     <string name="circle_sol_owe">Судячи з дзвінків, ти винен: %1$s.</string>
     <string name="circle_sol_open">Ось картка для %1$s. Нічого не надсилається, доки ти не підтвердиш у гаманці.</string>
     <string name="circle_sol_nothing_for">Не бачу, щоб ти щось був винен %1$s.</string>
+    <string name="wc_internal">Phantom відповів внутрішньою помилкою (-32603) і не підключився. Відкрий Phantom, розблокуй, повернись і натисни «Підключити» ще раз. Нічого не надіслано.</string>
+    <string name="wc_no_session">Гаманець відкрився, але не почав підключення. Відкрий Phantom, розблокуй, повернись і натисни «Підключити» ще раз.</string>
+    <string name="wc_declined">Гаманець не схвалив підключення. Натисни «Підключити» ще раз і схвали в гаманці.</string>
+    <string name="wc_timeout">Гаманець не відповів вчасно. Натисни «Підключити» ще раз і схвали в гаманці.</string>
+    <string name="more_game_title">Гра</string>
+    <string name="today_circle_open">Розрахуватися чи попросити гаманець: Ще → Коло.</string>
+    <string name="onb5_1_title">Подзвони своєму секретарю</string>
+    <string name="onb5_1_body">Подзвони на +380 91 481 0885 і говори з ШІ-секретарем, як друг, що не може до тебе додзвонитися: «Привіт, це Іра. Я заплатила за обід, скинь мені 0.01 SOL. Передзвони о третій».</string>
+    <string name="onb5_1_action">Подзвонити секретарю</string>
+    <string name="onb5_2_title">Нотатка з\'явиться на «Сьогодні»</string>
+    <string name="onb5_2_body">Після дзвінка ти отримаєш коротку нотатку й картки дій: надіслати Ірі 0.01 SOL, передзвонити Ірі о 15:00. Платежі йдуть людям з твого Кола, і нічого не рухається без твого схвалення в гаманці.</string>
+    <string name="onb5_3_title">Підключи Phantom (необов\'язково)</string>
+    <string name="onb5_3_body">Підключи гаманець Solana, щоб бачити SOL і SKR на «Сьогодні» й платити з карток. Можна й пізніше в розділі «Ще».</string>
+    <string name="onb5_3_action">Підключити Phantom</string>
+    <string name="onb5_later">Не зараз</string>
+    <string name="circle_from_a_call">З дзвінка</string>
+    <string name="stack_label">Ранкова стопка</string>
+    <string name="stack_label_n">Ранкова стопка · %1$d з %2$d</string>
+    <string name="stack_later">Пізніше</string>
+    <string name="stack_read">Прочитати вголос</string>
+    <string name="stack_hint">Свайп праворуч: зробити, ліворуч: на завтра.</string>
+    <string name="stack_snoozed">Повернеться завтра вранці.</string>
+    <string name="stack_clocked_title">Зміну відмічено. Після дзвінків нічого не лишилось.</string>
+    <string name="stack_week_done">7 днів поспіль. Гарний тиждень.</string>
+    <string name="stack_signed">Сьогодні підписано в Solana ✓</string>
+    <string name="stack_local_only">Ця відмітка збережена лише на телефоні. Підписати її в Solana необов\'язково: одна транзакція-мемо, яку ти схвалюєш у гаманці.</string>
+    <string name="stack_sign">Підписати CLOCK IN за сьогодні (необов\'язково)</string>
+    <string name="stack_spoken_ask">Готово, пізніше чи зробити?</string>
+    <string name="stack_spoken_ask_pay">Готово, пізніше чи оплатити?</string>
+    <string name="stack_spoken_zero">Це все. Зміну на сьогодні відмічено.</string>
+    <string name="stack_not_heard">Не розчув. Скористайся кнопками.</string>
+    <string name="stack_note_title">Твоя ранкова стопка</string>
+    <string name="stack_note_toggle">Ранкова стопка о 8:00 (лише коли після дзвінків є справи)</string>
+    <plurals name="stack_streak"><item quantity="one">Серія: %d день</item><item quantity="few">Серія: %d дні</item><item quantity="many">Серія: %d днів</item><item quantity="other">Серія: %d дня</item></plurals>
+    <plurals name="stack_week_left"><item quantity="one">Ще %d день до серії з 7 днів.</item><item quantity="few">Ще %d дні до серії з 7 днів.</item><item quantity="many">Ще %d днів до серії з 7 днів.</item><item quantity="other">Ще %d дня до серії з 7 днів.</item></plurals>
+    <plurals name="stack_note_body"><item quantity="one">Чекає %d картка з дзвінків: оплатити, передзвонити чи нагадати.</item><item quantity="few">Чекають %d картки з дзвінків: оплатити, передзвонити чи нагадати.</item><item quantity="many">Чекають %d карток з дзвінків: оплатити, передзвонити чи нагадати.</item><item quantity="other">Чекають %d картки з дзвінків: оплатити, передзвонити чи нагадати.</item></plurals>
 </resources>

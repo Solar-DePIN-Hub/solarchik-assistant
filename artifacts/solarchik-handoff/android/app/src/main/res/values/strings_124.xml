@@ -47,4 +47,40 @@
     <string name="circle_sol_owe">Going by your calls, you owe: %1$s.</string>
     <string name="circle_sol_open">Here\'s the card for %1$s. Nothing is sent until you approve it in your wallet.</string>
     <string name="circle_sol_nothing_for">I don\'t see anything you owe %1$s.</string>
+    <string name="wc_internal">Phantom answered with an internal error (-32603) and didn\'t connect. Open Phantom, unlock it, come back and tap Connect again. Nothing was sent.</string>
+    <string name="wc_no_session">The wallet opened but didn\'t start the connection. Open Phantom, unlock it, come back and tap Connect again.</string>
+    <string name="wc_declined">The wallet didn\'t approve the connection. Tap Connect again and approve it in the wallet.</string>
+    <string name="wc_timeout">The wallet didn\'t answer in time. Tap Connect again and approve it in the wallet.</string>
+    <string name="more_game_title">Game</string>
+    <string name="today_circle_open">Settle or ask for a wallet in More → Circle.</string>
+    <string name="onb5_1_title">Call your secretary</string>
+    <string name="onb5_1_body">Call +380 91 481 0885 and talk to the AI secretary like a friend who can\'t reach you: \"Hi, it\'s Ira. I paid for lunch, please send me 0.01 SOL. Call me back at 3.\"</string>
+    <string name="onb5_1_action">Call the secretary now</string>
+    <string name="onb5_2_title">Your note lands on Today</string>
+    <string name="onb5_2_body">After the call you get a short note and action cards: pay 0.01 SOL to Ira, call Ira back at 3:00. Payments go to people in your Circle, and nothing moves until you approve it in your wallet.</string>
+    <string name="onb5_3_title">Connect Phantom (optional)</string>
+    <string name="onb5_3_body">Connect your Solana wallet to see your SOL and SKR on Today and to pay from cards. You can do it later in More.</string>
+    <string name="onb5_3_action">Connect Phantom</string>
+    <string name="onb5_later">Not now</string>
+    <string name="circle_from_a_call">From a call</string>
+    <string name="stack_label">Morning stack</string>
+    <string name="stack_label_n">Morning stack · %1$d of %2$d</string>
+    <string name="stack_later">Later</string>
+    <string name="stack_read">Read aloud</string>
+    <string name="stack_hint">Swipe right to do it, left for tomorrow.</string>
+    <string name="stack_snoozed">Back tomorrow morning.</string>
+    <string name="stack_clocked_title">Clocked in. Nothing left from your calls.</string>
+    <string name="stack_week_done">7 days in a row. Nice week.</string>
+    <string name="stack_signed">Signed on Solana today ✓</string>
+    <string name="stack_local_only">This clock-in is saved on this phone only. Signing it on Solana is optional: one memo transaction you approve in your wallet.</string>
+    <string name="stack_sign">Sign today\'s CLOCK IN (optional)</string>
+    <string name="stack_spoken_ask">Done, later, or do it?</string>
+    <string name="stack_spoken_ask_pay">Done, later, or pay?</string>
+    <string name="stack_spoken_zero">That\'s everything. You\'re clocked in for today.</string>
+    <string name="stack_not_heard">Didn\'t catch that. Use the buttons.</string>
+    <string name="stack_note_title">Your morning stack</string>
+    <string name="stack_note_toggle">Morning stack at 8:00 (only when calls left you something to do)</string>
+    <plurals name="stack_streak"><item quantity="one">Streak: %d day</item><item quantity="other">Streak: %d days</item></plurals>
+    <plurals name="stack_week_left"><item quantity="one">%d more day for a 7-day streak.</item><item quantity="other">%d more days for a 7-day streak.</item></plurals>
+    <plurals name="stack_note_body"><item quantity="one">%d card from your calls is waiting: pay, call back or remind.</item><item quantity="other">%d cards from your calls are waiting: pay, call back or remind.</item></plurals>
 </resources>

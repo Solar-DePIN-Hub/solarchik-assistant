@@ -490,9 +490,13 @@ class AgentsBriefingActionsTest {
         assertNotNull(find(d, "today-actions"))
         val all = texts(d)
         assertTrue(all.toString(), all.any { it == "Pay 10 USDC · asked by Olena" })
-        assertTrue(all.any { it == "Call Petro back at 15:00" })
         assertTrue(all.any { it.startsWith("Payment requests by phone are a common scam") })
+        assertTrue(all.contains("MORNING STACK · 1 OF 3"))
         shot(d, "19_today_call_actions", "today-actions")
+        // 1.2.5 morning stack: one card at a time; Later sends both payments to tomorrow
+        (find(d, "stack-later") as View).performClick(); idle()
+        (find(d, "stack-later") as View).performClick(); idle()
+        assertTrue(texts(d).any { it == "Call Petro back at 15:00" })
         // callback: the dialer opens with the number; the user presses call
         (find(d, "ca-dial") as View).performClick(); idle()
         val dial = shadowOf(a).nextStartedActivity
