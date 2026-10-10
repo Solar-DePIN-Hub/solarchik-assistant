@@ -97,6 +97,10 @@ object MwaDirect {
      * One MWA session: associate, authorize (with the saved token when there is one), then [block] on the IO
      * thread with the live client (sign / sign-and-send; blocking futures are fine there).
      */
+    /** The association intent exactly as the clientlib builds it (no endpoint prefix: plain solana-wallet:/v1/associate/local). */
+    fun associationIntent(scenario: LocalAssociationScenario, pkg: String?): Intent =
+        LocalAssociationIntentCreator.createAssociationIntent(null, scenario.port, scenario.session).also { if (!pkg.isNullOrBlank()) it.setPackage(pkg) }
+
     suspend fun <T> transact(
         ctx: Context,
         launcher: WalletLauncher,
@@ -115,11 +119,13 @@ object MwaDirect {
             WalletDiag.error("scenario failed", t)
             return Result.failure(WalletError(WalletError.Kind.FAILED, "scenario: " + (t.message ?: "")))
         }
-        val intent = LocalAssociationIntentCreator.createAssociationIntent(null, scenario.port, scenario.session)
-        if (!pkg.isNullOrBlank()) intent.setPackage(pkg)
+        val intent = associationIntent(scenario, pkg)
         val handlers = WalletDiag.handlers(ctx, intent)
         WalletDiag.log("intent", "port=" + scenario.port + " target=" + (pkg ?: "any wallet") + " uri=" + WalletDiag.safeUri(intent.data))
         WalletDiag.log("handlers", if (handlers.isEmpty()) "none" else handlers.joinToString(" | "))
+        // 1.2.2: the URI judged against the MWA spec, and the WebSocket the app will dial, in words
+        WalletDiag.log("uri check", MwaUri.summary(intent.data))
+        WalletDiag.log("ws client", MwaUri.wsTarget(scenario) + " protocol=" + MwaUri.SUBPROTOCOL)
         val sentAt = System.currentTimeMillis()
         val resultAtRef = java.util.concurrent.atomic.AtomicLong(0L)
         try {

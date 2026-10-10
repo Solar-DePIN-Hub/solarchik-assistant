@@ -6,7 +6,9 @@ I'm Vadym, and I build Solarchik on my own under Solar DePIN. Solarchik Assistan
 
 I built this repo for the Colosseum Crypto World's Fair (Solana track, AI / agents). Submissions close 12 Oct 2026, 11:59pm PT (13 Oct, 09:59 Kyiv). My older game build, CLOCK IN, lives in [Solar-DePIN-Hub/Solarchik](https://github.com/Solar-DePIN-Hub/Solarchik), and I didn't change it for this. In this app the game is only a small "Play" tile.
 
-**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.1/solarchik-assistant.apk) (v1.2.1, Android 8+, sha256 `7d75f4ac96ecc6a55a941e537b8dbfd9dcf63c349d5c4889d05ad2e089294515`)
+**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.2/solarchik-assistant.apk) (v1.2.2, Android 8+, sha256 `4c62859009d18cebda3a8a4a246b9ea7f0cfd82f90fb3b4ecaa0e4aa552fcf72`)
+
+**New in 1.2.2:** Wallet diagnostics now says in words whether the wallet request matches the Mobile Wallet Adapter spec ("uri check: spec OK solana-wallet:/v1/associate/local?association=…&port=…&v=…") and which local WebSocket the app dials, plus a tip for Phantom opening only its home screen. Tests prove both connect paths send the spec URI. No change to the connect logic; Phantom connect is still not confirmed on my tablet.
 
 **New in 1.2.1** (full-app audit): every screen rendered in English and Ukrainian (no Cyrillic in English; Ukrainian buttons that were cut off now fit), every button checked for a working handler, a "Partner perks today" line on Today's Season card, long Sol replies split so the voice never stops at 400 characters, the empty Send button focuses the text field, the forwarding-number field no longer squeezed out by "Save", honest privacy copy on the Sol tab. Worker: blog dates read from the page markup, Ukrainian notes say the callback number in Ukrainian, the briefing doesn't read phone numbers aloud.
 
@@ -125,7 +127,7 @@ These are from the devnet builds before 1.1.0. I checked every signature below w
 
 ## Install
 
-1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.1/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.1).
+1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.2/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.2).
 2. Allow installs from your browser or file manager when Android asks.
 3. Open the app. It installs as **Solarchik Assistant** (`net.solardepin.solarchik.assistant`), next to the CLOCK IN game if you have it.
 4. To connect a wallet, tap "Set up wallet" on Today. You need Phantom, Solflare or Seed Vault; it's a mainnet wallet with real funds. Without a wallet app you can still use Sol, the secretary, the briefing and the Watcher's prices.
@@ -179,7 +181,7 @@ What I couldn't verify myself, because it needs a real wallet with real money: t
 | Item | URL |
 | --- | --- |
 | This repo | https://github.com/Solar-DePIN-Hub/solarchik-assistant |
-| Release v1.2.1 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.1 |
+| Release v1.2.2 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.2 |
 | Game repo (CLOCK IN, unchanged) | https://github.com/Solar-DePIN-Hub/Solarchik |
 | API / market (devnet) | https://solarchik-market.vercel.app |
 | Demo video (CLOCK IN cut, an Assistant cut is coming) | https://youtu.be/oAxoliLwUXo |

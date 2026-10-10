@@ -46,6 +46,7 @@ class WalletDiagPanel(private val host: MainActivity) {
                 host.openUrl("https://play.google.com/store/apps/details?id=com.solflare.mobile")
             }.apply { tag = "wd-get-solflare"; textSize = 13f }, 8))
         }
+        view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.wd_phantom_home), 12f).apply { tag = "wd-phantom-home" }, 8))
         val actions = Ui.row(ctx, gap = 8)
         actions.addView(Ui.weight(Ui.button(ctx, ctx.getString(if (busy) R.string.wd_testing else R.string.wd_test), Ui.Btn.SECONDARY) { test() }.apply { tag = "wd-test"; textSize = 13f; isEnabled = !busy }))
         actions.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.wd_copy), Ui.Btn.GHOST) { copy() }.apply { tag = "wd-copy"; textSize = 13f }))
