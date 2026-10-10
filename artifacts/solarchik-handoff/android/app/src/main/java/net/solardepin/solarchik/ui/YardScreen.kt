@@ -527,8 +527,8 @@ class YardScreen(host: MainActivity) : Screen(host) {
         signing = true
         render()
         host.scope.launch {
-            val result = ClockIn.sign(host.wallet, host.sender, save)
-            signing = false
+            // 1.2.10: the button never stays on "Signing…" (timeout inside ClockIn.sign, and finally here)
+            val result = try { ClockIn.sign(host.wallet, host.sender, save) } catch (t: Throwable) { if (t is kotlinx.coroutines.CancellationException) { signing = false; throw t }; Result.failure(t) } finally { signing = false }
             result.onSuccess { granted ->
                 granted?.let { w ->
                     host.toast(ctx.getString(R.string.yard_granted, ctx.getString(if (w.kind == FeeWindow.KIND_LONG) R.string.window_7d else R.string.window_48h)))

@@ -59,6 +59,24 @@ object AppLocale {
 
     fun localeOf(lang: String): Locale = if (lang == UK) Locale("uk", "UA") else Locale.US
 
+    /**
+     * 1.2.10 (tablet: the Season screen and Autopilot sheet were all Ukrainian in the English UI): the activities
+     * handle rotation themselves (configChanges), and Android then refreshes their resources with the PHONE's locale.
+     * Screens built after a rotation came out in Ukrainian. Called from onConfigurationChanged / onResume: puts the
+     * app language back on the activity's resources.
+     */
+    fun pin(ctx: Context) {
+        val loc = localeOf(lang(ctx))
+        ui = loc
+        Locale.setDefault(loc)
+        val res = ctx.resources
+        if (res.configuration.locales.isEmpty || res.configuration.locales[0].language != loc.language) {
+            val cfg = Configuration(res.configuration)
+            cfg.setLocales(LocaleList(loc))
+            @Suppress("DEPRECATION") res.updateConfiguration(cfg, res.displayMetrics)
+        }
+    }
+
     /** Use from attachBaseContext: resources, formatting and Locale.getDefault() follow the app language. */
     fun wrap(base: Context): Context {
         val loc = localeOf(lang(base))

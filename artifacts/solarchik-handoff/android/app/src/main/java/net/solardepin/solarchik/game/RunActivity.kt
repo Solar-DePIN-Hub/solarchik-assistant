@@ -65,6 +65,12 @@ class RunActivity : ComponentActivity(), RunView.Listener, RunOverlay.Actions {
         super.attachBaseContext(net.solardepin.solarchik.core.AppLocale.wrap(newBase))
     }
 
+    /** 1.2.10: a rotation must not switch the UI to the phone's language (see AppLocale.pin). */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        net.solardepin.solarchik.core.AppLocale.pin(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -259,14 +265,14 @@ class RunActivity : ComponentActivity(), RunView.Listener, RunOverlay.Actions {
 
     override fun sign() {
         // web onClock -> doSign: the same CLOCK IN flow the Yard uses, right here.
+        if (!RunOverlay.runSigning) return // 1.2.10: no signing in the run
         if (signing || !ClockIn.ready(save)) return
         if (!wallet.connected) { yardSign(); return }
         signing = true
         signError = ""
         refreshClock()
         scope.launch {
-            val result = ClockIn.sign(wallet, sender, save)
-            signing = false
+            val result = try { ClockIn.sign(wallet, sender, save) } finally { signing = false }
             result.onSuccess {
                 quests.milestones().takeIf { it.isNotEmpty() }?.let { ms ->
                     overlay.questDone(ms.joinToString("  ") { GearNames.reward(this@RunActivity, it) + " +" + it.suns })

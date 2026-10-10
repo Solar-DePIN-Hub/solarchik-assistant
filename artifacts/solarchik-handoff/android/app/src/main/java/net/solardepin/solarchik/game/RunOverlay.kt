@@ -61,6 +61,12 @@ class RunOverlay(private val ctx: Context, private val actions: Actions) : Frame
     }
 
     companion object {
+        /**
+         * 1.2.10 (tablet: the old Solarchik game-over screen with its "Sign today" button popped up after a run):
+         * no signing in the run at all. The result is a clean card (score, Play again, Back to Today); signing the
+         * day stays optional on Today after the stack. Old run tests flip this back on to keep covering the flow.
+         */
+        @Volatile var runSigning = false
         const val BANNER_MS = 2800L
         const val CARD_W = 404
         /** Sol's caption chip width (dp). */
@@ -243,6 +249,7 @@ class RunOverlay(private val ctx: Context, private val actions: Actions) : Frame
     private val deadReached: TextView
     private val deadRibbon: TextView
     private val deadStats: TextView
+    private val deadScore: TextView
     private val deadSign: SignSection
     private val rewardsBox: LinearLayout
     private val rewardsSuns: TextView
@@ -530,7 +537,7 @@ class RunOverlay(private val ctx: Context, private val actions: Actions) : Frame
         pauseLeft.addView(button(ctx.getString(R.string.run_yard), false, 48, 15f, R.drawable.ic_run_home) { actions.yard() }, lp(top = 8, h = 50))
         pauseCols.addView(pauseLeft, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         pauseSign = SignSection()
-        pauseCols.addView(pauseSign.root, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(20) })
+        if (runSigning) pauseCols.addView(pauseSign.root, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(20) })
         pauseCard.addView(pauseCols)
         pauseLayer.addView(scroller(pauseCard), LayoutParams(dp(CARD_W), LayoutParams.WRAP_CONTENT, Gravity.CENTER))
         addView(pauseLayer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -550,12 +557,15 @@ class RunOverlay(private val ctx: Context, private val actions: Actions) : Frame
         val deadCols = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         val deadLeft = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         val headRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        headRow.addView(label(ctx.getString(R.string.run_daily), 14f, PRIMARY, track = 0.16f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        headRow.addView(label(ctx.getString(if (runSigning) R.string.run_daily else R.string.run_result_kicker), 14f, PRIMARY, track = 0.16f).apply { tag = "run-result-kicker" }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         deadRibbon = label("", 12f, BG).apply { background = box(OK, 99f); setPadding(dp(10), dp(4), dp(10), dp(4)); visibility = GONE }
         headRow.addView(deadRibbon)
         deadLeft.addView(headRow)
         deadTitle = label("", 30f)
         deadLeft.addView(deadTitle, lp(top = 4))
+        // 1.2.10: the score, big (the new result card)
+        deadScore = label("", 46f, PRIMARY).apply { tag = "run-result-score"; visibility = if (runSigning) GONE else VISIBLE }
+        deadLeft.addView(deadScore, lp(top = 2))
         deadReached = label("", 14f, PRIMARY)
         deadLeft.addView(deadReached, lp(top = 4))
         deadStats = label("", 14f, MUTED, body)
@@ -580,14 +590,14 @@ class RunOverlay(private val ctx: Context, private val actions: Actions) : Frame
         deadLeft.addView(rewardsBox, lp(top = 12))
         // one row so both stay above the fold on a short landscape screen
         val deadButtons = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        deadButtons.addView(button(ctx.getString(R.string.run_again_full), true, 60, 22f, null) { actions.again() },
-            LinearLayout.LayoutParams(0, dp(64), 1.7f))
-        deadButtons.addView(button(ctx.getString(R.string.run_yard), false, 60, 15f, R.drawable.ic_run_home) { actions.yard() },
+        deadButtons.addView(button(ctx.getString(if (runSigning) R.string.run_again_full else R.string.run_play_again), true, 60, 22f, null) { actions.again() }.apply { tag = "run-again" },
+            LinearLayout.LayoutParams(0, dp(64), 1.4f))
+        deadButtons.addView(button(ctx.getString(if (runSigning) R.string.run_yard else R.string.run_back_today), false, 60, 15f, R.drawable.ic_run_home) { actions.yard() }.apply { tag = "run-back-today" },
             LinearLayout.LayoutParams(0, dp(64), 1f).apply { marginStart = dp(10) })
         deadLeft.addView(deadButtons, lp(top = 14, h = 64))
         deadCols.addView(deadLeft, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         deadSign = SignSection()
-        deadCols.addView(deadSign.root, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(20) })
+        if (runSigning) deadCols.addView(deadSign.root, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(20) })
         deadCard.addView(deadCols)
         deadLayer.addView(scroller(deadCard), LayoutParams(dp(CARD_W), LayoutParams.WRAP_CONTENT, Gravity.CENTER))
         addView(deadLayer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -776,7 +786,7 @@ class RunOverlay(private val ctx: Context, private val actions: Actions) : Frame
         clockBadge.compoundDrawablePadding = dp(6)
         pauseSign.bind(c, pausedCard = true)
         deadSign.bind(c, pausedCard = false)
-        val wide = c.open || c.signed
+        val wide = runSigning && (c.open || c.signed)
         for (layer in arrayOf(pauseLayer, deadLayer)) {
             val sv = layer.getChildAt(0)
             val lpw = sv.layoutParams as LayoutParams
@@ -842,9 +852,9 @@ class RunOverlay(private val ctx: Context, private val actions: Actions) : Frame
         val wasAnnounce = announceV.visibility == VISIBLE
         announceV.visibility = if (h != null && h.announceOn && h.phase == Phase.RUNNING && h.announce.isNotEmpty() && !banner) VISIBLE else GONE
         if (announceV.visibility == VISIBLE && !wasAnnounce) bannerIn(announceV)
-        clockBanner.visibility = if (banner && !paused) VISIBLE else GONE
+        clockBanner.visibility = if (runSigning && banner && !paused) VISIBLE else GONE
         val signedFresh = clock.signed && now - signedSeenAt < SIGNED_BADGE_MS
-        clockBadge.visibility = if (live && !paused && clock.open && (!clock.signed || signedFresh)) VISIBLE else GONE
+        clockBadge.visibility = if (runSigning && live && !paused && clock.open && (!clock.signed || signedFresh)) VISIBLE else GONE
         val cardDue = dead && android.os.SystemClock.uptimeMillis() - deadSince >= deathBeatMs
         deadLayer.visibility = if (cardDue) VISIBLE else GONE
         deathDim.visibility = if (dead && !cardDue) VISIBLE else GONE
@@ -905,7 +915,8 @@ class RunOverlay(private val ctx: Context, private val actions: Actions) : Frame
             val heat = ctx.getString(R.string.run_stats_heat, h.meters, h.score, h.suns, h.maxCombo)
             deadStats.text = if (h.didBonus) ctx.getString(R.string.run_stats_garden, heat) else heat
             deadRibbon.text = ctx.getString(R.string.run_clocked_ribbon, GameSave.GOAL_M)
-            deadRibbon.visibility = if (h.clockOpen) VISIBLE else GONE
+            deadRibbon.visibility = if (runSigning && h.clockOpen) VISIBLE else GONE
+            deadScore.text = ctx.getString(R.string.run_result_score, h.score)
             if (prev?.phase != Phase.DEAD) {
                 rewardsBox.visibility = GONE
                 deadSince = android.os.SystemClock.uptimeMillis()

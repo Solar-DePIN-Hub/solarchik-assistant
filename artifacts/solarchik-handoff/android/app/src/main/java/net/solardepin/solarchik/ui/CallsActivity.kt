@@ -67,6 +67,12 @@ class CallsActivity : ComponentActivity() {
         super.attachBaseContext(net.solardepin.solarchik.core.AppLocale.wrap(newBase))
     }
 
+    /** 1.2.10: a rotation must not switch the UI to the phone's language (see AppLocale.pin). */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        net.solardepin.solarchik.core.AppLocale.pin(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Ui.init(this)

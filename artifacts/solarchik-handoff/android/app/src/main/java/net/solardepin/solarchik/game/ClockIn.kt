@@ -25,9 +25,13 @@ object ClockIn {
         // Captured before the wallet opens: the proof belongs to the day that was run.
         val day = save.today()
         val meters = save.todayDistance()
-        val proof = wallet.clockInOnChain(sender, meters, save.todayScore(), save.nextStreak(), day)
+        // 1.2.10: never hangs; after SIGN_TIMEOUT_MS the button comes back with a clear message
+        val proof = kotlinx.coroutines.withTimeoutOrNull(SIGN_TIMEOUT_MS) { wallet.clockInOnChain(sender, meters, save.todayScore(), save.nextStreak(), day) }
+            ?: Result.failure(net.solardepin.solarchik.wallet.WalletError(net.solardepin.solarchik.wallet.WalletError.Kind.NETWORK, "the wallet did not answer in time"))
         return proof.map { save.stampClock(it.address, it.signature, it.cluster, it.kind, day, meters).firstOrNull() }
     }
+
+    const val SIGN_TIMEOUT_MS = 150_000L
 
     fun explorerTx(sig: String, cluster: String): String =
         if (cluster == "devnet") "https://explorer.solana.com/tx/$sig?cluster=devnet" else net.solardepin.solarchik.core.SolarchikConfig.solscanTx(sig, cluster)

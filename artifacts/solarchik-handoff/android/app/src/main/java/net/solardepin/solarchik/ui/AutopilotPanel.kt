@@ -24,24 +24,24 @@ class AutopilotPanel(private val host: MainActivity, private val onChange: () ->
     private val ctx get() = host
     val store by lazy { AutopilotStore(host) }
 
-    fun card(): LinearLayout = Ui.card(ctx, accent = Ui.CYAN, pad = 16).apply {
+    fun card(): LinearLayout = Ui.card(ctx, accent = Ui.CYAN, pad = 20).apply {
         tag = "ap-card"
         val pol = store.policy()
         addView(Ui.label(ctx, ctx.getString(R.string.ap_label), Ui.CYAN))
-        addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.ap_title), 17f, Ui.TEXT, 800), 4))
-        addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.ap_body), 12.5f).apply { setLineSpacing(0f, 1.25f) }, 6))
+        addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.ap_title), 18f, Ui.TEXT, 800), 6))
+        addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.ap_body), 14f).apply { setLineSpacing(0f, 1.35f) }, 10))
         if (!pol.enabled) {
-            addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.ap_turn_on), Ui.Btn.SECONDARY) { confirmOn() }.apply { tag = "ap-on" }, 12))
-            addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.ap_points_note), 12f).apply { setLineSpacing(0f, 1.2f) }, 10))
+            addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.ap_turn_on), Ui.Btn.SECONDARY) { confirmOn() }.apply { tag = "ap-on"; minHeight = dp(52); setPadding(dp(16), dp(12), dp(16), dp(12)) }, 16))
+            addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.ap_points_note), 13f).apply { setLineSpacing(0f, 1.3f) }, 14))
             return@apply
         }
         addView(Ui.top(Ui.pill(ctx, ctx.getString(if (pol.paused) R.string.ap_paused else R.string.ap_running), if (pol.paused) Ui.AMBER else Ui.GREEN, filled = !pol.paused).apply { tag = "ap-state" }, 10))
-        if (!SwapStore(host).policy().live) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.ap_no_swaps), 12f, Ui.AMBER, 600).apply { tag = "ap-no-swaps"; setLineSpacing(0f, 1.2f) }, 8))
+        if (!SwapStore(host).policy().live) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.ap_no_swaps), 13.5f, Ui.AMBER, 600).apply { tag = "ap-no-swaps"; setLineSpacing(0f, 1.3f) }, 10))
 
         addView(Ui.top(Ui.label(ctx, ctx.getString(R.string.ap_today)), 14))
         val today = LocalDate.now().toString()
         val todays = store.actions().filter { it.day == today }
-        if (todays.isEmpty()) addView(Ui.top(Ui.muted(ctx, ctx.getString(if (pol.paused) R.string.ap_none_paused else R.string.ap_none), 12.5f), 6))
+        if (todays.isEmpty()) addView(Ui.top(Ui.muted(ctx, ctx.getString(if (pol.paused) R.string.ap_none_paused else R.string.ap_none), 13.5f).apply { setLineSpacing(0f, 1.3f) }, 8))
         todays.forEach { addView(Ui.top(row(it, open = !pol.paused && it.status != AutoAction.DONE), 8)) }
 
         addView(Ui.top(Ui.label(ctx, ctx.getString(R.string.ap_hours)), 14))
@@ -58,21 +58,21 @@ class AutopilotPanel(private val host: MainActivity, private val onChange: () ->
         addView(Ui.top(Ui.label(ctx, ctx.getString(R.string.ap_swap_day)), 12))
         val days = listOf(5_000_000L, 10_000_000L, 20_000_000L, 50_000_000L)
         addView(Ui.top(chips(days.map { Fmt.sol(it / 1e9, 3) }, days.indexOf(pol.swapDayCapLamports), "ap-swap-day") { i -> set(pol.copy(swapDayCapLamports = days[i])) }, 6))
-        addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.ap_caps_now, pol.perDay, Fmt.sol(pol.swapMaxLamports / 1e9, 3), Fmt.sol(pol.swapDayCapLamports / 1e9, 3)), 12f).apply { tag = "ap-caps-now"; setLineSpacing(0f, 1.2f) }, 8))
+        addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.ap_caps_now, pol.perDay, Fmt.sol(pol.swapMaxLamports / 1e9, 3), Fmt.sol(pol.swapDayCapLamports / 1e9, 3)), 13f).apply { tag = "ap-caps-now"; setLineSpacing(0f, 1.3f) }, 10))
 
-        val btns = Ui.row(ctx, gap = 8)
+        val btns = Ui.row(ctx, gap = 10)
         btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(if (pol.paused) R.string.ap_resume else R.string.ap_pause), Ui.Btn.SECONDARY) {
             store.setPolicy(store.policy().copy(paused = !pol.paused)); AutoRunner.sync(host); if (pol.paused) AutoRunner.ensurePlan(host); onChange()
-        }.apply { tag = "ap-pause" }))
-        btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.ap_stop), Ui.Btn.GHOST) { stop() }.apply { tag = "ap-stop" }))
-        addView(Ui.top(btns, 14))
+        }.apply { tag = "ap-pause"; minHeight = dp(52) }))
+        btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.ap_stop), Ui.Btn.GHOST) { stop() }.apply { tag = "ap-stop"; minHeight = dp(52) }))
+        addView(Ui.top(btns, 18))
 
         val hist = store.actions().filter { it.day != today }.takeLast(8).reversed()
         if (hist.isNotEmpty()) {
             addView(Ui.top(Ui.label(ctx, ctx.getString(R.string.ap_history)), 14))
             hist.forEach { addView(Ui.top(row(it, open = false), 6)) }
         }
-        addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.ap_points_note), 12f).apply { setLineSpacing(0f, 1.2f) }, 12))
+        addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.ap_points_note), 13f).apply { setLineSpacing(0f, 1.3f) }, 16))
     }
 
     private fun row(a: AutoAction, open: Boolean) = Ui.row(ctx, gap = 8).apply {
@@ -86,7 +86,7 @@ class AutopilotPanel(private val host: MainActivity, private val onChange: () ->
             AutoKind.STAKING -> ctx.getString(R.string.ap_kind_stake)
         }
         val prefix = if (a.day == LocalDate.now().toString()) time else a.day.substring(5) + " " + time
-        addView(Ui.weight(Ui.text(ctx, "$prefix · $what · ${statusText(a.status)}", 12.5f, if (a.status == AutoAction.DONE) Ui.GREEN else Ui.TEXT, 600).apply { setLineSpacing(0f, 1.15f) }))
+        addView(Ui.weight(Ui.text(ctx, "$prefix · $what · ${statusText(a.status)}", 13.5f, if (a.status == AutoAction.DONE) Ui.GREEN else Ui.TEXT, 600).apply { setLineSpacing(0f, 1.15f) }))
         if (open) addView(Ui.text(ctx, ctx.getString(R.string.ap_open), 12f, Ui.CYAN, 800).apply {
             setPadding(dp(6), dp(8), dp(6), dp(8))
             setOnClickListener { host.openAutopilot(a.id) }
@@ -102,10 +102,10 @@ class AutopilotPanel(private val host: MainActivity, private val onChange: () ->
     })
 
     private fun chips(labels: List<String>, selected: Int, tagName: String, pick: (Int) -> Unit): LinearLayout {
-        val row = Ui.row(ctx, gap = 6).apply { tag = tagName }
+        val row = Ui.row(ctx, gap = 8).apply { tag = tagName }
         labels.forEachIndexed { i, l ->
             row.addView(Ui.weight(Ui.button(ctx, l, if (i == selected) Ui.Btn.PRIMARY else Ui.Btn.GHOST) { pick(i) }.apply {
-                textSize = 12f; setPadding(dp(4), dp(8), dp(4), dp(8)); maxLines = 1
+                textSize = 13f; setPadding(dp(6), dp(10), dp(6), dp(10)); minHeight = dp(44); maxLines = 1
             }))
         }
         return row
