@@ -253,7 +253,7 @@ object MwaDirect {
                 }
                 val acct = auth.accounts?.firstOrNull()?.publicKey ?: auth.publicKey
                 WalletDiag.log("auth token", tokenNote(authToken, auth.authToken))
-                WalletDiag.log("authorized", "account " + (acct?.let { WalletDiag.shortAddr(Base58.encode(it)) } ?: "none") + ", accounts=" + (auth.accounts?.size ?: 0))
+                WalletDiag.log("authorized", "account " + (acct?.let { WalletDiag.shortAddr(Base58.encode(it)) } ?: "none") + ", accounts=" + (auth.accounts?.size ?: 0) + ", " + (System.currentTimeMillis() - sentAt) + " ms after the intent")
                 val out = try {
                     block(client, auth)
                 } catch (e: ExecutionException) {
@@ -272,7 +272,9 @@ object MwaDirect {
                     WalletDiag.error("request timed out", e)
                     return@withContext Result.failure(WalletError(WalletError.Kind.FAILED, "Timed out while waiting for result"))
                 }
-                if (out !is Unit) WalletDiag.log("request done")
+                // 1.2.7 timing (tablet: ~14 s from Phantom opening to its sign sheet): everything the app needs (blockhash,
+                // build, simulation) is done before the intent; after it only authorize and the sign request go out.
+                if (out !is Unit) WalletDiag.log("request done", (System.currentTimeMillis() - sentAt).toString() + " ms after the intent")
                 Result.success(auth to out)
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t
