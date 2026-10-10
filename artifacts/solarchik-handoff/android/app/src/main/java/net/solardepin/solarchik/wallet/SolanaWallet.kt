@@ -59,6 +59,7 @@ class WalletError(val kind: Kind, detail: String = "", val signOnlyMayHelp: Bool
             val m = (message ?: "").trim()
             val res = when {
                 m.isEmpty() || m == "FAILED" -> net.solardepin.solarchik.R.string.err_d_unknown
+                m.contains("local association", ignoreCase = true) -> net.solardepin.solarchik.R.string.err_d_assoc
                 m == "No account" || m.endsWith("without account") -> net.solardepin.solarchik.R.string.err_d_no_account
                 m == "Wallet sent no signature" -> net.solardepin.solarchik.R.string.err_d_no_sig
                 m == "Wallet returned no transaction" -> net.solardepin.solarchik.R.string.err_d_no_tx
@@ -87,6 +88,9 @@ class WalletError(val kind: Kind, detail: String = "", val signOnlyMayHelp: Bool
                 code == ERR_AUTH -> WalletError(Kind.DECLINED, text, authRejected = true)
                 code == ERR_NOT_SIGNED -> WalletError(Kind.DECLINED, text)
                 m.contains("no wallet") || m.contains("no compatible wallet") -> WalletError(Kind.NO_WALLET, text)
+                // 1.1.6: the wallet app opened but never started its MWA session ("Timed out waiting for /
+                // Failed establishing / Local association was cancelled before connected"). Not a user decline.
+                m.contains("local association") -> WalletError(Kind.FAILED, text)
                 m.contains("declin") || m.contains("reject") || m.contains("cancel") || m.contains("denied") ||
                     m.contains("did not authorize") || m.contains("not signed") -> WalletError(Kind.DECLINED, text)
                 m.contains("auth token invalid") -> WalletError(Kind.DECLINED, text, authRejected = true)

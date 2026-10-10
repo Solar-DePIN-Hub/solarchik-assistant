@@ -308,8 +308,9 @@ class SwapPanel(private val host: MainActivity, private val onChange: () -> Unit
     }
 
     private fun connect() {
+        val started = host.current
         host.scope.launch {
-            if (host.wallet.hasWalletApp()) host.wallet.connect(host.sender).onFailure { host.toast(host.errorText(it)) }
+            if (host.wallet.hasWalletApp()) host.wallet.connect(host.sender).onFailure { host.walletFailed(started, it) }
             else host.showInstallWallet()
             onChange()
         }

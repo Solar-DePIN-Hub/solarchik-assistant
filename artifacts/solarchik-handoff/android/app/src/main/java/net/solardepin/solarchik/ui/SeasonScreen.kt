@@ -230,8 +230,9 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
 
     private fun connect() {
         val w = host.wallet
+        val started = host.current
         host.scope.launch {
-            if (w.hasWalletApp()) w.connect(host.sender).onFailure { host.toast(host.errorText(it)) }
+            if (w.hasWalletApp()) w.connect(host.sender).onFailure { host.walletFailed(started, it) }
             else host.setupBuiltInWallet()
             skrAt = 0L
             refreshSkr()

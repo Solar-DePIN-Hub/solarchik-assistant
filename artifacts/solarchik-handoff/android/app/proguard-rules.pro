@@ -14,3 +14,6 @@
 -keepattributes *Annotation*, InnerClasses, Signature
 -keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
 -keepclasseswithmembers class ** { kotlinx.serialization.KSerializer serializer(...); }
+# 1.1.6: MWA clientlib's WebSocket transport (nv-websocket-client); keep it un-obfuscated in release.
+-keep class com.neovisionaries.ws.client.** { *; }
+-dontwarn com.neovisionaries.**

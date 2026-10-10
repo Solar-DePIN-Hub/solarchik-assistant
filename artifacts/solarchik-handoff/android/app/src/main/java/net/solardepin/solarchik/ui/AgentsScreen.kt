@@ -613,10 +613,11 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
             refreshChain()
             return
         }
+        val started = host.current
         host.scope.launch {
             host.wallet.connect(host.sender)
                 .onSuccess { refreshChain() }
-                .onFailure { host.toast(host.errorText(it)) }
+                .onFailure { host.walletFailed(started, it) }
             host.renderAll()
         }
     }

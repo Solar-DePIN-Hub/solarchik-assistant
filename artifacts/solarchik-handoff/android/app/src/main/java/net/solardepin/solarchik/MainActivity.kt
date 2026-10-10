@@ -762,6 +762,15 @@ class MainActivity : ComponentActivity() {
         }, TOAST, android.os.SystemClock.uptimeMillis() + 3600)
     }
 
+    /**
+     * 1.1.6: a wallet connect that fails late (the clientlib waits for the wallet's session) only
+     * shows its error on the tab it was started from, never on a tab the user moved to since.
+     */
+    fun walletFailed(startedOn: Tab, t: Throwable) {
+        if (current == startedOn) toast(errorText(t))
+        else runCatching { android.util.Log.w("SolanaWallet", "late wallet failure dropped (started on ${startedOn.name}, now ${current.name}): ${t.message?.take(200)}") }
+    }
+
     fun errorText(t: Throwable?): String = when (t) {
         is MintError -> when (t.kind) {
             MintError.Kind.FREE_USED -> getString(R.string.mint_err_free)

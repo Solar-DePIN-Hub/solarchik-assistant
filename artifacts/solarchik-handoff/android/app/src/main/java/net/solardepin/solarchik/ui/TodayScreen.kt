@@ -620,11 +620,12 @@ class TodayScreen(host: MainActivity) : Screen(host) {
 
     private fun setupWallet() {
         val w = host.wallet
+        val started = host.current
         host.scope.launch {
             if (w.hasWalletApp()) {
                 w.connect(host.sender)
                     .onSuccess { if (w.connected) host.toast(ctx.getString(R.string.mn_wallet_connected, Fmt.short(w.address))) }
-                    .onFailure { host.toast(host.errorText(it)) }
+                    .onFailure { host.walletFailed(started, it) }
             } else {
                 host.setupBuiltInWallet()
             }

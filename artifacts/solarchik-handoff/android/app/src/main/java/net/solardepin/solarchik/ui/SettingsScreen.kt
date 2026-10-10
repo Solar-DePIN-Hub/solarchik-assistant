@@ -709,10 +709,11 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     }
 
     private fun connect() {
+        val started = host.current
         host.scope.launch {
             host.wallet.connect(host.sender)
                 .onSuccess { refreshBalance() }
-                .onFailure { host.toast(host.errorText(it)) }
+                .onFailure { host.walletFailed(started, it) }
             host.renderAll()
         }
     }
