@@ -56,7 +56,24 @@ export function pageText(html) {
   }
   s = s.replace(/<(script|style|svg|noscript|nav|footer)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ");
   const text = decode(s).replace(/[\u200b-\u200d\ufeff]/g, "").replace(/\s+/g, " ").trim();
-  return { title, text: text.slice(0, 20000), published: publishedOf(text) || publishedOf(String(html).slice(Math.max(0, String(html).indexOf("<h1")))) };
+  return { title, text: text.slice(0, 20000), published: metaDate(html) || publishedOf(text) || publishedOf(String(html).slice(Math.max(0, String(html).indexOf("<h1")))) };
+}
+
+/**
+ * 1.2.1: the page's own publish date from markup, before any date in the text (the blog's
+ * "related posts" put newer dates above the article): article:published_time, JSON-LD
+ * datePublished, then the first <time datetime>. YYYY-MM-DD or "".
+ */
+export function metaDate(html) {
+  const h = String(html || "");
+  const day = (v) => (String(v || "").match(/^\s*(20\d\d-\d\d-\d\d)/) || [])[1] || "";
+  const meta = h.match(/<meta[^>]+(?:property|name)=["'](?:article:published_time|og:published_time|datePublished|publish-date)["'][^>]*>/i)?.[0];
+  const fromMeta = meta && day(meta.match(/content=["']([^"']+)["']/i)?.[1]);
+  if (fromMeta) return fromMeta;
+  const ld = h.match(/"datePublished"\s*:\s*"([^"]+)"/);
+  if (ld && day(ld[1])) return day(ld[1]);
+  const t = h.match(/<time[^>]*\sdatetime=["']([^"']+)["']/i);
+  return t ? day(t[1]) : "";
 }
 
 /** First "Mon D, YYYY" date in the text, as YYYY-MM-DD. */

@@ -269,7 +269,7 @@
     <string name="chat_title">Поговори з Sol</string>
     <string name="chat_hint">Напиши Sol…</string>
     <string name="chat_send">Надіслати</string>
-    <string name="chat_empty">Привітайся. Sol бачить лише 4 останні повідомлення; більше нічого не покидає телефон.</string>
+    <string name="chat_empty">Привітайся. Sol бачить 4 останні повідомлення і короткий підсумок дня (дзвінки, гаманець, план Сезону), щоб допомогти. Деталі: Ще → Приватність і дані.</string>
     <string name="chat_voice">Озвучувати відповіді Sol</string>
     <string name="chat_listening">Слухаю…</string>
     <string name="chat_mic_off">Голосовий ввід недоступний на цьому телефоні.</string>
@@ -300,7 +300,7 @@
     <string name="note_desk_toggle">Закриття на пульті (у фоні)</string>
     <!-- Приватність і дані (dApp Store Publisher Policy) -->
     <string name="settings_privacy">Приватність і дані</string>
-    <string name="settings_privacy_body">Стрік, агенти, журнал комісій та історія чату лишаються на цьому телефоні. Повідомлення для Сола йдуть на наш AI-ретранслятор і його постачальників моделей (Featherless, Google Gemini) лише щоб отримати відповідь; ретранслятор їх не зберігає. Публічні записи в мережі (підписи, NFT, перекази комісій) стерти неможливо.</string>
+    <string name="settings_privacy_body">Стрік, агенти, журнал комісій та історія чату лишаються на цьому телефоні. Повідомлення для Сола йдуть на наш AI-ретранслятор і його постачальників моделей (OpenAI; запасні — Google Gemini і Featherless) лише щоб отримати відповідь; ретранслятор їх не зберігає. Публічні записи в мережі (підписи, NFT, перекази комісій) стерти неможливо.</string>
     <string name="settings_privacy_open">Політика приватності</string>
     <string name="settings_delete_data">Видалити мої дані</string>
     <string name="settings_delete_title">Видалити всі дані на цьому телефоні?</string>

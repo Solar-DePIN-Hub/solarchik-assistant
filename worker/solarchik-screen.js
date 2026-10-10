@@ -919,7 +919,12 @@ export function translateSystem(lang) {
 }
 
 /** Applies a translated field set to an inbox item (text rebuilt from the summary when there is one). */
-export function applyNoteLang(it, tr) {
+/** 1.2.1: the "Callback <number>." part of a note in the reader's language. */
+export function callbackWord(text, lang) {
+  return lang === "uk" ? String(text || "").replace(/\bCallback (\+?[\d ()-]{5,24})\./g, "Номер для зворотного дзвінка: $1.") : text;
+}
+
+export function applyNoteLang(it, tr, lang = "") {
   if (!tr || typeof tr !== "object") return it;
   if (it.summary && typeof it.summary === "object") {
     const summary = { ...it.summary, caller_name: clip(tr.caller_name, 60) || it.summary.caller_name, intent: clip(tr.intent, 200) || it.summary.intent, notes: clip(tr.notes, 400) || it.summary.notes };
@@ -931,7 +936,8 @@ export function applyNoteLang(it, tr) {
 export async function localizeItems(env, items, lang) {
   if (!lang || !Array.isArray(items) || !items.length) return items;
   const want = items.filter((it) => it && it.callId && it.status !== "pending" && Object.values(noteFields(it)).some((v) => needsLang(v, lang)));
-  if (!want.length) return items;
+  const cbFix = (list) => (lang === "uk" ? list.map((it) => (it && it.text ? { ...it, text: callbackWord(it.text, lang) } : it)) : list);
+  if (!want.length) return cbFix(items);
   const done = {};
   await Promise.all(want.map(async (it) => {
     try {
@@ -975,7 +981,7 @@ export async function localizeItems(env, items, lang) {
       /* translation is best effort: the original note stays */
     }
   }
-  return items.map((it) => (it && done[it.callId] ? applyNoteLang(it, done[it.callId]) : it));
+  return cbFix(items.map((it) => (it && done[it.callId] ? applyNoteLang(it, done[it.callId], lang) : it)));
 }
 
 export function cleanInbox(items) {
@@ -1074,9 +1080,11 @@ function clip(v, n) {
 }
 
 /** The note as the apps show it: one readable line in `text`, the structured summary alongside. */
-export function noteText(a) {
+export function noteText(a, lang = "") {
   const who = clip(a.caller_name, 60);
-  const parts = [who && `${who}:`, clip(a.intent, 200), a.callback ? `Callback ${clip(a.callback, 40)}.` : "", clip(a.notes, 240)];
+  const cb = lang === "uk" ? "Номер для зворотного дзвінка:" : "Callback";
+  const sentence = (t) => (t && !/[.!?…]$/.test(t) ? t + "." : t); // 1.2.1: "…on Monday. Callback …", not "…on Monday Callback …"
+  const parts = [who && `${who}:`, sentence(clip(a.intent, 200)), a.callback ? `${cb} ${clip(a.callback, 40)}.` : "", clip(a.notes, 240)];
   return parts.filter(Boolean).join(" ").slice(0, 600);
 }
 

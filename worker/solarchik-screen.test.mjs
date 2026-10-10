@@ -274,7 +274,7 @@ test("finishNote: keeps a tool note, writes 'no details' without caller words, e
   const c3 = inbox.find((x) => x.callId === "c3");
   assert.equal(c3.status, "done");
   assert.equal(c3.source, "auto");
-  assert.match(c3.text, /^Оля: Хоче перенести зустріч на завтра Callback \+380638500117\./);
+  assert.match(c3.text, /^Оля: Хоче перенести зустріч на завтра\. Callback \+380638500117\./);
   assert.equal(inbox.find((x) => x.callId === "c1").text, "tool note", "untouched");
 });
 

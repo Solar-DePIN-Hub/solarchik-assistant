@@ -239,6 +239,24 @@ class SolVoice(context: Context) {
             }
             val tail = t.substring(from).trim()
             if (tail.isNotEmpty()) { if (out.isNotEmpty() && out.last().length < 18) out[out.lastIndex] = out.last() + " " + tail else out += tail }
+            // 1.2.1: the worker speaks at most 400 characters a line; a longer sentence is split at a comma or space
+            return out.flatMap { split(it, MAX_LINE) }
+        }
+
+        const val MAX_LINE = 380
+
+        fun split(s: String, max: Int): List<String> {
+            if (s.length <= max) return listOf(s)
+            val out = mutableListOf<String>()
+            var rest = s
+            while (rest.length > max) {
+                val window = rest.substring(0, max)
+                var cut = maxOf(window.lastIndexOf(", "), window.lastIndexOf("; "), window.lastIndexOf(" — ")).let { if (it > max / 3) it + 1 else -1 }
+                if (cut <= 0) cut = window.lastIndexOf(' ').takeIf { it > max / 3 } ?: max
+                out += rest.substring(0, cut).trim()
+                rest = rest.substring(cut).trim()
+            }
+            if (rest.isNotEmpty()) out += rest
             return out
         }
     }

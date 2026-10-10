@@ -129,7 +129,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                         net.solardepin.solarchik.core.AppLocale.set(ctx, code)
                         host.recreate()
                     }
-                }.apply { tag = "lang-" + code.ifEmpty { "phone" } }))
+                }.apply { tag = "lang-" + code.ifEmpty { "phone" }; maxLines = 2 })) // 1.2.1: "Як у телефоні" wraps instead of "Як у теле…"
             }
             addView(Ui.top(r, 12))
         })
@@ -150,8 +150,8 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             val r = Ui.row(ctx, gap = 10)
             r.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.settings_privacy_open), Ui.Btn.GHOST) {
                 host.openUrl(AppData.PRIVACY_URL)
-            }))
-            r.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.settings_delete_data), Ui.Btn.GHOST) { confirmWipe() }))
+            }.apply { maxLines = 2 }))
+            r.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.settings_delete_data), Ui.Btn.GHOST) { confirmWipe() }.apply { maxLines = 2 }))
             addView(Ui.top(r, 12))
         })
 
@@ -370,6 +370,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         val balRow = Ui.row(ctx)
         balRow.addView(Ui.weight(Ui.label(ctx, ctx.getString(if (w.mainnet) R.string.settings_balance else R.string.lw_balance))))
         balRow.addView(Ui.text(ctx, balance?.let { ctx.getString(R.string.sol_unit, Fmt.sol(it)) } ?: "—", 22f, Ui.TEXT, 900).apply {
+            tag = "settings-balance"
             setOnClickListener { refreshBalance() }
         })
         walletBox.addView(Ui.top(balRow, 12))
@@ -562,7 +563,10 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             setText(Secretary.forwardNumber(ctx))
         }
         numRow.addView(Ui.weight(fwdInput))
-        numRow.addView(Ui.button(ctx, ctx.getString(R.string.fwd_save), Ui.Btn.GHOST) { saveForwardNumber() })
+        // 1.2.1: no auto-size on a wrap_content button (it took the whole row and pushed the field out)
+        numRow.addView(Ui.button(ctx, ctx.getString(R.string.fwd_save), Ui.Btn.GHOST) { saveForwardNumber() }.apply {
+            setAutoSizeTextTypeWithDefaults(android.widget.TextView.AUTO_SIZE_TEXT_TYPE_NONE); textSize = 15f; tag = "fwd-save"
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         addView(Ui.top(numRow, 10))
         fwdStatus = Ui.muted(ctx, "", 12f)
         addView(Ui.top(fwdStatus, 6))
@@ -591,7 +595,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         addView(Ui.top(offRow, 8))
         addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.fwd_off_all, Secretary.FORWARD_ALL_OFF), Ui.Btn.GHOST) {
             dial(Secretary.FORWARD_ALL_OFF)
-        }, 8))
+        }.apply { maxLines = 2 }, 8))
         addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fwd_note), 12f).apply { setLineSpacing(0f, 1.3f) }, 10))
     }
 

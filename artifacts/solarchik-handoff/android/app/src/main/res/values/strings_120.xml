@@ -46,4 +46,5 @@
     <string name="sk_failed">Couldn\'t verify right now. Try again in a minute.</string>
     <string name="sk_connect_first">Connect your wallet first (Today → Connect wallet).</string>
     <string name="sk_mainnet_only">The Seeker Genesis Token lives on Solana mainnet.</string>
+    <string name="today_season_tasks">Partner perks today: %1$s</string>
 </resources>

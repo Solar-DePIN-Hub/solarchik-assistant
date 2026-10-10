@@ -60,6 +60,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     private lateinit var playSub: TextView
     private lateinit var seasonSub: TextView
     private lateinit var seasonChecks: LinearLayout
+    private lateinit var seasonTasksLine: TextView
 
     private var ears: SolEars? = null
     private var listening = false
@@ -328,7 +329,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             setOnClickListener { host.openCalls() }
         }
         head.addView(Ui.iconBadge(ctx, R.drawable.ic_call, Ui.PURPLE, 40))
-        head.addView(Ui.weight(Ui.h2(ctx, ctx.getString(R.string.today_sec_title)).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END }))
+        head.addView(Ui.weight(Ui.h2(ctx, ctx.getString(R.string.today_sec_title)).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END }))
         secPill = Ui.tappable(Ui.pill(ctx, "", Ui.GREEN)).apply { tag = "today-sec-state" }
         head.addView(secPill)
         addView(head)
@@ -693,11 +694,23 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         addView(head)
         seasonChecks = Ui.row(ctx, gap = 8)
         addView(Ui.top(seasonChecks, 12))
+        // 1.2.1: the Season partner perks (from /season/drops) in one line; the card opens the full list
+        seasonTasksLine = Ui.text(ctx, "", 12.5f, Ui.CYAN, 700).apply { tag = "today-season-tasks"; maxLines = 2; ellipsize = TextUtils.TruncateAt.END; visibility = View.GONE }
+        addView(Ui.top(seasonTasksLine, 10))
+    }
+
+    /** "MattleFun, Mentioned, TapTapTap +2" from today's Season drops, or "" when there are none. */
+    internal fun seasonTasksText(): String {
+        val apps = net.solardepin.solarchik.season.SeasonDropsStore(ctx).doc(host.lang)?.items.orEmpty().map { it.app }.distinct()
+        if (apps.isEmpty()) return ""
+        val shown = apps.take(3).joinToString(", ") + if (apps.size > 3) " +" + (apps.size - 3) else ""
+        return ctx.getString(R.string.today_season_tasks, shown)
     }
 
     private fun renderSeason() {
         val p = net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, host.wallet.mainnet)
         seasonSub.text = ctx.getString(R.string.season_card_sub, p.doneCount, p.total)
+        seasonTasksText().let { seasonTasksLine.text = it; seasonTasksLine.visibility = if (it.isBlank()) View.GONE else View.VISIBLE }
         seasonChecks.removeAllViews()
         listOf(
             net.solardepin.solarchik.season.SeasonItem.DAILY_USE to R.string.season_chip_use,
@@ -759,6 +772,12 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         render()
         refreshBalance()
         syncActions()
+        // 1.2.1: Season partner perks for the line on the Season card (hourly at most)
+        if (MainActivity.tickerEnabled) host.scope.launch {
+            val lang = host.lang
+            val fresh = withContext(Dispatchers.IO) { runCatching { net.solardepin.solarchik.season.SeasonDropsSync.refresh(ctx, lang) }.getOrDefault(false) }
+            if (fresh && this@TodayScreen::seasonSub.isInitialized) renderSeason()
+        }
         // 1.1.0: a briefing posted this morning and not heard yet plays once when Today opens.
         val st = net.solardepin.solarchik.sol.BriefingStore(ctx)
         if (st.policy().enabled && st.pendingDay == net.solardepin.solarchik.sol.Briefing.today()) playBriefing()

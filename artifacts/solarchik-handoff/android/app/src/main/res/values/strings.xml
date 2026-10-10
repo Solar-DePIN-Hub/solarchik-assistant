@@ -281,7 +281,7 @@
     <string name="chat_title">Talk to Sol</string>
     <string name="chat_hint">Message Sol…</string>
     <string name="chat_send">Send</string>
-    <string name="chat_empty">Say hi. Sol keeps the last 4 messages for context; nothing else leaves the phone.</string>
+    <string name="chat_empty">Say hi. Sol sees your last 4 messages and a short summary of your day (calls, wallet, Season plan) so it can help. Details: More → Privacy &amp; data.</string>
     <string name="chat_voice">Speak Sol\'s replies</string>
     <string name="chat_listening">Listening…</string>
     <string name="chat_mic_off">Voice input is not available on this phone.</string>
@@ -311,7 +311,7 @@
     <string name="note_desk_toggle">Desk closes (background)</string>
     <!-- Privacy & data (dApp Store Publisher Policy) -->
     <string name="settings_privacy">Privacy &amp; data</string>
-    <string name="settings_privacy_body">Your streak, agents, fee ledger and chat history stay on this phone. Messages you send to Sol go to our AI relay and its model providers (Featherless, Google Gemini) only to get a reply; the relay does not store them. Public chain records (signatures, NFTs, fee transfers) cannot be erased.</string>
+    <string name="settings_privacy_body">Your streak, agents, fee ledger and chat history stay on this phone. Messages you send to Sol go to our AI relay and its model providers (OpenAI; Google Gemini and Featherless as fallbacks) only to get a reply; the relay does not store them. Public chain records (signatures, NFTs, fee transfers) cannot be erased.</string>
     <string name="settings_privacy_open">Privacy policy</string>
     <string name="settings_delete_data">Delete my data</string>
     <string name="settings_delete_title">Delete all data on this phone?</string>

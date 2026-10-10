@@ -149,7 +149,7 @@ class TodayTest {
 
     @Test fun installsNextToTheGameAndStaysOnDevnet() {
         assertEquals("net.solardepin.solarchik.assistant", BuildConfig.APPLICATION_ID)
-        assertEquals("1.2.0", BuildConfig.VERSION_NAME)
+        assertEquals("1.2.1", BuildConfig.VERSION_NAME)
         // 1.1.0: the release defaults to mainnet; this suite runs in dev devnet mode (solarchik.cluster=devnet)
         assertFalse(BuildConfig.DEVNET_ONLY)
         assertEquals("Solarchik Assistant", app.getString(R.string.app_name))

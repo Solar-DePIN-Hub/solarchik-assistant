@@ -49,9 +49,12 @@ class WalletDiagPanel(private val host: MainActivity) {
         val actions = Ui.row(ctx, gap = 8)
         actions.addView(Ui.weight(Ui.button(ctx, ctx.getString(if (busy) R.string.wd_testing else R.string.wd_test), Ui.Btn.SECONDARY) { test() }.apply { tag = "wd-test"; textSize = 13f; isEnabled = !busy }))
         actions.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.wd_copy), Ui.Btn.GHOST) { copy() }.apply { tag = "wd-copy"; textSize = 13f }))
-        actions.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.wd_share), Ui.Btn.GHOST) { share() }.apply { tag = "wd-share"; textSize = 13f }))
-        actions.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.wd_clear), Ui.Btn.GHOST) { WalletDiag.clear(); host.toast(ctx.getString(R.string.wd_cleared)); render() }.apply { tag = "wd-clear"; textSize = 13f }))
+        // 1.2.1: two rows of two, so the Ukrainian labels fit
         view.addView(Ui.top(actions, 12))
+        val actions2 = Ui.row(ctx, gap = 8)
+        actions2.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.wd_share), Ui.Btn.GHOST) { share() }.apply { tag = "wd-share"; textSize = 13f }))
+        actions2.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.wd_clear), Ui.Btn.GHOST) { WalletDiag.clear(); host.toast(ctx.getString(R.string.wd_cleared)); render() }.apply { tag = "wd-clear"; textSize = 13f }))
+        view.addView(Ui.top(actions2, 8))
         val lines = WalletDiag.text().trimEnd().lines().filter { it.isNotBlank() }
         val shown = if (lines.isEmpty()) ctx.getString(R.string.wd_empty) else lines.takeLast(40).joinToString("\n")
         view.addView(Ui.top(Ui.text(ctx, shown, 10.5f, Ui.MUTED, 500).apply {

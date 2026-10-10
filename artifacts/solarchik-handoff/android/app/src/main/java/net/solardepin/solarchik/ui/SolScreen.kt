@@ -110,7 +110,14 @@ class SolScreen(host: MainActivity) : Screen(host) {
             micBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_mic, 0, 0, 0)
             micBtn.setPadding(dp(12), 0, 0, 0)
             row.addView(micBtn, LinearLayout.LayoutParams(dp(48), dp(48)))
-            row.addView(round(Ui.GOLD) { send(input.text.toString()) }.apply {
+            row.addView(round(Ui.GOLD) {
+                // 1.2.1: an empty box is not a silent no-op: the field gets focus and the keyboard opens
+                if (input.text.isNullOrBlank()) {
+                    input.requestFocus()
+                    (ctx.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                } else send(input.text.toString())
+            }.apply {
+                tag = "sol-send"
                 contentDescription = ctx.getString(R.string.chat_send)
                 background = Ui.rounded(Ui.GOLD, dp(16).toFloat())
                 setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_send, 0, 0, 0)

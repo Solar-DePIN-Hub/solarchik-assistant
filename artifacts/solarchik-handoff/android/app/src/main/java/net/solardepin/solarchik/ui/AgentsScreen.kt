@@ -257,7 +257,7 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
                 t == AgentTier.PRO -> ctx.getString(R.string.aa_nft_pro, Fmt.sol(SolarchikConfig.PRO_PRICE_SOL))
                 else -> ctx.getString(R.string.aa_nft_free)
             }
-            val b = Ui.button(ctx, label, if (t == AgentTier.PRO) Ui.Btn.PRIMARY else Ui.Btn.SECONDARY) { tier = t; tierPicked = true; mint(sku) }.apply { tag = "agent-mint-$t"; textSize = 13f }
+            val b = Ui.button(ctx, label, if (t == AgentTier.PRO) Ui.Btn.PRIMARY else Ui.Btn.SECONDARY) { tier = t; tierPicked = true; mint(sku) }.apply { tag = "agent-mint-$t"; textSize = 13f; maxLines = 2 }
             Ui.setEnabled(b, block == null && busySku == null)
             btns.addView(Ui.weight(b))
         }
