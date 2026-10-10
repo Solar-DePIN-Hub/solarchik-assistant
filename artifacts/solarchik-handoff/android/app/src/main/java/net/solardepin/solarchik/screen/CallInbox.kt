@@ -68,10 +68,36 @@ object CallInbox {
         return dedupe(all)
     }
 
+    private val THEY_VERBS = mapOf("says" to "say", "asks" to "ask", "wants" to "want", "needs" to "need", "has" to "have", "is" to "are", "was" to "were",
+        "promises" to "promise", "plans" to "plan", "thinks" to "think", "hopes" to "hope", "calls" to "call", "owes" to "owe", "sends" to "send", "does" to "do",
+        "mentions" to "mention", "requests" to "request", "expects" to "expect", "agrees" to "agree")
+    private val THEY_RE = Regex("\\b([Tt]hey) (" + THEY_VERBS.keys.joinToString("|") + ")\\b")
+
+    /**
+     * 1.2.7 (tablet: "They says they paid…"): a sentence that opens with "They <verb>s" starts with the caller's
+     * name ("Ira says they paid…"); other "they <verb>s" get the plural verb. Same rule as the worker's fixThey.
+     */
+    fun fixThey(text: String, name: String): String {
+        if (!text.contains("they", ignoreCase = true)) return text
+        val who = name.trim().takeIf { Regex("^[A-Za-z][A-Za-z' -]{0,40}$").matches(it) }.orEmpty()
+        var src = text
+        var named = false
+        if (who.isNotEmpty()) {
+            val lead = Regex("^(\\s*)" + Regex.escape(who) + ":?\\s+[Tt]hey (" + THEY_VERBS.keys.joinToString("|") + ")\\b")
+            lead.find(src)?.let { m -> named = true; src = src.replaceRange(m.range, m.groupValues[1] + who + " " + m.groupValues[2]) }
+        }
+        return THEY_RE.replace(src) { m ->
+            val before = src.substring(0, m.range.first)
+            val start = before.isBlank() || before.trimEnd().endsWith(".") || before.trimEnd().endsWith("!") || before.trimEnd().endsWith("?") || m.groupValues[1] == "They"
+            if (start && who.isNotEmpty() && !named && !src.trimStart().startsWith("$who ")) { named = true; "$who ${m.groupValues[2]}" }
+            else { named = true; m.groupValues[1] + " " + THEY_VERBS.getValue(m.groupValues[2]) }
+        }
+    }
+
     fun item(owner: String, o: JSONObject): CallItem? {
-        val text = o.optString("text").trim()
-        if (text.isEmpty()) return null
         val s = o.optJSONObject("summary") ?: JSONObject()
+        val text = fixThey(o.optString("text").trim(), s.optString("caller_name"))
+        if (text.isEmpty()) return null
         return CallItem(
             owner = owner,
             callId = o.optString("callId").trim(),
@@ -81,7 +107,7 @@ object CallInbox {
             status = o.optString("status").trim().ifBlank { if (o.optString("callId").isNotBlank()) PENDING else DONE },
             source = o.optString("source").trim(),
             callerName = s.optString("caller_name").trim().take(60),
-            intent = s.optString("intent").trim().take(200),
+            intent = fixThey(s.optString("intent").trim(), s.optString("caller_name")).take(200),
             urgency = s.optString("urgency").trim(),
             notes = s.optString("notes").trim().take(400),
             callback = s.optString("callback").trim().take(40),

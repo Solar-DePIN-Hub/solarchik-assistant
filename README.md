@@ -1,3 +1,5 @@
+<img src="docs/icon.png" alt="Solarchik Assistant icon: Sol the robot" width="112" align="right">
+
 # Solarchik Assistant
 
 Українською: [README.uk.md](README.uk.md).

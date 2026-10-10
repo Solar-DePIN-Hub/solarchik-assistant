@@ -142,11 +142,9 @@ class SeasonTest {
         assertTrue(p.openedToday)
         assertFalse(p.done(SeasonItem.EXPLORE))
         assertFalse(p.done(SeasonItem.ONCHAIN))
+        // 1.2.7: the Season plan is Me › Season plan
+        a.select(MainActivity.Tab.ME); idle()
         val d = a.window.decorView
-        assertEquals("1 of 3 done today", (find(d, "today-season-sub") as TextView).text.toString())
-        assertTrue((find(d, "today-season-daily_use") as TextView).text.startsWith("✓"))
-        assertTrue((find(d, "today-season-explore") as TextView).text.startsWith("○"))
-
         find(d, "today-season")!!.performClick(); idle()
         assertEquals(MainActivity.Tab.SEASON, a.current)
         val s = a.screen(MainActivity.Tab.SEASON) as SeasonScreen
@@ -176,7 +174,7 @@ class SeasonTest {
         // back returns home
         a.select(MainActivity.Tab.SEASON); idle()
         a.onBackPressedDispatcher.onBackPressed(); idle()
-        assertEquals(MainActivity.Tab.TODAY, a.current)
+        assertEquals("1.2.7: back from a screen under Me returns to Me", MainActivity.Tab.ME, a.current)
     }
 
     @Test fun skrCardStates() {

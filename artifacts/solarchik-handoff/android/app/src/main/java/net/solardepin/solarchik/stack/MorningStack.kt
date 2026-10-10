@@ -22,23 +22,33 @@ object MorningStack {
 
     fun snoozedUntil(ctx: Context, id: String): Long = p(ctx).getLong("snooze:$id", 0L)
 
-    /** Open cards not snoozed and not already waiting on a reminder; payments first, then call-backs, then the rest. */
+    /**
+     * Open call cards not snoozed and not already waiting on a reminder. 1.2.7 order: people first (call-backs,
+     * reminders), then payments, then "Owes you" lines with no request out yet ("Andrii owes you 0.01 SOL: Request").
+     */
     fun items(ctx: Context, now: Long = System.currentTimeMillis()): List<CallAction> {
-        val open = CallActionStore(ctx).open().filter { snoozedUntil(ctx, it.id) <= now && !(it.type == CallAction.REMINDER && it.remindAt > now) }.reversed()
-        return open.sortedBy { when (it.type) { CallAction.PAYMENT -> 0; CallAction.CALLBACK -> 1; else -> 2 } }
+        val asked = runCatching { net.solardepin.solarchik.circle.PayRequestStore(ctx).all().map { it.actionId }.toSet() }.getOrDefault(emptySet())
+        val open = CallActionStore(ctx).open().filter {
+            snoozedUntil(ctx, it.id) <= now && !(it.type == CallAction.REMINDER && it.remindAt > now) && !(it.type == CallAction.OWED && (it.id in asked || it.amount <= 0))
+        }.reversed()
+        return open.sortedBy { when (it.type) { CallAction.CALLBACK -> 0; CallAction.REMINDER -> 1; CallAction.PAYMENT -> 2; CallAction.OWED -> 3; else -> 4 } }
     }
+
+    /** 1.2.7: the whole deck in order: call-backs and reminders, payments, habits, then the Season task. */
+    fun deck(ctx: Context, now: Long = System.currentTimeMillis()): List<StackItem> =
+        items(ctx, now).map { StackItem.Call(it) } + Habits.pending(ctx, now).map { StackItem.Habit(it) } + seasonItems(ctx, now).map { StackItem.Season(it) }
 
     /**
      * 1.2.6: after the call cards, today's Season tasks (official partner drops from the Season agent). Opening one
      * only opens the official link (assist-only); it counts as done when the user says so. Done is kept per drop.
      */
     fun seasonItems(ctx: Context, now: Long = System.currentTimeMillis(), lang: String = net.solardepin.solarchik.core.AppLocale.lang(ctx)): List<net.solardepin.solarchik.season.SeasonDrop> =
-        net.solardepin.solarchik.season.SeasonDropsStore(ctx).doc(lang)?.items.orEmpty()
+        if (!Habits.on(ctx, Habits.SEASON)) emptyList() else net.solardepin.solarchik.season.SeasonDropsStore(ctx).doc(lang)?.items.orEmpty()
             .filter { it.sourceUrl.isNotBlank() && !p(ctx).getBoolean("sdone:" + it.id, false) && snoozedUntil(ctx, "season:" + it.id) <= now }
             .distinctBy { it.app }.take((SEASON_PER_DAY - seasonHandled(ctx, now)).coerceAtLeast(0))
 
-    /** At most 3 Season tasks a day go through the stack (done or later), so clearing it stays a short habit. */
-    const val SEASON_PER_DAY = 3
+    /** 1.2.7: the "Today's Season task" habit is ONE Season card a day (done or later), so the stack stays short. */
+    const val SEASON_PER_DAY = 1
     private fun seasonHandled(ctx: Context, now: Long): Int {
         val d = day(now, ZoneId.systemDefault()).toString()
         return if (p(ctx).getString("sday", "") == d) p(ctx).getInt("sn", 0) else 0
@@ -54,8 +64,8 @@ object MorningStack {
         touched(ctx, now, zone)
     }
 
-    /** Everything waiting: call cards first, then Season tasks. */
-    fun pendingCount(ctx: Context, now: Long = System.currentTimeMillis()): Int = items(ctx, now).size + seasonItems(ctx, now).size
+    /** Everything waiting: call cards, habits, then the Season task. */
+    fun pendingCount(ctx: Context, now: Long = System.currentTimeMillis()): Int = items(ctx, now).size + Habits.pending(ctx, now).size + seasonItems(ctx, now).size
 
     /** Later: back tomorrow morning (06:00 local), so the next morning's stack has it. */
     fun snooze(ctx: Context, id: String, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): Long {
@@ -111,7 +121,7 @@ object MorningStack {
         val t = Instant.ofEpochMilli(now).atZone(zone)
         if (t.hour < 8) return 0
         if (p(ctx).getString("notified", "") == t.toLocalDate().toString()) return 0
-        return items(ctx, now).size
+        return pendingCount(ctx, now)
     }
 
     fun markNotified(ctx: Context, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()) =

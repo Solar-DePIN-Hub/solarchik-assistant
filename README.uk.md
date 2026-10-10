@@ -1,3 +1,5 @@
+<img src="docs/icon.png" alt="Solarchik Assistant icon: Sol the robot" width="112" align="right">
+
 # Solarchik Assistant
 
 English: [README.md](README.md) (там повна версія: архітектура, докази, що справжнє, а що ні).

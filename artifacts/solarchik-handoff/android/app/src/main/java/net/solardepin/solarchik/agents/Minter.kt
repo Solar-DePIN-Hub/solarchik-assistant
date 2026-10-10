@@ -28,7 +28,7 @@ class Minter(
     private val wallet: SolanaWallet,
     private val store: AgentStore,
     private val send: suspend (ActivityResultSender, suspend (PublicKey, ByteArray) -> LegacyTx) -> Result<SentTx> =
-        { sender, build -> wallet.signAndSend(sender, build) },
+        { sender, build -> wallet.signAndSend(sender, build = build) },
     private val cluster: () -> String = { wallet.clusterName },
     private val clock: () -> Long = System::currentTimeMillis,
     /** The wallet's signature of [FreeAsset.message] (raw 64 bytes). */

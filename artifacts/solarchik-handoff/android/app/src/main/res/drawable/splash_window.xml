@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 1.2.7: the window background while the app starts (before Android 12's system splash existed): the Sol robot on the app's dark blue. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/sc_bg" />
+    <item android:width="160dp" android:height="160dp" android:gravity="center" android:drawable="@drawable/ic_launcher_foreground" />
+</layer-list>

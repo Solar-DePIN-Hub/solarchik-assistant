@@ -8,7 +8,7 @@
 //                         scam warning and makes the user confirm or type the recipient.
 
 const MODELS = ["gpt-4.1-mini", "gpt-4o-mini"];
-export const ACTION_TYPES = ["payment", "callback", "reminder"];
+export const ACTION_TYPES = ["payment", "callback", "reminder", "owed"];
 export const PAY_TOKENS = ["SOL", "USDC", "SKR"];
 const BASE58_ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -145,7 +145,7 @@ export const ACTIONS_SCHEMA = {
           properties: {
             callId: { type: "string" },
             type: { type: "string", enum: ACTION_TYPES },
-            amount: { type: "number", description: "payment amount as said; 0 when not a payment or not said" },
+            amount: { type: "number", description: "payment or owed amount as said; 0 when there is no money in it or it was not said" },
             token: { type: "string", description: "SOL, USDC, SKR or the currency word the caller used; empty if none" },
             recipient: { type: "string", description: "who or which address should get the payment, exactly as said; empty if not said" },
             number: { type: "string", description: "phone number to call back if said or given, else empty" },
@@ -165,6 +165,7 @@ export function actionsSystem(lang) {
   return [
     "You read notes and transcripts of phone calls that an AI phone secretary answered for the user, and list concrete requests the USER should act on.",
     "Types: payment (the caller asks the user to send or pay money or crypto: amount and currency as said), callback (the caller asks to be called back, optionally at a time), reminder (something the user should remember or do, with or without a time: 'remind me to ...', 'remind her/him/them about ...' (the user reminds that person), 'don't forget ...', a meeting, an appointment, a deadline; in Ukrainian e.g. 'нагадай мені/їй/йому ...', 'не забудь ...', зустріч, дедлайн).",
+    "Type owed (1.2.7): the CALLER says they will pay, return or send money TO THE USER, or that they owe the user (a deposit, paying back a loan, their share of a bill): e.g. 'I'll send you the 0.5 SOL deposit tomorrow', 'I owe you 10 USDC', 'поверну тобі 2 SOL'. Amount and currency as said; it only becomes a suggestion the user may turn into a payment request. Never mark it payment: payment is ONLY when the user should pay the caller. No amount said, or no SOL/USDC/SKR currency: no owed action. 'text' e.g. 'Andrii owes you 0.5 SOL for the deposit'.",
     "Each distinct request is its own action: a call that asks for a payment, a callback AND a reminder gives three actions. Never merge a reminder into a payment or a callback, and never drop a reminder because the call also had other requests.",
     "Days: put the day that was said for the action into 'day' (today, tomorrow, or the weekday in English lowercase, e.g. 'на понеділок' / 'on Monday' = monday); an explicit calendar date goes into 'date' as YYYY-MM-DD. Each call has 'date' (the call's own date) and 'weekday'. Do not compute dates for weekdays yourself.",
     "Only include requests clearly present in the call. Never invent amounts, numbers, times, names or addresses. A recipient wallet address goes into 'recipient' only if it was literally said; otherwise describe the recipient in words or leave it empty.",
@@ -286,6 +287,16 @@ export function sanitizeActions(raw, calls, lang = "") {
     const day = when && ["today", "tomorrow"].includes(said) ? said : "";
     const text = clip(a.text, 100);
     const quote = clip(a.quote, 200);
+    if (a.type === "owed") {
+      // 1.2.7: the caller will pay the USER. Only with a real amount in a token the app can request; no address ever.
+      const amount = Number(a.amount);
+      const tokenWord = clip(a.token, 12).toUpperCase();
+      const token = PAY_TOKENS.includes(tokenWord) ? tokenWord : /^\$?SKR$|^SEEKER TOKENS?$/i.test(tokenWord) ? "SKR" : "";
+      if (!Number.isFinite(amount) || amount <= 0 || amount > 1e9 || !token) continue;
+      out.push({ callId: a.callId, type: "owed", amount, token, tokenWord, recipient: "", address: "", number: "", when: "", day: "", date: "", text, quote });
+      perCall.set(a.callId, n);
+      continue;
+    }
     if (a.type === "payment") {
       const amount = Number(a.amount);
       if (!Number.isFinite(amount) || amount > 1e9) continue;

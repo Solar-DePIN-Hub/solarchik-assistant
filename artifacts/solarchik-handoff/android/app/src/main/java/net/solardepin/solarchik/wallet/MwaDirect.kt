@@ -210,7 +210,7 @@ object MwaDirect {
                 val icon = Uri.parse(ICON_RELATIVE_URI)
                 val auth = try {
                     val f = if (proto == SessionProperties.ProtocolVersion.LEGACY) {
-                        if (!authToken.isNullOrBlank()) client.reauthorize(identity, icon, IDENTITY_NAME, authToken)
+                        if (!authToken.isNullOrBlank()) legacyWithToken(client, identity, icon, chain, authToken)
                         else client.authorize(identity, icon, IDENTITY_NAME, legacyCluster)
                     } else {
                         client.authorize(identity, icon, IDENTITY_NAME, chain, if (signIn != null) null else authToken?.takeIf { it.isNotBlank() }, null, null, signIn) // 1.2.0: SIWS rides on a fresh authorize
@@ -252,6 +252,7 @@ object MwaDirect {
                     return@withContext Result.failure(WalletError(WalletError.Kind.FAILED, "Timed out while waiting for result"))
                 }
                 val acct = auth.accounts?.firstOrNull()?.publicKey ?: auth.publicKey
+                WalletDiag.log("auth token", tokenNote(authToken, auth.authToken))
                 WalletDiag.log("authorized", "account " + (acct?.let { WalletDiag.shortAddr(Base58.encode(it)) } ?: "none") + ", accounts=" + (auth.accounts?.size ?: 0))
                 val out = try {
                     block(client, auth)
@@ -283,5 +284,39 @@ object MwaDirect {
                 WalletDiag.log("session closed")
             }
         }
+    }
+
+    /**
+     * 1.2.7 (tablet, Phantom 26 runs as a legacy session): Phantom showed "Connect" on every payment, and a token
+     * that reauthorized at 20:12:39 was refused (-1) at 20:13:09. With a saved token we now send the MWA 2.0
+     * `authorize` carrying `auth_token` (the spec's replacement for the deprecated `reauthorize`; a valid token is
+     * reused without a prompt). Only when the wallet rejects that request shape (not -1 / -3) do we fall back to
+     * `reauthorize`. -1 still means "token refused": the caller asks afresh in the same session.
+     */
+    private fun legacyWithToken(client: MobileWalletAdapterClient, identity: Uri, icon: Uri, chain: String, token: String): java.util.concurrent.Future<MobileWalletAdapterClient.AuthorizationResult> {
+        val first = client.authorize(identity, icon, IDENTITY_NAME, chain, token, null, null, null)
+        return object : java.util.concurrent.Future<MobileWalletAdapterClient.AuthorizationResult> {
+            override fun cancel(b: Boolean) = first.cancel(b)
+            override fun isCancelled() = first.isCancelled
+            override fun isDone() = first.isDone
+            override fun get(): MobileWalletAdapterClient.AuthorizationResult = get(AUTHORIZE_WAIT_MS, TimeUnit.MILLISECONDS)
+            override fun get(t: Long, u: TimeUnit): MobileWalletAdapterClient.AuthorizationResult = try {
+                first.get(t, u).also { WalletDiag.log("authorize", "saved token reused (authorize + auth_token)") }
+            } catch (e: ExecutionException) {
+                val code = (e.cause as? JsonRpc20Client.JsonRpc20RemoteException)?.code
+                if (!reauthorizeFallback(code)) throw e
+                WalletDiag.log("authorize", "wallet refused authorize + auth_token (code $code): reauthorize")
+                client.reauthorize(identity, icon, IDENTITY_NAME, token).get(t, u)
+            }
+        }
+    }
+
+    /** -1 (token refused) and -3 (declined) are answers; anything else means the wallet didn't take the request shape. */
+    internal fun reauthorizeFallback(code: Int?): Boolean = code != -1 && code != -3 && code != null
+
+    /** Diagnostics: whether the wallet handed back the same token (a short fingerprint, never the token). */
+    internal fun tokenNote(sent: String?, got: String?): String {
+        fun fp(t: String?) = if (t.isNullOrBlank()) "none" else Integer.toHexString(t.hashCode()).takeLast(4)
+        return "sent " + fp(sent) + ", got " + fp(got) + if (!sent.isNullOrBlank() && sent == got) " (same)" else ""
     }
 }

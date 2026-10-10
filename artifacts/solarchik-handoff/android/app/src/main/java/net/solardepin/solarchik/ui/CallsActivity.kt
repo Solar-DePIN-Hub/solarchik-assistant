@@ -52,6 +52,9 @@ class CallsActivity : ComponentActivity() {
     private var loading = false
     private var offline = false
     private var open: CallItem? = null
+    /** 1.2.7: the transcript is the source, collapsed under the note and cards until asked for. */
+    private var transcriptOpen = false
+    private lateinit var sticky: FrameLayout
     private var detail: CallDetail? = null
     private var detailLoading = false
     private var blocked: Set<String> = emptySet()
@@ -146,12 +149,19 @@ class CallsActivity : ComponentActivity() {
         root.addView(scrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.TOP))
         val navScrim = View(this).apply { setBackgroundColor(Ui.BG); tag = "calls-nav-scrim"; isClickable = false }
         root.addView(navScrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM))
+        // 1.2.7: the call detail's one primary action stays on screen (sticky), over a soft fade
+        sticky = FrameLayout(this).apply {
+            tag = "call-sticky"; visibility = View.GONE; isClickable = true
+            background = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP, intArrayOf(Ui.BG, Ui.BG, Ui.withAlpha(Ui.BG, 0)))
+        }
+        root.addView(sticky, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             topInset = bars.top
             bottomInset = bars.bottom
             scrim.layoutParams = (scrim.layoutParams as FrameLayout.LayoutParams).apply { height = bars.top }
             navScrim.layoutParams = (navScrim.layoutParams as FrameLayout.LayoutParams).apply { height = bars.bottom }
+            sticky.setPadding(dp(18), dp(22), dp(18), bars.bottom + dp(14))
             pad()
             insets
         }
@@ -160,7 +170,8 @@ class CallsActivity : ComponentActivity() {
     }
 
     private fun pad() {
-        column.setPadding(dp(18), topInset + dp(10), dp(18), bottomInset + dp(28))
+        val extra = if (this::sticky.isInitialized && sticky.visibility == View.VISIBLE) dp(96) else 0
+        column.setPadding(dp(18), topInset + dp(10), dp(18), bottomInset + dp(28) + extra)
     }
 
     private fun header(title: String, back: Boolean) {
@@ -189,6 +200,7 @@ class CallsActivity : ComponentActivity() {
 
     private fun render() {
         column.removeAllViews()
+        if (this::sticky.isInitialized) { sticky.removeAllViews(); sticky.visibility = View.GONE; pad() }
         val o = open
         if (o != null) renderDetail(o) else renderList()
     }
@@ -292,6 +304,7 @@ class CallsActivity : ComponentActivity() {
     // ---------------- detail ----------------
 
     private fun openCall(it: CallItem) {
+        if (open?.key != it.key) transcriptOpen = false
         open = it
         detail = null
         render()
@@ -348,9 +361,13 @@ class CallsActivity : ComponentActivity() {
         val num = it.dialNumber
         val isBlocked = num.isNotBlank() && blocked.contains(num)
         val r1 = Ui.row(this, gap = 8)
-        val back = Ui.button(this, getString(R.string.calls_call_back), Ui.Btn.PRIMARY, R.drawable.ic_call) { dial(num) }.apply { tag = "call-back" }
-        Ui.setEnabled(back, num.isNotBlank())
-        actions.addView(Ui.top(back, 10))
+        if (num.isNotBlank()) {
+            // 1.2.7: "Call Ira back" is the sticky primary at the bottom of the screen (one yellow button)
+            val who = CallText.who(this, it).ifBlank { "" }
+            val back = Kit.primary(this, if (who.isNotBlank() && it.callerName.isNotBlank()) getString(R.string.card_call, it.callerName) else getString(R.string.calls_call_back), R.drawable.lc_phone) { dial(num) }.apply { tag = "call-back" }
+            sticky.addView(back, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            sticky.visibility = View.VISIBLE
+        }
         val remindAt = CallNotes.Reminders.at(this, it.key)
         r1.addView(Ui.weight(Ui.button(this, getString(if (remindAt > 0) R.string.calls_remind_change else R.string.calls_remind), Ui.Btn.SECONDARY, R.drawable.ic_timer) { askRemind(it) }.apply { tag = "call-remind" }))
         actions.addView(Ui.top(r1, 8))
@@ -369,13 +386,21 @@ class CallsActivity : ComponentActivity() {
         actions.addView(Ui.top(blk, 8))
         actions.addView(Ui.top(Ui.muted(this, getString(if (isBlocked) R.string.calls_blocked_body else R.string.calls_block_body), 11f).apply { setLineSpacing(0f, 1.2f) }, 6))
         column.addView(actions)
+        pad()
 
         // transcript
         column.addView(Ui.card(this, pad = 14).apply {
             tag = "call-transcript"
-            addView(Ui.label(this@CallsActivity, getString(R.string.calls_transcript_label)))
             val lines = d?.lines.orEmpty()
+            val head = Ui.row(this@CallsActivity, gap = 8).apply { gravity = Gravity.CENTER_VERTICAL }
+            head.addView(Ui.weight(Ui.label(this@CallsActivity, getString(R.string.calls_transcript_label))))
+            if (lines.isNotEmpty()) head.addView(Ui.text(this@CallsActivity, getString(if (transcriptOpen) R.string.calls_transcript_hide else R.string.calls_transcript_show, lines.size), 13f, Ui.CYAN, 800).apply {
+                tag = "call-transcript-toggle"; minHeight = dp(44); gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), 0, dp(4), 0)
+                setOnClickListener { transcriptOpen = !transcriptOpen; render() }
+            })
+            addView(head)
             when {
+                lines.isNotEmpty() && !transcriptOpen -> addView(Ui.top(Ui.muted(this@CallsActivity, getString(R.string.calls_transcript_collapsed), 12f), 4))
                 it.callId.isBlank() -> addView(Ui.top(Ui.muted(this@CallsActivity, getString(R.string.calls_transcript_none), 12f), 8))
                 detailLoading && d == null -> addView(Ui.top(Ui.muted(this@CallsActivity, getString(R.string.calls_loading), 12f), 8))
                 d == null -> addView(Ui.top(Ui.text(this@CallsActivity, getString(R.string.calls_transcript_offline), 12f, Ui.AMBER, 700), 8))

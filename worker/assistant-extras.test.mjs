@@ -26,7 +26,7 @@ test("actionCalls clips and drops empty calls; the schema is strict", () => {
   const c = actionCalls({ calls: [...CALLS, { id: "", text: "x" }, { id: "empty" }] });
   assert.equal(c.length, 5);
   assert.equal(ACTIONS_SCHEMA.strict, true);
-  assert.deepEqual(ACTIONS_SCHEMA.schema.properties.actions.items.properties.type.enum, ["payment", "callback", "reminder"]);
+  assert.deepEqual(ACTIONS_SCHEMA.schema.properties.actions.items.properties.type.enum, ["payment", "callback", "reminder", "owed"]);
 });
 
 test("sanitizeActions: known calls/types only, at most 3 per call (2 of a type), no invented address, literal address kept for the warning", () => {

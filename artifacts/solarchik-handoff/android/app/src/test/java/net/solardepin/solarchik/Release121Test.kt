@@ -212,12 +212,11 @@ class Release121Test {
 
     @Test fun todayShowsTheSeasonPartnerPerks() {
         seed(false)
-        val a = open(MainActivity.Tab.TODAY)
-        val line = a.window.decorView.findViewWithTag<TextView>("today-season-tasks")
-        assertTrue(line != null && shown(line))
-        assertEquals("Partner perks today: MattleFun, Mentioned, TapTapTap +1", line!!.text.toString())
-        line.performClick() // the line sits on the Season card: a tap opens the Season screen
-        (line.parent as View).performClick(); idle()
+        // 1.2.7: one Season card a day sits in the morning stack; the full plan is Me › Season plan
+        assertTrue(net.solardepin.solarchik.stack.MorningStack.deck(app).any { it is net.solardepin.solarchik.stack.StackItem.Season })
+        val a = open(MainActivity.Tab.ME)
+        a.window.decorView.findViewWithTag<View>("today-season")!!.performClick(); idle()
+        assertEquals(MainActivity.Tab.SEASON, a.current)
         assertTrue(texts(a.window.decorView).any { it == "Today's Season tasks" })
     }
 

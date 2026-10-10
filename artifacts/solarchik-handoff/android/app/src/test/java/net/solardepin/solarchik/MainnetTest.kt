@@ -425,14 +425,16 @@ class MainnetTest {
         val a = launch()
         val t = a.screen(MainActivity.Tab.TODAY) as TodayScreen
         t.setBalanceForTest(0.0096, 1234.5)
-        t.render(); idle()
+        // 1.2.7: balances live on Me (SOL, USDC, SKR tiles)
+        a.select(MainActivity.Tab.ME); idle()
         val d = a.window.decorView
-        assertEquals("0.0096 SOL", (find(d, "today-wallet-balance") as TextView).text.toString())
-        assertEquals("1234.5 SKR", (find(d, "today-wallet-skr") as TextView).text.toString())
-        assertTrue((find(d, "today-cluster") as TextView).text.toString().equals("mainnet", ignoreCase = true))
+        assertEquals("0.0096", (find(d, "today-wallet-balance") as TextView).text.toString())
+        assertEquals("1,234.5", (find(d, "today-wallet-skr") as TextView).text.toString())
+        assertNotNull(find(d, "me-usdc"))
+        assertTrue((find(d, "today-cluster") as TextView).text.toString().contains("Mainnet"))
         find(d, "today-wallet-explorer")!!.performClick()
         assertEquals("https://solscan.io/account/$owner", shadowOf(a).nextStartedActivity.dataString)
-        shot(d, "08-today-mainnet", "today-wallet")
+        shot(d, "08-me-mainnet", "me-wallet")
     }
 
     @Test fun swapsTabRiskOptInThenLimitsAndReview() {

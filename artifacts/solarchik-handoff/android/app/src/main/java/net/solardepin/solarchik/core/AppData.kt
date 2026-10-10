@@ -15,6 +15,8 @@ object AppData {
     /** Every SharedPreferences file the app writes. Keep in sync when a new store is added. */
     val PREFS = listOf(
         "solarchik.circle",
+        "solarchik.habits",
+        "solarchik.payreq",
         "phones",
         "solarchik.stack",
         "solarchik-game",

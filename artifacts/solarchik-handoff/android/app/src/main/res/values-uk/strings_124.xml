@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="circle_title">Коло</string>
-    <string name="circle_body">Люди, яким ти платиш. Коли абонент просить надіслати гроші, це з\'являється тут як твій борг. Адреси — лише ті, що ти зберіг сам, ніколи не почуті в дзвінку. Усе лишається на телефоні, і нічого не надсилається, доки ти не підтвердиш у гаманці.</string>
+    <string name="circle_body">Кому винен ти і хто має віддати тобі. Коли абонент просить надіслати гроші, це з\'являється тут як твій борг. Коли обіцяє заплатити тобі, «Попросити» надсилає посилання Solana Pay на твій власний гаманець. Адреси — лише ті, що ти зберіг сам, ніколи не почуті в дзвінку. Нічого не надсилається, доки ти не підтвердиш у гаманці.</string>
     <string name="circle_owe_label">Ти винен</string>
     <string name="circle_owe_none">Зараз нічого.</string>
     <string name="circle_settled_label">Розраховано</string>
@@ -116,7 +116,7 @@
     <string name="pay_what">%1$s %2$s для %3$s</string>
     <string name="pay_waiting_title">Підтвердь у гаманці</string>
     <string name="pay_waiting">Гаманець відкриється, щоб підтвердити %1$s. Якщо він лише просить підключення, підтвердь його, і платіж з\'явиться одразу після. Нічого не надсилається, поки ти не підтвердиш.</string>
-    <string name="pay_sent_title">Надіслано</string>
+    <string name="pay_sent_title">Надіслано · підтвердження…</string>
     <string name="pay_sent">%1$s надіслано. Чекаю підтвердження Solana…</string>
     <string name="pay_unconfirmed">%1$s надіслано, але Solana ще не підтвердила. Перевір у Solscan за хвилину.</string>
     <string name="pay_settled_title">Розраховано ✓</string>
@@ -130,4 +130,6 @@
     <string name="sim_token">У гаманці немає цього токена (або замало).</string>
     <string name="sim_other">Solana відхилила б цей переказ (%1$s).</string>
     <string name="pay_waiting_for">Чекаю на гаманець: %1$d с. Якщо нічого не відбувається, повернись сюди й побачиш чому.</string>
+    <string name="sim_no_token_account">У твоєму гаманці ще немає рахунку %1$s, тож надсилати нічого. Спершу поповни гаманець на %1$s.</string>
+    <string name="sim_low_token">У гаманці замало %1$s на цю суму.</string>
 </resources>

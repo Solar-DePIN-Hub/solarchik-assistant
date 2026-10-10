@@ -34,6 +34,7 @@ object CallActionCards {
 
     private fun rawTitle(ctx: Context, a: CallAction, who: String): String = when (a.type) {
         CallAction.PAYMENT -> ctx.getString(R.string.ca_pay_title, amount(a), a.token.ifBlank { "?" }, a.recipient.ifBlank { who.ifBlank { ctx.getString(R.string.calls_unknown) } })
+        CallAction.OWED -> ctx.getString(R.string.circle_owed_line, a.recipient.ifBlank { who.ifBlank { ctx.getString(R.string.calls_unknown) } }, amount(a), a.token)
         CallAction.CALLBACK -> if (a.time.isNotBlank()) ctx.getString(R.string.ca_cb_title_at, who.ifBlank { a.number }, a.time) else ctx.getString(R.string.ca_cb_title, who.ifBlank { a.number })
         else -> inUi(a.text).ifBlank { ctx.getString(R.string.ca_rem_title) } + (if (a.time.isNotBlank() && !a.text.contains(a.time)) " · ${a.time}" else "")
     }
@@ -199,7 +200,10 @@ object CallActionCards {
     @androidx.annotation.VisibleForTesting
     var lastStatus: android.app.AlertDialog? = null
 
-    private fun status(host: MainActivity, title: String, msg: String, sig: String? = null): android.app.AlertDialog {
+    /** How long "Sent … confirming" shows at least (tests set 0). */
+    @Volatile var MIN_SENT_MS = 1500L
+
+    internal fun status(host: MainActivity, title: String, msg: String, sig: String? = null): android.app.AlertDialog {
         lastStatus?.let { runCatching { it.dismiss() } }
         val b = android.app.AlertDialog.Builder(host).setTitle(title).setMessage(msg).setPositiveButton(android.R.string.ok, null)
         if (sig != null) b.setNeutralButton(R.string.pay_solscan) { _, _ -> host.openUrl(host.wallet.txUrl(sig)) }
@@ -225,7 +229,7 @@ object CallActionCards {
         }
         host.scope.launch {
             val raw = CallActionRules.amountRaw(a.token, a.amount)
-            val r = runCatching { host.wallet.signAndSend(host.sender) { payer, blockhash -> CallActionRules.paymentTx(payer, PublicKey(recipient), a.token, raw, blockhash) } }
+            val r = runCatching { host.wallet.signAndSend(host.sender, token = a.token) { payer, blockhash -> CallActionRules.paymentTx(payer, PublicKey(recipient), a.token, raw, blockhash) } }
                 .getOrElse { e -> if (e is kotlinx.coroutines.CancellationException) throw e else Result.failure(e) }
             ticker.cancel()
             r.onSuccess { sent ->
@@ -233,12 +237,15 @@ object CallActionCards {
                 if (store.all().none { it.id == a.id }) store.add(listOf(a.copy(status = CallAction.DONE, signature = sent.signature))) // sent from Circle
                 else store.update(a.id) { it.copy(status = CallAction.DONE, signature = sent.signature) }
                 status(host, host.getString(R.string.pay_sent_title), host.getString(R.string.pay_sent, what), sent.signature)
+                val sentAt = System.currentTimeMillis()
                 onChange()
                 // the secretary may tell this caller next time that it was sent (number, amount, token, signature only)
                 val call = CallInbox.cached(host).firstOrNull { it.key == a.callKey }
                 val number = contact?.phone?.takeIf { it.isNotBlank() } ?: call?.dialNumber.orEmpty()
                 val ok = withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { host.wallet.waitConfirmed(sent.signature) }.getOrDefault(false) }
                 if (ok) {
+                    // 1.2.7 (device test): "Sent … confirming" stays readable before "Settled ✓", even on a fast confirm
+                    MIN_SENT_MS.let { min -> val left = min - (System.currentTimeMillis() - sentAt); if (left > 0) kotlinx.coroutines.delay(left) }
                     status(host, host.getString(R.string.pay_settled_title), host.getString(R.string.pay_settled, what), sent.signature)
                     if (number.isNotBlank()) withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { net.solardepin.solarchik.circle.Settled.report(host, number, net.solardepin.solarchik.circle.Circle.amount(a.amount), a.token, sent.signature, call?.owner) } }
                 } else {

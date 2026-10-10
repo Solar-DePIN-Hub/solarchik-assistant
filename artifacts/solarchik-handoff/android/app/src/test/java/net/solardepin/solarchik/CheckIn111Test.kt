@@ -46,8 +46,8 @@ class CheckIn111Test {
     @Test fun todayAndSeasonOfferTheOneTapCheckIn() {
         val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get()
         repeat(5) { ShadowLooper.idleMainLooper() }
+        // 1.2.7: no check-in tile on Today; the optional "Sign on Solana" chip shows once the stack is clear
         val t = texts(a.window.decorView)
-        assertTrue(t.contains("Ready to sign"))
         assertFalse(t.any { it.startsWith("Run 1200 m") })
         a.select(MainActivity.Tab.SEASON); repeat(5) { ShadowLooper.idleMainLooper() }
         val s = texts(a.window.decorView)

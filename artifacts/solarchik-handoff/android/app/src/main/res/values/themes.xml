@@ -3,7 +3,7 @@
     <style name="Theme.Solarchik" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@color/sc_bg</item>
-        <item name="android:windowBackground">@color/sc_bg</item>
+        <item name="android:windowBackground">@drawable/splash_window</item>
         <item name="android:colorBackground">@color/sc_bg</item>
         <item name="android:colorAccent">@color/sc_gold</item>
         <item name="android:colorPrimary">@color/sc_gold</item>

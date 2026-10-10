@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.Solarchik" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/sc_bg</item>
+        <item name="android:windowBackground">@color/sc_bg</item>
+        <!-- 1.2.7: the system splash shows the Sol robot launcher icon on the app's dark blue -->
+        <item name="android:windowSplashScreenBackground">@color/sc_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="android:colorBackground">@color/sc_bg</item>
+        <item name="android:colorAccent">@color/sc_gold</item>
+        <item name="android:colorPrimary">@color/sc_gold</item>
+        <item name="android:colorControlActivated">@color/sc_gold</item>
+        <item name="android:textColorPrimary">@color/sc_text</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="27">shortEdges</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:fontFamily">@font/manrope_medium</item>
+    </style>
+
+    <style name="Theme.Solarchik.Run">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

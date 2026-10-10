@@ -96,6 +96,20 @@ object Circle {
             who + " " + l.groupBy { it.token }.entries.joinToString(" + ") { (t, x) -> amount(x.sumOf { it.amount }) + " " + t }
         }
 
+    /** 1.2.7 "Owes you": callers who said they will send YOU money (a note only; it never creates a transfer). */
+    fun owed(actions: List<CallAction>, calls: List<CallItem>, contacts: List<Contact>): List<Debt> =
+        actions.filter { it.type == CallAction.OWED && it.amount > 0 && it.status != CallAction.DISMISSED }.map { a ->
+            val call = calls.firstOrNull { it.key == a.callKey }
+            val name = call?.who?.takeIf { it.isNotBlank() } ?: a.recipient
+            val contact = match(contacts, name, call?.dialNumber.orEmpty())
+            Debt(a, call, contact, contact?.name ?: name)
+        }.sortedByDescending { it.at }
+
+    fun currentOwed(ctx: Context): List<Debt> = owed(net.solardepin.solarchik.screen.CallActionStore(ctx).all(), net.solardepin.solarchik.screen.CallInbox.cached(ctx), CircleStore(ctx).all())
+
+    /** "0.01 SOL + 5 SKR" for open lines. */
+    fun sumText(debts: List<Debt>): String = debts.filter { it.open }.groupBy { it.token }.entries.joinToString(" + ") { (t, x) -> amount(x.sumOf { it.amount }) + " " + t }
+
     /** Debts for the current phone data. */
     fun current(ctx: Context): List<Debt> = debts(net.solardepin.solarchik.screen.CallActionStore(ctx).all(), net.solardepin.solarchik.screen.CallInbox.cached(ctx), CircleStore(ctx).all())
 

@@ -279,6 +279,7 @@ object AssistantExtras {
 
     fun actionLine(a: net.solardepin.solarchik.screen.CallAction): String = when (a.type) {
         net.solardepin.solarchik.screen.CallAction.PAYMENT -> "pay ${java.math.BigDecimal.valueOf(a.amount).stripTrailingZeros().toPlainString()} ${a.token.ifBlank { "?" }}" + (a.recipient.takeIf { it.isNotBlank() }?.let { " to $it" } ?: "")
+        net.solardepin.solarchik.screen.CallAction.OWED -> (a.recipient.ifBlank { "the caller" }) + " says they will send you ${java.math.BigDecimal.valueOf(a.amount).stripTrailingZeros().toPlainString()} ${a.token} (info only, nothing to do)"
         net.solardepin.solarchik.screen.CallAction.CALLBACK -> "call back" + (a.number.takeIf { it.isNotBlank() }?.let { " $it" } ?: "") + (a.time.takeIf { it.isNotBlank() }?.let { " at $it" } ?: "")
         else -> "reminder" + (a.text.takeIf { it.isNotBlank() }?.let { ": $it" } ?: "") + (a.time.takeIf { it.isNotBlank() }?.let { " at $it" } ?: "")
     }

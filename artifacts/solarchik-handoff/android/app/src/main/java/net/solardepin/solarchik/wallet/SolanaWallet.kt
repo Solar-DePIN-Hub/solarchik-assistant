@@ -396,11 +396,13 @@ class SolanaWallet(context: Context) {
      */
     suspend fun signAndSend(
         sender: ActivityResultSender,
+        token: String = "",
         build: suspend (payer: PublicKey, blockhash: ByteArray) -> LegacyTx,
     ): Result<SentTx> {
         if (useLocal()) return localSignAndSend(build)
         val client = rpc
         val hash = StickyBlockhash { client.latestBlockhash() }
+        simToken = token
         val first = signAndSendOnce(sender, client, hash, build)
         val err = first.exceptionOrNull() ?: return first
         if (!shouldTrySignOnly(err)) return first
@@ -443,13 +445,20 @@ class SolanaWallet(context: Context) {
         return e
     }
 
-    /** The chain's refusal in words a user can act on. */
-    internal fun simulationText(err: String): String {
+    /** The token of the transfer being signed (for the simulation's words); "" = SOL / unknown. */
+    @Volatile private var simToken: String = ""
+
+    /** The chain's refusal in words a user can act on. 1.2.7: token-aware (no USDC account vs not enough USDC). */
+    internal fun simulationText(err: String, token: String = ""): String {
         val r = app.resources
+        val spl = token == "USDC" || token == "SKR"
         return when {
             err.contains("InsufficientFundsForRent") -> r.getString(net.solardepin.solarchik.R.string.sim_rent)
+            err.contains("AccountNotFound") || err.contains("InsufficientFundsForFee") -> r.getString(net.solardepin.solarchik.R.string.sim_funds)
+            spl && err.contains("InvalidAccountData") -> r.getString(net.solardepin.solarchik.R.string.sim_no_token_account, token)
+            spl && err.contains("insufficient funds", true) -> r.getString(net.solardepin.solarchik.R.string.sim_low_token, token)
             err.contains("insufficient lamports", true) || err.contains("InsufficientFunds") || err.contains("\"Custom\":1") -> r.getString(net.solardepin.solarchik.R.string.sim_funds)
-            err.contains("InvalidAccountData") || err.contains("AccountNotFound") || err.contains("insufficient funds", true) -> r.getString(net.solardepin.solarchik.R.string.sim_token)
+            err.contains("InvalidAccountData") || err.contains("insufficient funds", true) -> r.getString(net.solardepin.solarchik.R.string.sim_token)
             else -> r.getString(net.solardepin.solarchik.R.string.sim_other, err.take(80))
         }
     }
@@ -492,7 +501,7 @@ class SolanaWallet(context: Context) {
         if (pre != null) {
             val problem = runCatching { client.simulate(pre.second) }.getOrNull()
             WalletDiag.log("simulate", problem?.let { "refused: " + it.take(160) } ?: "ok (or the node didn't answer)")
-            if (problem != null) return Result.failure(WalletError(WalletError.Kind.FAILED, "simulation: " + problem, userText = simulationText(problem)))
+            if (problem != null) return Result.failure(WalletError(WalletError.Kind.FAILED, "simulation: " + problem, userText = simulationText(problem, simToken)))
         }
         // 1.2.0: the logged direct session (same wait and wallet pick as connect) when the app is in front
         direct { client, auth ->

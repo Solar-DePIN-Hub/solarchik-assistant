@@ -73,23 +73,30 @@ class Nav0217Test {
         // 1.0.0: Today is home; Sol's mic is the raised centre button; the game sits behind a small tile
         assertEquals(MainActivity.Tab.TODAY, a.current)
         assertNotNull(find(d, "nav-bar"))
-        assertNotNull(find(d, "nav-pill"))
-        assertEquals(listOf("Today", "Calls", "Sol", "Agents", "More"), listOf("nav-today", "nav-calls", "nav-sol", "nav-agents", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
-        assertNotNull("Secretary is on Today", find(d, "today-secretary"))
-        assertTrue(texts(find(d, "today-secretary")!!).contains("Phone secretary"))
+        // 1.2.7: Today · Circle · [mic] · Me, a dot under the active tab
+        assertEquals(listOf("Today", "Circle", "Me"), listOf("nav-today", "nav-circle", "nav-me").map { find(d, it)!!.contentDescription.toString() })
+        assertNotNull(find(d, "nav-mic"))
+        assertNull("Calls is one level down", find(d, "nav-calls"))
+        assertEquals(View.VISIBLE, find(d, "nav-dot-today")!!.visibility)
         shot(a, "en-1-home")
+        a.select(MainActivity.Tab.ME, animate = false)
+        assertNotNull("Secretary is on Me", find(d, "today-secretary"))
+        assertTrue(texts(find(d, "today-secretary")!!).contains("Phone secretary"))
+        assertEquals(View.VISIBLE, find(d, "nav-dot-me")!!.visibility)
         a.select(MainActivity.Tab.AGENTS, animate = false); shot(a, "en-2-agents")
+        assertEquals("Agents sits under Me", View.VISIBLE, find(d, "nav-dot-me")!!.visibility)
         a.select(MainActivity.Tab.RUN, animate = false); shot(a, "en-3-play")
         a.select(MainActivity.Tab.SOL, animate = false); shot(a, "en-4-sol")
-        assertEquals(0f, find(d, "nav-pill")!!.alpha)
         a.select(MainActivity.Tab.SETTINGS, animate = false); shot(a, "en-5-more")
-        assertEquals(1f, find(d, "nav-pill")!!.alpha)
+        a.select(MainActivity.Tab.CIRCLE, animate = false); shot(a, "en-6-circle")
+        assertEquals(View.VISIBLE, find(d, "nav-dot-circle")!!.visibility)
     }
 
     @Test fun homeSecretaryCardOpensTheCallsListDirectly() {
         // 0.22.0 (owner): no intermediate Settings screen on the way to the calls
         val a = open()
-        find(a.window.decorView, "today-sec-inbox")!!.performClick()
+        a.select(MainActivity.Tab.ME, animate = false)
+        find(a.window.decorView, "me-calls")!!.performClick()
         ShadowLooper.idleMainLooper()
         val next = org.robolectric.Shadows.shadowOf(a).nextStartedActivity
         assertEquals(net.solardepin.solarchik.ui.CallsActivity::class.java.name, next?.component?.className)
@@ -112,7 +119,7 @@ class Nav0217Test {
     fun ukrainianNavAndTabs() {
         val a = open()
         val d = a.window.decorView
-        assertEquals(listOf("Сьогодні", "Дзвінки", "Сол", "Агенти", "Ще"), listOf("nav-today", "nav-calls", "nav-sol", "nav-agents", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
+        assertEquals(listOf("Сьогодні", "Коло", "Я"), listOf("nav-today", "nav-circle", "nav-me").map { find(d, it)!!.contentDescription.toString() })
         shot(a, "uk-1-home")
         a.select(MainActivity.Tab.AGENTS, animate = false); shot(a, "uk-2-agents")
         a.select(MainActivity.Tab.RUN, animate = false); shot(a, "uk-3-play")

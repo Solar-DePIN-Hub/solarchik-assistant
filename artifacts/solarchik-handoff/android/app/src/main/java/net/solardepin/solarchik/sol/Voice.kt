@@ -512,6 +512,8 @@ class SolEars(private val context: Context) {
     private var endTimer: Runnable? = null
     private var stableTimer: Runnable? = null
     private var finishHook: ((String?) -> Unit)? = null
+    /** 1.2.7: the mic level (dB, about -2..10) for the voice sheet's waveform. */
+    var onLevel: ((Float) -> Unit)? = null
 
     /** 1.0.0 hold-to-talk: the finger left the mic. Use what was heard so far; keep listening if nothing yet. */
     fun finishNow(): Boolean {
@@ -547,7 +549,7 @@ class SolEars(private val context: Context) {
         r.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {}
             override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onRmsChanged(rmsdB: Float) { onLevel?.invoke(rmsdB) }
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() {
                 speechEnd()

@@ -150,39 +150,54 @@ object Skr {
 
     class RpcError(message: String) : Exception(message)
 
-    fun body(owner: String): String = JSONObject()
+    fun body(owner: String, mint: String = MINT): String = JSONObject()
         .put("jsonrpc", "2.0").put("id", 1).put("method", "getTokenAccountsByOwner")
-        .put("params", JSONArray().put(owner).put(JSONObject().put("mint", MINT)).put(JSONObject().put("encoding", "jsonParsed").put("commitment", "confirmed")))
+        .put("params", JSONArray().put(owner).put(JSONObject().put("mint", mint)).put(JSONObject().put("encoding", "jsonParsed").put("commitment", "confirmed")))
         .toString()
 
     /** Pure: parse the RPC answer into whole SKR (exact decimals, no float rounding before the end). */
-    fun parse(json: String): Result<Double> = runCatching {
+    fun parse(json: String, mint: String = MINT): Result<Double> = parseFull(json, mint).map { it.first }
+
+    /** 1.2.7: (balance, number of token accounts): 0 accounts = "no USDC account yet", not just "0 USDC". */
+    fun parseFull(json: String, mint: String = MINT): Result<Pair<Double, Int>> = runCatching {
         val o = JSONObject(json)
         o.optJSONObject("error")?.let { throw RpcError(it.optString("message", "rpc error")) }
         val arr = o.getJSONObject("result").getJSONArray("value")
         var sum = BigDecimal.ZERO
+        var n = 0
         for (i in 0 until arr.length()) {
             val info = arr.getJSONObject(i).getJSONObject("account").getJSONObject("data").getJSONObject("parsed").getJSONObject("info")
-            if (info.optString("mint") != MINT) continue
+            if (info.optString("mint") != mint) continue
+            n++
             val amt = info.getJSONObject("tokenAmount")
             sum += BigDecimal(amt.getString("amount")).movePointLeft(amt.getInt("decimals"))
         }
-        sum.toDouble()
+        sum.toDouble() to n
     }
 
     private val client by lazy { OkHttpClient.Builder().callTimeout(12, TimeUnit.SECONDS).build() }
 
     /** Blocking; call from IO. 1.1.0: the public node first, PublicNode when it fails (429 / 5xx / network). */
-    fun fetch(owner: String): Result<Double> = fetch(owner, RPC)
-        .recoverCatching { fetch(owner, RPC_FALLBACK2).getOrThrow() }
-        .recoverCatching { fetch(owner, RPC_FALLBACK).getOrThrow() }
+    fun fetch(owner: String): Result<Double> = fetchMint(owner, MINT).map { it.first }
 
-    fun fetch(owner: String, rpc: String): Result<Double> = runCatching {
-        val req = Request.Builder().url(rpc).post(body(owner).toRequestBody("application/json".toMediaType())).build()
+    fun fetch(owner: String, rpc: String): Result<Double> = fetchMint(owner, MINT, rpc).map { it.first }
+
+    /** 1.2.7: any classic SPL mint (USDC for Me and the Save habit). Tests set [fetchOverride]. */
+    fun fetchMint(owner: String, mint: String): Result<Pair<Double, Int>> {
+        fetchOverride?.let { return it(owner, mint) }
+        return fetchMint(owner, mint, RPC)
+            .recoverCatching { fetchMint(owner, mint, RPC_FALLBACK2).getOrThrow() }
+            .recoverCatching { fetchMint(owner, mint, RPC_FALLBACK).getOrThrow() }
+    }
+
+    @Volatile var fetchOverride: ((String, String) -> Result<Pair<Double, Int>>)? = null
+
+    fun fetchMint(owner: String, mint: String, rpc: String): Result<Pair<Double, Int>> = runCatching {
+        val req = Request.Builder().url(rpc).post(body(owner, mint).toRequestBody("application/json".toMediaType())).build()
         client.newCall(req).execute().use { res ->
             val text = res.body?.string().orEmpty()
             if (!res.isSuccessful && text.isBlank()) throw RpcError("HTTP ${res.code}")
-            parse(text).getOrThrow()
+            parseFull(text, mint).getOrThrow()
         }
     }
 }

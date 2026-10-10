@@ -166,9 +166,9 @@ class Release126Test {
         audit(today, "04-today-after-call")
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         assertEquals(app.getString(net.solardepin.solarchik.ui.TodayScreen.greetingFor(hour)), (find(today, "today-greeting") as TextView).text.toString())
-        assertTrue(texts(today).toString(), texts(today).contains("MORNING STACK · 1 OF 5"))
-        assertEquals("one pay card", 1, count(today, "ca-pay"))
-        assertTrue(texts(today).any { it.startsWith("Pay 0.01 SOL") })
+        // 1.2.7: call-back, payment, then today's one Season task
+        assertTrue(texts(today).toString(), texts(today).contains("1 of 3"))
+        assertEquals("the call-back is on top", 1, count(today, "ca-callback"))
 
         // 3) More: Circle, then forwarding setup (verify + carrier codes)
         seedIra()
@@ -197,7 +197,7 @@ class Release126Test {
         // 5) the stack: the call-back goes to tomorrow; then the Season tasks, one by one
         a.select(MainActivity.Tab.TODAY); idle()
         audit(a.window.decorView, "11-today-stack-callback")
-        assertTrue(texts(a.window.decorView).contains("MORNING STACK · 1 OF 4"))
+        assertTrue(texts(a.window.decorView).toString(), texts(a.window.decorView).any { Regex("^1 of \\d+$").matches(it) })
         find(a.window.decorView, "stack-later")!!.performClick(); idle()
         audit(a.window.decorView, "12-today-stack-season-task")
         assertTrue(find(a.window.decorView, "stack-season") != null)
@@ -210,9 +210,7 @@ class Release126Test {
         val ask = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog() as android.app.AlertDialog
         audit(ask.window!!.decorView, "13-season-done-ask")
         ask.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick(); idle()
-        assertEquals("Mentioned", (find(a.window.decorView, "stack-season-app") as TextView).text.toString())
-        find(a.window.decorView, "stack-later")!!.performClick(); idle() // later
-        find(a.window.decorView, "stack-season-done")!!.performClick(); idle() // I did it
+        // 1.2.7: one Season card a day, so the stack is clear after it
         audit(a.window.decorView, "14-today-clocked-in")
         assertTrue(find(a.window.decorView, "stack-clocked") != null)
 
@@ -256,17 +254,17 @@ class Release126Test {
     @Test fun seasonTasksFollowTheCallCardsAndClockIn() {
         seedSeason()
         val t = System.currentTimeMillis()
+        // 1.2.7: the "Today's Season task" habit is one Season card a day (on by default, can be switched off)
         val apps = MS.seasonItems(app, t, "en").map { it.app }
-        assertEquals(listOf("MattleFun", "Mentioned", "DiversiFi"), apps)
+        assertEquals(listOf("MattleFun"), apps)
         MS.touched(app, t)
         assertEquals(false, MS.settle(app, t))
         val first = MS.seasonItems(app, t, "en")
         MS.seasonDone(app, first[0].id, t)
-        assertEquals("the next drop moves up but the day keeps 3 at most", listOf("Mentioned", "DiversiFi"), MS.seasonItems(app, t, "en").map { it.app })
-        MS.snooze(app, "season:" + first[1].id, t); MS.seasonHandledOne(app, t)
-        MS.seasonDone(app, first[2].id, t)
-        assertTrue(MS.seasonItems(app, t, "en").isEmpty())
+        assertTrue("one a day", MS.seasonItems(app, t, "en").isEmpty())
         assertTrue(MS.settle(app, t))
+        net.solardepin.solarchik.stack.Habits.set(app, net.solardepin.solarchik.stack.Habits.SEASON, false)
+        assertTrue(MS.seasonItems(app, t + 86_400_000L, "en").isEmpty())
         assertEquals(MS.Answer.DO, MS.answer("open it"))
     }
 

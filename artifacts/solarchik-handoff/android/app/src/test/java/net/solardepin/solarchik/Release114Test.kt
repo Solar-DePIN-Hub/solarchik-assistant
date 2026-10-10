@@ -105,8 +105,12 @@ class Release114Test {
     }
 
     @Test fun checkInTileOpensTheCheckInWithoutARun() {
+        net.solardepin.solarchik.stack.Habits.set(app, net.solardepin.solarchik.stack.Habits.WORKOUT, true) // one card to clear
         val a = launch()
-        find(a.window.decorView, "today-checkin")!!.performClick(); idle()
+        // 1.2.7: the check-in is the optional "Sign on Solana" chip once the stack is clear
+        repeat(10) { find(a.window.decorView, "stack-later")?.performClick(); idle() }
+        assertNotNull(find(a.window.decorView, "stack-clocked"))
+        find(a.window.decorView, "stack-sign")!!.performClick(); idle()
         assertEquals(MainActivity.Tab.SHIFT, a.current)
         val next = shadowOf(a).nextStartedActivity
         assertTrue("check-in must not start the run", next == null || next.component?.className != RunActivity::class.java.name)

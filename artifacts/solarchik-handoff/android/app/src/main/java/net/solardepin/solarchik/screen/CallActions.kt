@@ -62,6 +62,8 @@ data class CallAction(
         const val PAYMENT = "payment"
         const val CALLBACK = "callback"
         const val REMINDER = "reminder"
+        /** 1.2.7: the caller says THEY will send the user money ("I'll send you 2 USDC"): Circle "Owes you", never a transfer. */
+        const val OWED = "owed"
         const val OPEN = "open"
         const val DONE = "done"
         const val DISMISSED = "dismissed"
@@ -116,7 +118,7 @@ object CallActionRules {
             val a = arr.getJSONObject(i)
             val key = a.optString("callId")
             val type = a.optString("type")
-            if (key !in keys || type !in listOf(CallAction.PAYMENT, CallAction.CALLBACK, CallAction.REMINDER)) continue
+            if (key !in keys || type !in listOf(CallAction.PAYMENT, CallAction.CALLBACK, CallAction.REMINDER, CallAction.OWED)) continue
             val addr = a.optString("address").takeIf { validAddress(it) }.orEmpty()
             out += CallAction(
                 id = "$key#${out.count { it.callKey == key }}", callKey = key, type = type,
@@ -131,12 +133,15 @@ object CallActionRules {
             )
         }
         if (out.any { it.payment && it.amount <= 0.0 }) out.removeAll { it.payment && it.amount <= 0.0 }
+        out.removeAll { it.type == CallAction.OWED && (it.amount <= 0.0 || it.token.isBlank()) }
         val processed = (o.optJSONArray("processed") ?: JSONArray()).let { p -> (0 until p.length()).map { p.getString(it) }.filter { it in keys }.toSet() }
         out to processed
     }.getOrNull()
 
     private val PAY_EN = Regex("(?i)\\b(?:send|pay|transfer|wire)\\b[^.?!]{0,40}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|skr|usd|dollars?|\\$)")
     private val PAY_UK = Regex("(?iu)(?:надішли|надіслати|скинь|скинути|переказати|перекажи|заплати|оплати)[^.?!]{0,40}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|skr|usd|долар\\w*|\\$)")
+    private val OWED_EN = Regex("(?i)\\b(?:(?:i|she|he|they)(?:'ll| will| is going to| are going to|'m going to)|promises? to|will)\\s+(?:send|pay|return|give|transfer)(?: you| it| vadym)?(?: back)?[^.?!]{0,30}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|skr)\\b")
+    private val OWED_UK = Regex("(?iu)(?:поверну|надішлю тобі|відправлю тобі|скину тобі|перекажу тобі)[^.?!]{0,30}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|skr)")
     private val CALL_EN = Regex("(?i)\\bcall (?:me |her |him |them |us )?back\\b(?:[^.?!]{0,30}?\\bat (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?)?")
     private val CALL_UK = Regex("(?iu)\\b(?:передзвони|передзвоніть|перетелефонуй)\\w*(?:[^.?!]{0,30}?\\bо (\\d{1,2})(?::(\\d{2}))?)?")
     private val REMIND_EN = Regex("(?i)\\b(?:remind (?:me|yourself|you|her|him|them)|don'?t forget)\\b[^.?!]{0,60}?(?:\\bat (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?)?")
@@ -163,7 +168,12 @@ object CallActionRules {
     fun local(c: CallItem): List<CallAction> {
         val src = listOf(c.intent, c.notes, c.text).joinToString(". ")
         val out = ArrayList<CallAction>()
-        (PAY_EN.find(src) ?: PAY_UK.find(src))?.let { m ->
+        val owed = OWED_EN.find(src) ?: OWED_UK.find(src)
+        if (owed != null) {
+            val amount = owed.groupValues[1].replace(',', '.').toDoubleOrNull() ?: 0.0
+            if (amount > 0) out += CallAction("${c.key}#0", c.key, CallAction.OWED, amount = amount, token = owed.groupValues[2].uppercase(), recipient = c.who, quote = owed.value.take(120), source = CallAction.SOURCE_LOCAL)
+        }
+        if (owed == null) (PAY_EN.find(src) ?: PAY_UK.find(src))?.let { m ->
             val amount = m.groupValues[1].replace(',', '.').toDoubleOrNull() ?: 0.0
             val word = m.groupValues[2].lowercase()
             val token = when (word) { "sol" -> "SOL"; "skr" -> "SKR"; else -> "USDC" }

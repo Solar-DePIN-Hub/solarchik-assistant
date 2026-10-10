@@ -376,10 +376,11 @@ class AgentsBriefingActionsTest {
         assertEquals("assistant", req.getString("app"))
         assertTrue(req.getJSONObject("facts").getJSONArray("calls").length() >= 4)
         assertEquals("", BriefingStore(app).pendingDay)
+        // 1.2.7: the briefing row lives on Me (time + Play); Today is the morning stack
+        a.select(MainActivity.Tab.ME); idle()
         val d = a.window.decorView
-        assertTrue((find(d, "today-briefing-text") as TextView).text.startsWith("Good morning. Olena"))
-        assertEquals("Every day at 08:30 · tap to change", (find(d, "today-briefing-time") as TextView).text.toString())
-        shot(d, "18_today_briefing", "today-briefing")
+        assertTrue(texts(find(d, "today-briefing")!!).contains("Every day at 08:30 · tap to change"))
+        shot(d, "18_me_briefing", "today-briefing")
         // "Play briefing" again; offline -> the local template from the same facts
         TodayScreen.postOverride = { _, _ -> 503 to "{}" }
         today.briefingPost = { u, b -> TodayScreen.postOverride!!(u, b) }
@@ -487,22 +488,20 @@ class AgentsBriefingActionsTest {
         CallActionStore(app).markProcessed(keys)
         val a = launch()
         val d = a.window.decorView
-        assertNotNull(find(d, "today-actions"))
-        val all = texts(d)
-        assertTrue(all.toString(), all.any { it == "Pay 10 USDC · asked by Olena" })
-        assertTrue(all.any { it.startsWith("Payment requests by phone are a common scam") })
-        assertTrue(all.contains("MORNING STACK · 1 OF 3"))
-        shot(d, "19_today_call_actions", "today-actions")
-        // 1.2.5 morning stack: one card at a time; Later sends both payments to tomorrow
-        (find(d, "stack-later") as View).performClick(); idle()
-        (find(d, "stack-later") as View).performClick(); idle()
-        assertTrue(texts(d).any { it == "Call Petro back at 15:00" })
+        // 1.2.7 morning stack: call-backs first, then payments; one card at a time
+        assertNotNull(find(d, "today-deck"))
+        assertTrue(texts(d).toString(), texts(d).any { it == "Call Petro back at 15:00" })
+        assertTrue(texts(d).contains("1 of 3"))
+        shot(d, "19_today_call_actions", "today-deck")
         // callback: the dialer opens with the number; the user presses call
-        (find(d, "ca-dial") as View).performClick(); idle()
+        (find(d, "stack-do") as View).performClick(); idle()
         val dial = shadowOf(a).nextStartedActivity
         assertEquals(Intent.ACTION_DIAL, dial.action)
         assertEquals("tel:+380501234567", dial.dataString)
-        (find(d, "ca-remind") as View).performClick(); idle()
+        // then the payments, the user's own recipient only
+        assertTrue(texts(d).toString(), texts(d).any { it.startsWith("You owe ") && (it.endsWith("10 USDC") || it.endsWith("2 SOL")) })
+        assertTrue(texts(d).contains("Your wallet asks you to approve. A swipe never sends."))
+        CallActionCards.remind(a, CallActionStore(app).find(keys[2] + "#0"), System.currentTimeMillis())
         assertTrue(CallActionStore(app).find(keys[2] + "#0").remindAt > System.currentTimeMillis())
         // payment: the address the caller said is shown in full with a warning but NOT filled in
         val scam = CallActionStore(app).all().first { it.id == keys[1] + "#0" }
@@ -529,8 +528,10 @@ class AgentsBriefingActionsTest {
         // Sol knows about the waiting actions
         assertTrue(AssistantExtras.lines(app).any { it.startsWith("Actions from calls waiting for the user's confirmation: pay 2 SOL") })
         // dismiss
-        (find(d, "ca-dismiss") as View).performClick(); idle()
-        assertEquals(2, CallActionStore(app).open().size)
+        val before = CallActionStore(app).open().size
+        CallActionStore(app).update(scam.id) { it.copy(status = CallAction.DISMISSED) }
+        assertEquals(before - 1, CallActionStore(app).open().size)
+        assertTrue(CallActionStore(app).open().none { it.id == scam.id })
     }
 
     // ------------------------------------------------------------------ Ukrainian (secondary language) is complete
@@ -555,11 +556,14 @@ class AgentsBriefingActionsTest {
             val bad = texts(d).filter { t -> data.none { t.contains(it) } && latinWords.containsMatchIn(t) && !Regex("[а-яіїєґ]", RegexOption.IGNORE_CASE).containsMatchIn(t) }
             assertTrue("$where: $bad", bad.isEmpty())
         }
-        assertTrue(texts(d).any { it == "Ранкове зведення" })
-        assertTrue(texts(d).any { it.startsWith("Оплатити 10 USDC") })
+        // 1.2.7: the stack opens on the call-back; the briefing row is on Me
+        assertTrue(texts(d).toString(), texts(d).any { it.startsWith("Передзвонити") && it.contains("15:00") })
         noEnglish("today")
-        shot(d, "21_uk_today_actions", "today-actions")
-        shot(d, "22_uk_today_briefing", "today-briefing")
+        shot(d, "21_uk_today_actions", "today-deck")
+        a.select(MainActivity.Tab.ME); idle()
+        assertTrue(texts(d).any { it == "Ранковий брифінг" })
+        noEnglish("me")
+        shot(d, "22_uk_me_briefing", "today-briefing")
         a.select(MainActivity.Tab.AGENTS); idle()
         val ag = a.screen(MainActivity.Tab.AGENTS) as AgentsScreen
         assertTrue(texts(d).containsAll(listOf("Агент сезону", "Скарбничка", "Вартовий")))

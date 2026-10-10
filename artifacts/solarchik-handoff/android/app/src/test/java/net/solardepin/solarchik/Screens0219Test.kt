@@ -134,12 +134,12 @@ class Screens0219Test {
 
         val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get()
         // 1.0.0 Home is Today: the secretary card with today's / latest calls, unread dot on the Calls nav item
-        a.select(MainActivity.Tab.TODAY)
+        // 1.2.7: the phone secretary row is on Me, the unread dot sits on the Me tab
+        a.select(MainActivity.Tab.ME)
         idle()
         assertNotNull(findTag(a.window.decorView, "today-secretary"))
-        assertTrue(texts(findTag(a.window.decorView, "today-sec-latest")!!).any { it.contains("Вадим") })
         assertTrue(findTag(a.window.decorView, "nav-calls-dot")!!.visibility == View.VISIBLE)
-        shotRoot(a.window.decorView, "01-home-calls$sfx", a.getString(R.string.today_sec_title))
+        shotRoot(a.window.decorView, "01-home-calls$sfx", a.getString(R.string.me_sec))
 
         // Settings: secretary section opens Calls; wallet card without a wallet app; voice timing line
         a.select(MainActivity.Tab.SETTINGS)
@@ -193,11 +193,14 @@ class Screens0219Test {
         val det = Robolectric.buildActivity(CallsActivity::class.java, Intent(app, CallsActivity::class.java).putExtra(CallsActivity.EXTRA_KEY, key)).create().start().visible().get()
         if (live) {
             var waited = 0
-            while (waited < 100 && findText(det.window.decorView, a.getString(R.string.calls_transcript_hint)) == null) { idle(); Thread.sleep(100); waited++ }
-            assertNotNull("transcript did not load from the worker", findText(det.window.decorView, a.getString(R.string.calls_transcript_hint)))
+            // 1.2.7: the transcript is collapsed under the note; it loads, then opens on tap
+            while (waited < 100 && findTag(det.window.decorView, "call-transcript-toggle") == null) { idle(); Thread.sleep(100); waited++ }
+            assertNotNull("transcript did not load from the worker", findTag(det.window.decorView, "call-transcript-toggle"))
         }
         idle()
         shotRoot(det.window.decorView, "10-call-detail$sfx")
+        findTag(det.window.decorView, "call-transcript-toggle")?.performClick(); idle()
+        if (live) assertNotNull(findText(det.window.decorView, a.getString(R.string.calls_transcript_hint)))
         shotRoot(det.window.decorView, "11-call-detail-transcript$sfx", a.getString(R.string.calls_transcript_label))
         PlayerIds.get(app)
         AgentStore(app)

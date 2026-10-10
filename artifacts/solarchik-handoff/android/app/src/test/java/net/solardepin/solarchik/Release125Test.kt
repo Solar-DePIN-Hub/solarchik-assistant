@@ -26,6 +26,7 @@ import net.solardepin.solarchik.wallet.LocalKey
 import net.solardepin.solarchik.wallet.SolanaWallet
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -148,23 +149,19 @@ class Release125Test {
         a.screen(MainActivity.Tab.TODAY)?.onShow(); idle()
         val today = a.window.decorView
         audit(today, "04-today-after-call")
-        assertNull(find(today, "today-play"))
-        assertEquals(1, count(today, "circle-add-wallet"))
-        assertEquals("one pay card", 1, count(today, "ca-pay"))
-        assertTrue(texts(today).contains("MORNING STACK · 1 OF 2"))
-        assertTrue("one card at a time", texts(today).none { it.contains("Call Ira back") })
-        val order = mutableListOf<String>(); walk(today) { (it.tag as? String)?.let { t -> if (t in setOf("today-actions", "today-circle", "today-wallet", "today-briefing", "today-season")) order += t } }
-        assertEquals(listOf("today-actions", "today-circle", "today-wallet", "today-briefing", "today-season"), order.distinct())
-        assertTrue(texts(today).any { it.startsWith("Pay 0.01 SOL") })
-        assertNull("Circle on Today does not repeat the pay card", find(today, "today-circle"))
+        // 1.2.7: one swipe card at a time (call-backs first), the Play tile under the stack, no wallet/briefing blocks
+        assertNotNull(find(today, "today-deck"))
+        assertNotNull(find(today, "today-play"))
+        assertEquals("one call-back card", 1, count(today, "ca-callback"))
+        assertTrue(texts(today).toString(), texts(today).contains("1 of 2"))
+        listOf("today-actions", "today-circle", "today-wallet", "today-briefing").forEach { assertNull("$it moved off Today", find(today, it)) }
         assertTrue("no Follow-ups box repeating the call-back card", texts(today).none { it == "Call back Ira" })
 
-        // 4) More → Circle (the Calls screens above may have refreshed the cache from the worker)
+        // 4) the Circle tab (the Calls screens above may have refreshed the cache from the worker)
         seedIra()
-        a.select(MainActivity.Tab.SETTINGS); idle()
-        audit(a.window.decorView, "07-more-with-circle")
-        assertTrue(texts(a.window.decorView).any { it.startsWith("You owe Ira 0.01 SOL") })
-        assertTrue(find(a.window.decorView, "more-play") != null)
+        a.select(MainActivity.Tab.CIRCLE); idle()
+        audit(a.window.decorView, "07-circle")
+        assertTrue(texts(a.window.decorView).toString(), texts(a.window.decorView).any { it == "Ira · 0.01 SOL" })
 
         // 5) Add Ira's wallet (prefilled), then the Settle confirm
         find(a.window.decorView, "circle-add-wallet")!!.performClick(); idle()
@@ -177,25 +174,26 @@ class Release125Test {
         audit(confirm.window!!.decorView, "09-settle-confirm")
         assertTrue(texts(confirm.window!!.decorView).any { it.startsWith("Send 0.01 SOL to Ira?") })
         confirm.dismiss(); idle()
-        a.screen(MainActivity.Tab.SETTINGS)?.onShow(); idle()
-        audit(a.window.decorView, "10-more-circle-with-contact")
-        assertTrue(find(a.window.decorView, "circle-settle") != null)
+        a.screen(MainActivity.Tab.CIRCLE)?.onShow(); idle()
+        audit(a.window.decorView, "10-circle-with-contact")
+        assertEquals("Settle 0.01 SOL", (find(a.window.decorView, "circle-settle") as TextView).text.toString().trim('\u2060', ' '))
 
         // 6) settled (as after a confirmed transfer): Solscan line, gone from "You owe"
         CallActionStore(app).update(ira.key + "#0") { it.copy(status = CallAction.DONE, signature = "5".repeat(88)) }
-        a.screen(MainActivity.Tab.SETTINGS)?.onShow(); idle()
-        audit(a.window.decorView, "11-more-circle-settled")
-        assertTrue(texts(a.window.decorView).any { it.startsWith("Paid Ira 0.01 SOL") && it.endsWith("Solscan ↗") })
+        a.screen(MainActivity.Tab.CIRCLE)?.onShow(); idle()
+        audit(a.window.decorView, "11-circle-settled")
+        assertTrue(texts(a.window.decorView).any { it == "Paid Ira 0.01 SOL" })
+        assertTrue(texts(a.window.decorView).any { it.endsWith("Solscan ↗") })
+        assertNull(find(a.window.decorView, "circle-settle"))
 
-        // 7) the stack: Later sends the call-back to tomorrow; with nothing left, Today says Clocked in
+        // 7) the stack: Later on what's left; with nothing left, Today says Clocked in (no money needed)
         a.select(MainActivity.Tab.TODAY); idle()
         audit(a.window.decorView, "12-today-stack-callback")
-        assertTrue(texts(a.window.decorView).contains("MORNING STACK · 1 OF 1"))
-        find(a.window.decorView, "stack-later")!!.performClick(); idle()
+        repeat(5) { find(a.window.decorView, "stack-later")?.performClick(); idle() }
         audit(a.window.decorView, "13-today-clocked-in")
         assertTrue(find(a.window.decorView, "stack-clocked") != null)
-        assertEquals("Streak: 1 day", (find(a.window.decorView, "stack-streak") as TextView).text.toString())
-        assertTrue(texts(a.window.decorView).any { it.startsWith("This clock-in is saved on this phone only.") })
+        assertEquals("1 day in a row. Your stack is clear.", (find(a.window.decorView, "stack-streak") as TextView).text.toString())
+        assertTrue(texts(a.window.decorView).any { it.startsWith("Your streak is saved either way.") })
 
         // 3) Calls list and the call
         val calls = Robolectric.buildActivity(CallsActivity::class.java).create().start().resume().visible().get(); idle()
@@ -214,7 +212,7 @@ class Release125Test {
     @Test fun laterSnoozesToTomorrowMorningAndDoneClocksIn() {
         seedIra()
         val t = at("2026-10-11", 9)
-        assertEquals(listOf(CallAction.PAYMENT, CallAction.CALLBACK), MS.items(app, t).map { it.type })
+        assertEquals("1.2.7: call-backs, then payments", listOf(CallAction.CALLBACK, CallAction.PAYMENT), MS.items(app, t).map { it.type })
         val until = MS.snooze(app, ira.key + "#0", t, zone)
         assertEquals(at("2026-10-12", 6), until)
         assertEquals(listOf(CallAction.CALLBACK), MS.items(app, t).map { it.type })

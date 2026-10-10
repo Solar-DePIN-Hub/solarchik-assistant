@@ -86,9 +86,13 @@ class Release124Test {
         try {
             val a = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup().visible().get()
             repeat(5) { org.robolectric.shadows.ShadowLooper.idleMainLooper() }
-            val box = a.window.decorView.findViewWithTag<android.view.ViewGroup>("today-actions")
-            val first = (box.getChildAt(1) as android.view.ViewGroup).getChildAt(0)
-            assertEquals("ca-payment", first.tag)
+            // 1.2.7 order: call-backs, then payments, then habits, then the Season task
+            val deck = net.solardepin.solarchik.stack.MorningStack.deck(a)
+            val types = deck.map { (it as? net.solardepin.solarchik.stack.StackItem.Call)?.a?.type ?: "other" }
+            assertEquals(CallAction.CALLBACK, types.first())
+            assertTrue(types.toString(), types.indexOf(CallAction.PAYMENT) > types.lastIndexOf(CallAction.CALLBACK))
+            val deckView = a.window.decorView.findViewWithTag<android.view.ViewGroup>("today-deck").getChildAt(0) as android.view.ViewGroup
+            assertEquals("the top card (drawn last) is the call-back", "ca-callback", deckView.getChildAt(deckView.childCount - 1).tag)
         } finally { MainActivity.tickerEnabled = true }
     }
 
@@ -190,9 +194,14 @@ class Release124Test {
 
     @Test fun payCardWithAContactSettlesWithOneConfirm() {
         try {
-            val d = todayWith(net.solardepin.solarchik.circle.Contact("", "Ira", "0637443792", addr))
+            val d0 = todayWith(net.solardepin.solarchik.circle.Contact("", "Ira", "0637443792", addr))
+            // 1.2.7: the Today card says "Settle 0.01 SOL"; the Circle hero has the same one-confirm Settle
+            assertEquals("Settle 0.01 SOL", d0.findViewWithTag<android.widget.TextView>("stack-do").text.toString().trim('\u2060', ' '))
+            val act = d0.findViewWithTag<android.view.View>("today").context as MainActivity
+            act.select(MainActivity.Tab.CIRCLE); org.robolectric.shadows.ShadowLooper.idleMainLooper()
+            val d = act.window.decorView
             val settle = d.findViewWithTag<android.widget.TextView>("circle-settle")
-            assertTrue(settle.text.toString(), settle.text.toString().endsWith("Settle: send 0.01 SOL to Ira"))
+            assertEquals("Settle 0.01 SOL", settle.text.toString().trim('\u2060', ' '))
             assertTrue(d.findViewWithTag<android.view.View>("circle-add-wallet") == null)
             settle.performClick(); org.robolectric.shadows.ShadowLooper.idleMainLooper()
             val dlg = CallActionCards.lastSheet!!
@@ -205,7 +214,11 @@ class Release124Test {
 
     @Test fun payCardWithoutAContactOffersAddWalletPrefilled() {
         try {
-            val d = todayWith(null)
+            val d0 = todayWith(null)
+            assertEquals("Add Ira's wallet", d0.findViewWithTag<android.widget.TextView>("stack-do").text.toString().trim('\u2060', ' '))
+            val act = d0.findViewWithTag<android.view.View>("today").context as MainActivity
+            act.select(MainActivity.Tab.CIRCLE); org.robolectric.shadows.ShadowLooper.idleMainLooper()
+            val d = act.window.decorView
             val add = d.findViewWithTag<android.widget.TextView>("circle-add-wallet")
             assertTrue(add.text.toString(), add.text.toString().endsWith("Add Ira's wallet"))
             assertEquals("Ask Ira for wallet", d.findViewWithTag<android.widget.TextView>("circle-ask").text.toString())

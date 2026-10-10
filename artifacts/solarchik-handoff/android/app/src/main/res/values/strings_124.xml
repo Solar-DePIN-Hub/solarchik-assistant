@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="circle_title">Circle</string>
-    <string name="circle_body">People you pay. When a caller asks you to send money, it shows up here as what you owe them. Only addresses you save yourself. Never one heard on a call. Everything stays on this phone, and nothing is sent until you approve it in your wallet.</string>
+    <string name="circle_body">Who you owe, and who owes you. When a caller asks you to send money, it shows up as what you owe them. When they say they\'ll pay you, Request sends them a Solana Pay link to your own wallet. Only addresses you save yourself. Never one heard on a call. Nothing is sent until you approve it in your wallet.</string>
     <string name="circle_owe_label">You owe</string>
     <string name="circle_owe_none">Nothing right now.</string>
     <string name="circle_settled_label">Settled</string>
@@ -116,7 +116,7 @@
     <string name="pay_what">%1$s %2$s to %3$s</string>
     <string name="pay_waiting_title">Approve in your wallet</string>
     <string name="pay_waiting">Your wallet opens to approve %1$s. If it only asks to connect, approve that and the payment comes right after. Nothing is sent until you approve it there.</string>
-    <string name="pay_sent_title">Sent</string>
+    <string name="pay_sent_title">Sent · confirming…</string>
     <string name="pay_sent">%1$s sent. Waiting for Solana to confirm it…</string>
     <string name="pay_unconfirmed">%1$s was sent, but Solana hasn\'t confirmed it yet. Check it on Solscan in a minute.</string>
     <string name="pay_settled_title">Settled ✓</string>
@@ -130,4 +130,6 @@
     <string name="sim_token">Your wallet has none (or not enough) of this token.</string>
     <string name="sim_other">Solana would refuse this transfer (%1$s).</string>
     <string name="pay_waiting_for">Waiting for your wallet: %1$d s. If nothing happens, come back here and you will see why.</string>
+    <string name="sim_no_token_account">Your wallet has no %1$s account yet, so there is no %1$s to send. Get some %1$s into this wallet first.</string>
+    <string name="sim_low_token">Not enough %1$s in your wallet for this amount.</string>
 </resources>

@@ -25,7 +25,7 @@ Greet once, briefly. Ask the caller's name and what they want to pass on. Never 
 Use the caller's number as the callback; ask for another number only if they offer one.
 Every spoken line is short (under 20 words), plain and natural, like a polite human receptionist. Say only what fits the conversation: no jokes, no filler, no lines the caller did not ask for.
 You ALWAYS take the message, whatever it is. Never say you "can't" or "don't do" something the caller asks for: you pass it on to the owner.
-Money: when the caller asks the owner to send, pay, lend or return money, say you will pass the request on, then ask only what is missing: how much, what it is for, and when to call back. If they give a bare number without a currency, ask once, briefly: "SOL, SKR or USDC?" (in their language); never ask about dollars or convert anything. Never send, promise, confirm or refuse a payment, and never discuss wallets or cards.
+Money: when the caller asks the owner to send, pay, lend or return money, say you will pass the request on, then ask only what is missing: how much, what it is for, and when to call back. If they give a bare number without a currency, ask once, briefly: "SOL, SKR or USDC?" (in their language); never ask about dollars or convert anything. If the caller says THEY will pay or return money to the owner (a deposit, paying back), note the amount and currency and say you'll pass it on; the owner sends them a payment link. Never send, promise, confirm or refuse a payment, and never discuss wallets or cards.
 A callback or a reminder ("call me tomorrow", "remind him about Monday"): ask the time only if it is missing, then confirm it.
 If the caller only mumbles or you did not catch it, ask them once to repeat; never guess.
 Never give out wallets, seeds, codes, passwords, or the owner's address.
@@ -976,7 +976,7 @@ function noteFields(it) {
 
 export function translateSystem(lang) {
   const target = lang === "uk" ? "Ukrainian" : "English";
-  return `You translate short phone-call notes for the app owner. Translate every string value into ${target}${lang === "uk" ? " (never Russian)" : ""}. Keep names, numbers, amounts, token symbols (SOL, USDC), phone numbers and times exactly. Do not add or drop facts. Pronouns: replace every he/she/him/her/his (він/вона/його/її) that refers to the caller with the caller's name or "they" (${lang === "uk" ? "neutral Ukrainian forms" : "they/them/their"}), even when the input already uses one; the input may have guessed the gender wrong. Write caller_name in the target script (e.g. Вадим → Vadym in English; 'Vadim' is always written Vadym). JSON only, same keys: {"items":[{"id":"","caller_name":"","intent":"","notes":"","text":""}]} (keep only the keys you were given).`;
+  return `You translate short phone-call notes for the app owner. Translate every string value into ${target}${lang === "uk" ? " (never Russian)" : ""}. Keep names, numbers, amounts, token symbols (SOL, USDC), phone numbers and times exactly. Do not add or drop facts. Pronouns: replace every he/she/him/her/his (він/вона/його/її) that refers to the caller with the caller's name or "they" (${lang === "uk" ? "neutral Ukrainian forms" : "they/them/their"}), even when the input already uses one; the input may have guessed the gender wrong.${lang === "uk" ? "" : ' Start a sentence with the caller\'s name, not "They" ("Ira says they paid…"), and always use plural verbs after "they" ("they say", never "they says").'} Write caller_name in the target script (e.g. Вадим → Vadym in English; 'Vadim' is always written Vadym). JSON only, same keys: {"items":[{"id":"","caller_name":"","intent":"","notes":"","text":""}]} (keep only the keys you were given).`;
 }
 
 /** Applies a translated field set to an inbox item (text rebuilt from the summary when there is one). */
@@ -985,10 +985,39 @@ export function translateSystem(lang) {
 /** 1.2.4: the note's intent as a sentence ("says they paid…" -> "Says they paid…"; follow-ups show it alone). */
 export function tidyItem(it) {
   if (!it || typeof it !== "object") return it;
-  const out = it.text ? { ...it, text: tidyNote(it.text) } : { ...it };
-  const i = out.summary && typeof out.summary.intent === "string" ? out.summary.intent : "";
-  if (i && /^[a-zа-яіїєґ]/.test(i)) out.summary = { ...out.summary, intent: i.charAt(0).toUpperCase() + i.slice(1) };
+  const name = it.summary && typeof it.summary.caller_name === "string" ? it.summary.caller_name.trim() : "";
+  const out = it.text ? { ...it, text: fixThey(tidyNote(it.text), name) } : { ...it };
+  let i = out.summary && typeof out.summary.intent === "string" ? out.summary.intent : "";
+  if (i) i = fixThey(i, name);
+  if (i && /^[a-zа-яіїєґ]/.test(i)) i = i.charAt(0).toUpperCase() + i.slice(1);
+  if (out.summary && i !== out.summary.intent) out.summary = { ...out.summary, intent: i };
   return out;
+}
+
+/**
+ * 1.2.7 (tablet: "They says they paid…"): the pronoun rewrite left a singular verb after "they". A sentence that
+ * opens with "They <verb>s" starts with the caller's name instead ("Ira says they paid…"); other "they <verb>s"
+ * get the plural verb ("they say"). English only; other text is returned unchanged.
+ */
+const THEY_VERBS = { says: "say", asks: "ask", wants: "want", needs: "need", has: "have", is: "are", was: "were", promises: "promise", plans: "plan", thinks: "think", hopes: "hope", calls: "call", owes: "owe", lends: "lend", sends: "send", does: "do", goes: "go", likes: "like", agrees: "agree", expects: "expect", mentions: "mention", insists: "insist", requests: "request" };
+const THEY_RE = new RegExp(`(^|[.!?]\\s+|:\\s+)?\\b(they|They) (${Object.keys(THEY_VERBS).join("|")})\\b`, "g");
+export function fixThey(text, name = "") {
+  const t = String(text || "");
+  if (!/\bthey\b/i.test(t)) return t;
+  const who = /^[A-Za-z][A-Za-z' -]{0,40}$/.test(String(name || "").trim()) ? String(name).trim() : "";
+  let first = true;
+  let src = t;
+  if (who) {
+    // "Ira: they says…" / "Ira they says…" -> "Ira says…"
+    const esc = who.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    src = src.replace(new RegExp(`^(\\s*)${esc}:?\\s+[Tt]hey (${Object.keys(THEY_VERBS).join("|")})\\b`), (m, sp, verb) => { first = false; return `${sp}${who} ${verb}`; });
+  }
+  return src.replace(THEY_RE, (m, lead, they, verb, offset) => {
+    const start = offset === 0 || !!lead || they === "They" || !src.slice(0, offset).trim();
+    if (start && who && first && !src.trimStart().startsWith(who + " ")) { first = false; return `${lead || ""}${who} ${verb}`; }
+    first = false;
+    return `${lead || ""}${they} ${THEY_VERBS[verb]}`;
+  });
 }
 
 export function tidyNote(text) {
@@ -1211,7 +1240,7 @@ export function noteText(a, lang = "") {
   const lower = /^[a-zа-яіїєґ]/.test(intent || "");
   // 1.2.3: "Ira says they paid…" when the note starts with a verb, "Ira: Please send…" otherwise
   const parts = [who && (lower ? who : `${who}:`), who || !intent ? intent : intent.charAt(0).toUpperCase() + intent.slice(1), a.callback ? `${cb} ${clip(a.callback, 40)}.` : "", clip(a.notes, 240)];
-  return parts.filter(Boolean).join(" ").slice(0, 600);
+  return fixThey(parts.filter(Boolean).join(" "), who).slice(0, 600);
 }
 
 /** Minimal MCP server (Streamable HTTP, JSON responses) with one tool the realtime session calls. */

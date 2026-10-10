@@ -15,6 +15,7 @@ import net.solardepin.solarchik.screen.FollowUps
 import net.solardepin.solarchik.sol.AssistantRules
 import net.solardepin.solarchik.ui.CallsActivity
 import net.solardepin.solarchik.ui.Onboarding
+import net.solardepin.solarchik.ui.SolScreen
 import net.solardepin.solarchik.ui.TodayScreen
 import net.solardepin.solarchik.wallet.LocalKey
 import net.solardepin.solarchik.wallet.SolanaWallet
@@ -166,82 +167,68 @@ class TodayTest {
         assertEquals(MainActivity.Tab.TODAY, a.current)
         assertTrue(a.screen(MainActivity.Tab.TODAY) is TodayScreen)
         val d = a.window.decorView
-        assertEquals(listOf("Today", "Calls", "Sol", "Agents", "More"),
-            listOf("nav-today", "nav-calls", "nav-sol", "nav-agents", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
+        // 1.2.7: Today · Circle · [mic] · Me
+        assertEquals(listOf("Today", "Circle", "Me"), listOf("nav-today", "nav-circle", "nav-me").map { find(d, it)!!.contentDescription.toString() })
+        assertNotNull(find(d, "nav-mic"))
         assertNull("the game has no nav slot", find(d, "nav-run"))
-        listOf("today-greeting", "today-mic", "today-secretary", "today-todos", "today-wallet", "today-checkin").forEach {
-            assertNotNull("$it missing", find(d, it))
-        }
-        // secretary: 2 answered, 1 missed, 1 blocked today; latest two non-blocked calls with AI summaries
-        val stats = texts(find(d, "today-sec-stats")!!)
-        assertEquals(listOf("2", "Answered", "1", "Missed", "1", "Blocked"), stats)
-        val latest = findAll(d, "today-call")
-        assertEquals(2, latest.size)
-        assertTrue(texts(latest[0]).any { it.contains("Friday's meeting") })
-        // the summary line and Sol's line talk about today's calls
-        assertTrue((find(d, "today-summary") as TextView).text.contains("calls today"))
-        assertTrue((find(d, "today-sol-line") as TextView).text.contains("Olena"))
-        // unread dot on the Calls nav item
+        assertNull("calls are one level down", find(d, "nav-calls"))
+        listOf("today-header", "today-greeting", "today-streak", "today-play").forEach { assertNotNull("$it missing", find(d, it)) }
+        assertTrue("the stack or its empty state", find(d, "today-deck") != null || find(d, "stack-empty") != null)
+        // unread dot on the Me tab (the calls live under Me)
         assertEquals(View.VISIBLE, find(d, "nav-calls-dot")!!.visibility)
         shot(d, "01-today-en")
     }
-
     @Test @Config(qualifiers = "uk-w411dp-h914dp-xxhdpi") fun todayInUkrainian() {
         seed(uk = true)
         val a = launch()
         val d = a.window.decorView
-        assertEquals(listOf("Сьогодні", "Дзвінки", "Сол", "Агенти", "Ще"),
-            listOf("nav-today", "nav-calls", "nav-sol", "nav-agents", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
+        assertEquals(listOf("Сьогодні", "Коло", "Я"), listOf("nav-today", "nav-circle", "nav-me").map { find(d, it)!!.contentDescription.toString() })
+        a.select(MainActivity.Tab.ME); idle()
         assertTrue(texts(d).any { it.contains("Телефонний секретар") })
-        assertTrue(texts(find(d, "today-sec-stats")!!).contains("Прийняті"))
+        a.select(MainActivity.Tab.TODAY); idle()
         shot(d, "01-today-uk")
     }
-
-    @Test fun followUpsComeFromCallbacksAndCanBeDone() {
+    @Test fun callBackCardDialsAndIsDone() {
         seed(uk = false)
+        val c = CallInbox.cached(app).first { it.who == "Olena" }
+        net.solardepin.solarchik.screen.CallActionStore(app).add(listOf(net.solardepin.solarchik.screen.CallAction(c.key + "#0", c.key, net.solardepin.solarchik.screen.CallAction.CALLBACK, number = "+380501234567", recipient = "Olena")))
+        net.solardepin.solarchik.screen.CallActionStore(app).markProcessed(listOf(c.key))
         val a = launch()
         val d = a.window.decorView
-        val rows = findAll(d, "today-todo")
-        assertEquals("only Olena left a number to call back", 1, rows.size)
-        assertTrue(texts(rows[0]).any { it.contains("Call back Olena") })
-        find(rows[0], "today-todo-done")!!.performClick(); idle()
-        assertTrue(findAll(a.window.decorView, "today-todo").isEmpty())
-        assertTrue(texts(find(a.window.decorView, "today-todos")!!).any { it.startsWith("Nothing to follow up") })
-        // persisted across launches
-        assertTrue(FollowUps.list(app).isEmpty())
+        assertEquals(1, findAll(d, "ca-callback").size)
+        find(d, "stack-do")!!.performClick(); idle()
+        val dial = shadowOf(a).nextStartedActivity
+        assertEquals(android.content.Intent.ACTION_DIAL, dial.action)
+        assertTrue(findAll(a.window.decorView, "ca-callback").isEmpty())
+        assertTrue(net.solardepin.solarchik.stack.MorningStack.items(app).none { it.id == c.key + "#0" })
     }
-
     @Test fun cardsOpenTheRightPlaces() {
         seed(uk = false)
         val a = launch()
         val sa = shadowOf(a)
-        // a call row opens that call's note
-        findAll(a.window.decorView, "today-call").first().performClick()
-        val i = sa.nextStartedActivity
-        assertEquals(CallsActivity::class.java.name, i.component!!.className)
-        assertTrue(i.getStringExtra(CallsActivity.EXTRA_KEY)!!.contains("rtc_a1"))
-        // "Call secretary" arms the demo line from the Calls screen
-        find(a.window.decorView, "today-sec-try")!!.performClick()
-        assertTrue(sa.nextStartedActivity.getBooleanExtra(CallsActivity.EXTRA_TRY, false))
-        // Calls in the nav is the inbox, not a screen
-        find(a.window.decorView, "nav-calls")!!.performClick(); idle()
-        assertEquals(CallsActivity::class.java.name, sa.nextStartedActivity.component!!.className)
-        assertEquals(MainActivity.Tab.TODAY, a.current)
-        // 1.1.4: Play starts the rooftop run straight away (no game hub); Today stays underneath
-        a.select(MainActivity.Tab.SETTINGS); idle(); find(a.window.decorView, "more-play")!!.performClick(); idle()
+        // the Play tile under the stack starts the rooftop run straight away
+        find(a.window.decorView, "today-play-btn")!!.performClick(); idle()
         assertEquals(net.solardepin.solarchik.game.RunActivity::class.java.name, sa.nextStartedActivity.component!!.className)
-        a.select(MainActivity.Tab.TODAY); idle()
-        assertNull("1.2.5: no game tile on Today", find(a.window.decorView, "today-play"))
-        // check-in opens today's CLOCK IN card
-        find(a.window.decorView, "today-checkin")!!.performClick(); idle()
-        assertEquals(MainActivity.Tab.SHIFT, a.current)
-        a.select(MainActivity.Tab.TODAY); idle()
-        // wallet: set up from the card (no wallet app -> built-in devnet wallet is offered there)
+        // Me: calls, Season, agents, settings are one level down
+        a.select(MainActivity.Tab.ME); idle()
+        find(a.window.decorView, "me-calls")!!.performClick(); idle()
+        assertEquals(CallsActivity::class.java.name, sa.nextStartedActivity.component!!.className)
+        find(a.window.decorView, "today-season")!!.performClick(); idle()
+        assertEquals(MainActivity.Tab.SEASON, a.current)
+        a.select(MainActivity.Tab.ME); idle()
+        find(a.window.decorView, "today-wallet-agents")!!.performClick(); idle()
+        assertEquals(MainActivity.Tab.AGENTS, a.current)
+        a.select(MainActivity.Tab.ME); idle()
         assertNotNull(find(a.window.decorView, "today-wallet-setup"))
         find(a.window.decorView, "today-settings")!!.performClick(); idle()
         assertEquals(MainActivity.Tab.SETTINGS, a.current)
+        // Settings keeps Play too
+        find(a.window.decorView, "more-play")!!.performClick(); idle()
+        assertEquals(net.solardepin.solarchik.game.RunActivity::class.java.name, sa.nextStartedActivity.component!!.className)
+        // back from a screen under Me goes to Me
+        a.onBackPressedDispatcher.onBackPressed(); idle()
+        assertEquals(MainActivity.Tab.ME, a.current)
     }
-
     @Test fun walletCardWithBuiltInWallet() {
         seed(uk = false)
         LocalKey.create(app)
@@ -250,43 +237,38 @@ class TodayTest {
         val a = launch()
         val t = a.screen(MainActivity.Tab.TODAY) as TodayScreen
         t.setBalanceForTest(1.8425)
-        t.render(); idle()
+        a.select(MainActivity.Tab.ME); idle()
         val d = a.window.decorView
-        assertEquals("1.8425 SOL", (find(d, "today-wallet-balance") as TextView).text.toString())
-        assertTrue(texts(find(d, "today-wallet-next")!!).any { it.contains("Sol asks before every on-chain step") })
+        assertEquals("1.8425", (find(d, "today-wallet-balance") as TextView).text.toString())
         assertNotNull(find(d, "today-wallet-agents"))
         find(d, "today-wallet-explorer")!!.performClick()
         val url = shadowOf(a).nextStartedActivity.dataString!!
         assertTrue(url, url.startsWith("https://explorer.solana.com/address/") && url.endsWith("?cluster=devnet"))
-        shot(d, "02-today-wallet-en", "today-wallet")
+        shot(d, "02-me-wallet-en", "me-wallet")
     }
-
     @Test fun chipsAskSolAndAnswerFromThePhone() {
         seed(uk = false)
         val a = launch()
-        find(a.window.decorView, "today-chip-calls")!!.performClick(); idle()
+        // 1.2.7: the voice sheet's "Type" opens the chat; Sol answers from the phone
+        find(a.window.decorView, "nav-mic")!!.performClick(); idle()
+        find(a.window.decorView, "voice-type")!!.performClick(); idle()
         assertEquals(MainActivity.Tab.SOL, a.current)
+        (a.screen(MainActivity.Tab.SOL) as SolScreen).send("Did anyone call me today?"); idle()
         val all = texts(a.window.decorView)
         assertTrue(all.any { it == "Did anyone call me today?" })
         assertTrue(all.joinToString("\n"), all.any { it.startsWith("You had 3 calls today.") && it.contains("Olena") })
         shot(a.window.decorView, "03-sol-calls-en", null)
-        a.select(MainActivity.Tab.TODAY); idle()
-        find(a.window.decorView, "today-chip-ask")!!.performClick(); idle()
-        assertTrue(texts(a.window.decorView).any { it.startsWith("Three things: I answer your calls") })
     }
-
-    @Test fun micListensOnTodayAndStops() {
+    @Test fun micOpensTheVoiceSheetAndCloses() {
         val a = launch()
-        val t = a.screen(MainActivity.Tab.TODAY) as TodayScreen
-        org.robolectric.Shadows.shadowOf(a.application).grantPermissions(android.Manifest.permission.RECORD_AUDIO)
-        t.startListening(); idle()
-        // Robolectric has no recognizer service: the app says so instead of pretending to listen
-        if (t.isListening) {
-            assertEquals(a.getString(R.string.today_listening), (find(a.window.decorView, "today-mic-hint") as TextView).text.toString())
-            t.stopListening()
-        }
-        assertFalse(t.isListening)
-        assertEquals(a.getString(R.string.today_mic_hint), (find(a.window.decorView, "today-mic-hint") as TextView).text.toString())
+        find(a.window.decorView, "nav-mic")!!.performClick(); idle()
+        assertTrue(net.solardepin.solarchik.ui.VoiceSheet.open)
+        assertNotNull(find(a.window.decorView, "voice-transcript"))
+        net.solardepin.solarchik.ui.VoiceSheet.fakeHeard("Remind me to call Mom at 8")
+        assertEquals("Adds Call Mom at 8", (find(a.window.decorView, "voice-intent-text") as TextView).text.toString())
+        find(a.window.decorView, "voice-close")!!.performClick(); idle()
+        assertFalse(net.solardepin.solarchik.ui.VoiceSheet.open)
+        assertNull(find(a.window.decorView, "voice-sheet"))
     }
 
     @Test @Config(qualifiers = "en-w411dp-h914dp-xxhdpi") fun callsInboxFromToday() {

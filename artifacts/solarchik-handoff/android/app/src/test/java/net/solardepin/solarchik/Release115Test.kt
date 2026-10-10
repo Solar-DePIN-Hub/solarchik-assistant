@@ -76,12 +76,14 @@ class Release115Test {
     @Test fun todayWalletCardSaysConnectYourWallet() {
         val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get().also { idle() }
         assertTrue(a.wallet.mainnet)
+        // 1.2.7: the wallet lives on Me (no duplicate wallet card on Today)
+        a.select(MainActivity.Tab.ME); idle()
         val b = find(a.window.decorView, "today-wallet-setup") as TextView?
         assertNotNull(b)
-        assertTrue(b!!.text.toString().contains(a.getString(R.string.mn_today_wallet_connect)))
-        assertTrue(b.text.toString().contains("Phantom"))
-        val card = find(a.window.decorView, "today-wallet") as ViewGroup
-        assertTrue(texts(card).contains(a.getString(R.string.mn_today_wallet_title)))
+        assertEquals(a.getString(R.string.me_connect), b!!.text.toString().trim('\u2060', ' '))
+        val card = find(a.window.decorView, "me-wallet") as ViewGroup
+        assertTrue(texts(card).contains(a.getString(R.string.me_wallet_none)))
+        assertTrue(texts(card).any { it.contains("Mainnet", ignoreCase = true) })
     }
 
     @Test fun saverOnWithoutAWalletAsksToConnectFirst() {

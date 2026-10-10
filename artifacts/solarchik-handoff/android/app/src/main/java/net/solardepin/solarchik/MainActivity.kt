@@ -49,18 +49,26 @@ import net.solardepin.solarchik.wallet.WalletError
 /** Single activity: five native tabs over one MWA sender. No WebView anywhere. */
 class MainActivity : ComponentActivity() {
     enum class Tab(val label: Int, val icon: Int, val inNav: Boolean = true) {
-        // 1.0.0 Solarchik Assistant nav: Today · Calls · [Sol] · Agents · More, Sol's mic raised in the middle.
-        // Calls is a shortcut to CallsActivity, not a screen. The game (rooftop YARD, garage RUN, check-in SHIFT)
-        // is reached from the small tiles on Today.
-        TODAY(R.string.nav_today, R.drawable.ic_nav_yard),
-        CALLS(R.string.nav_calls, R.drawable.ic_call),
-        SOL(R.string.nav_talk, R.drawable.ic_mic),
-        AGENTS(R.string.nav_agents, R.drawable.ic_nav_agents),
-        SETTINGS(R.string.nav_settings, R.drawable.ic_nav_settings),
+        // 1.2.7 nav (redesign): Today · Circle · [Sol mic] · Me. The mic opens the voice sheet; everything that used to
+        // be a tab (Calls, Sol chat, Agents, Settings, Season) is one level down from Me. The game is the Play tile.
+        TODAY(R.string.nav_today, R.drawable.lc_sun),
+        CIRCLE(R.string.nav_circle, R.drawable.lc_users),
+        SOL(R.string.nav_talk, R.drawable.lc_mic),
+        ME(R.string.nav_me, R.drawable.lc_user),
+        CALLS(R.string.nav_calls, R.drawable.ic_call, inNav = false),
+        AGENTS(R.string.nav_agents, R.drawable.ic_nav_agents, inNav = false),
+        SETTINGS(R.string.nav_settings, R.drawable.ic_nav_settings, inNav = false),
         YARD(R.string.nav_yard, R.drawable.ic_nav_yard, inNav = false),
         RUN(R.string.nav_run, R.drawable.ic_nav_run, inNav = false),
         SHIFT(R.string.nav_yard, R.drawable.ic_nav_yard, inNav = false),
         SEASON(R.string.season_title, R.drawable.ic_flame, inNav = false),
+    }
+
+    /** 1.2.7: which bar tab lights up for a screen one level down. */
+    fun navOwner(tab: Tab): Tab = when (tab) {
+        Tab.TODAY, Tab.CIRCLE, Tab.ME -> tab
+        Tab.SOL, Tab.AGENTS, Tab.SETTINGS, Tab.SEASON, Tab.CALLS -> Tab.ME
+        else -> Tab.TODAY
     }
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -89,6 +97,7 @@ class MainActivity : ComponentActivity() {
     private val navCells = HashMap<Tab, View>()
     private lateinit var toastView: TextView
     private val navItems = HashMap<Tab, Pair<ImageView, TextView>>()
+    private val navDots = HashMap<Tab, View>()
     private val main = Handler(Looper.getMainLooper())
     var current: Tab = Tab.TODAY
         private set
@@ -205,6 +214,8 @@ class MainActivity : ComponentActivity() {
                 when {
                     onboarding != null -> (onboarding as? net.solardepin.solarchik.ui.Onboarding)?.back()
                     current == Tab.YARD && roof?.onBack() == true -> Unit
+                    net.solardepin.solarchik.ui.VoiceSheet.dismissIfOpen(this@MainActivity) -> Unit
+                    !current.inNav && navOwner(current) == Tab.ME -> select(Tab.ME, animate = true)
                     current != Tab.TODAY -> select(Tab.TODAY, animate = true)
                     else -> { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
                 }
@@ -494,7 +505,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun buildRoot(): View {
-        val root = FrameLayout(this).apply { setBackgroundColor(Ui.BG) }
+        val root = FrameLayout(this).apply { setBackgroundColor(Ui.BG); tag = "app-root" }
         content = FrameLayout(this)
         root.addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
@@ -503,10 +514,10 @@ class MainActivity : ComponentActivity() {
         val bar = FrameLayout(this).apply {
             background = android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Ui.withAlpha(Ui.blend(Ui.blend(Ui.BG, Ui.SURFACE2, 0.9f), Ui.GOLD, 0.05f), 0xFA), Ui.withAlpha(Ui.blend(Ui.BG, Ui.SURFACE, 0.9f), 0xFA)),
+                intArrayOf(Ui.withAlpha(Color.parseColor("#14283A"), 0xF2), Ui.withAlpha(Color.parseColor("#112434"), 0xF2)),
             ).apply {
-                cornerRadius = dp(30).toFloat()
-                setStroke(dp(1), Ui.withAlpha(Ui.GOLD, 0x3A))
+                cornerRadius = dp(35).toFloat()
+                setStroke(dp(1), Ui.withAlpha(Color.WHITE, 0x1A))
             }
             elevation = dp(18).toFloat()
             clipChildren = false
@@ -516,6 +527,7 @@ class MainActivity : ComponentActivity() {
         navPill = View(this).apply {
             background = Ui.rounded(Ui.withAlpha(Ui.GOLD, 0x24), dp(22).toFloat(), Ui.withAlpha(Ui.GOLD, 0x55), dp(1))
             tag = "nav-pill"
+            visibility = View.GONE // 1.2.7: a 4 dp dot under the active tab instead of a pill
         }
         bar.addView(navPill, FrameLayout.LayoutParams(0, dp(54), Gravity.CENTER_VERTICAL))
         nav = LinearLayout(this).apply {
@@ -524,14 +536,16 @@ class MainActivity : ComponentActivity() {
             clipToPadding = false
             setPadding(dp(6), 0, dp(6), 0)
         }
-        for (tab in Tab.entries.filter { it.inNav }) nav.addView(if (tab == CENTER) playItem() else navItem(tab), LinearLayout.LayoutParams(0, dp(66), 1f))
-        bar.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)))
+        // 1.2.7: Today + Circle share the left half, Me sits in the middle of the right half; the mic keeps the exact centre.
+        for (tab in Tab.entries.filter { it.inNav }) nav.addView(if (tab == CENTER) playItem() else navItem(tab),
+            if (tab == CENTER) LinearLayout.LayoutParams(dp(84), dp(70)) else LinearLayout.LayoutParams(0, dp(70), if (tab == Tab.ME) 2f else 1f))
+        bar.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(70)))
         val navWrap = FrameLayout(this).apply {
             tag = "nav-wrap"
             clipChildren = false
             clipToPadding = false
-            addView(bar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply {
-                leftMargin = dp(14); rightMargin = dp(14); bottomMargin = dp(10); topMargin = dp(24)
+            addView(bar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(70)).apply {
+                leftMargin = dp(14); rightMargin = dp(14); bottomMargin = dp(12); topMargin = dp(24)
             })
         }
         this.navWrap = navWrap
@@ -587,12 +601,12 @@ class MainActivity : ComponentActivity() {
             tag = "nav-" + tab.name.lowercase()
         }
         val icon = ImageView(this).apply { setImageResource(tab.icon); setColorFilter(Ui.MUTED) }
-        val label = Ui.text(this, getString(tab.label), 11f, Ui.MUTED, 800).apply {
+        val label = Ui.text(this, getString(tab.label), 14f, Ui.MUTED, 800).apply {
             gravity = Gravity.CENTER
             maxLines = 1
         }
-        if (tab == Tab.CALLS) {
-            // unread secretary notes: a small gold dot on the Calls icon
+        if (tab == Tab.ME) {
+            // unread secretary notes: a small gold dot on the Me icon (the calls are one level down, 1.2.7)
             val box = FrameLayout(this)
             box.addView(icon, FrameLayout.LayoutParams(dp(26), dp(26)))
             val dot = View(this).apply {
@@ -603,8 +617,10 @@ class MainActivity : ComponentActivity() {
             box.addView(dot, FrameLayout.LayoutParams(dp(11), dp(11), Gravity.TOP or Gravity.END))
             callsDot = dot
             col.addView(box, LinearLayout.LayoutParams(dp(28), dp(26)))
-        } else col.addView(icon, LinearLayout.LayoutParams(dp(26), dp(26)))
-        col.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(3) })
+        } else col.addView(icon, LinearLayout.LayoutParams(dp(24), dp(24)))
+        col.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(2) })
+        col.addView(View(this).apply { background = Ui.rounded(Ui.GOLD, dp(2).toFloat()); tag = "nav-dot-" + tab.name.lowercase(); visibility = View.INVISIBLE; navDots[tab] = this },
+            LinearLayout.LayoutParams(dp(4), dp(4)).apply { topMargin = dp(3) })
         navItems[tab] = icon to label
         navCells[tab] = col
         return col
@@ -625,21 +641,27 @@ class MainActivity : ComponentActivity() {
                 intArrayOf(Color.parseColor("#FFE07A"), Ui.GOLD, Color.parseColor("#F29A2E")),
             ).apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
-                setStroke(dp(3), Ui.BG)
+                gradientType = android.graphics.drawable.GradientDrawable.RADIAL_GRADIENT
+                gradientRadius = dp(40).toFloat()
+                setGradientCenter(0.35f, 0.3f)
+                setStroke(dp(6), Ui.BG)
             }
             elevation = dp(14).toFloat()
             isClickable = true
             foreground = Ui.ripple(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT), dp(32).toFloat(), 0x33FFFFFF)
             setOnClickListener {
-                tick(it)
-                select(tab, animate = true)
+                net.solardepin.solarchik.ui.Kit.haptic(it, "tap")
+                it.animate().scaleX(0.92f).scaleY(0.92f).setDuration(90).withEndAction { it.animate().scaleX(1f).scaleY(1f).setDuration(160).start() }.start()
+                net.solardepin.solarchik.ui.VoiceSheet.show(this@MainActivity)
             }
+            setOnLongClickListener { net.solardepin.solarchik.ui.VoiceSheet.show(this@MainActivity, pushToTalk = true); true }
+            contentDescription = getString(R.string.voice_hint)
+            tag = "nav-mic"
         }
         val icon = ImageView(this).apply { setImageResource(tab.icon); setColorFilter(Ui.INK) }
-        playBtn.addView(icon, FrameLayout.LayoutParams(dp(28), dp(28), Gravity.CENTER))
-        cell.addView(playBtn, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.CENTER_HORIZONTAL or Gravity.TOP).apply { topMargin = -dp(22) })
-        val label = Ui.text(this, getString(tab.label), 11f, Ui.GOLD, 900).apply { gravity = Gravity.CENTER; maxLines = 1 }
-        cell.addView(label, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM).apply { bottomMargin = dp(8) })
+        playBtn.addView(icon, FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER))
+        cell.addView(playBtn, FrameLayout.LayoutParams(dp(68), dp(68), Gravity.CENTER).apply { topMargin = -dp(18) })
+        val label = Ui.text(this, "", 1f, Ui.GOLD, 900).apply { visibility = View.GONE }
         navItems[tab] = icon to label
         navCells[tab] = cell
         return cell
@@ -698,8 +720,10 @@ class MainActivity : ComponentActivity() {
             screen.view.translationX = 0f
             screen.view.translationY = 0f
         }
+        val owner = navOwner(tab)
+        navDots.forEach { (t, d) -> d.visibility = if (t == owner) View.VISIBLE else View.INVISIBLE }
         for ((t, pair) in navItems) {
-            val on = t == tab || (!tab.inNav && t == Tab.TODAY)
+            val on = t == owner
             if (t == CENTER) {
                 pair.second.setTextColor(if (on) Ui.GOLD else Ui.withAlpha(Ui.GOLD, 0xB0))
                 continue
@@ -708,10 +732,10 @@ class MainActivity : ComponentActivity() {
             pair.second.setTextColor(if (on) Ui.GOLD else Ui.MUTED)
         }
         if (this::playBtn.isInitialized) {
-            playBtn.animate().scaleX(if (tab == CENTER) 1.08f else 1f).scaleY(if (tab == CENTER) 1.08f else 1f).setDuration(200).start()
+            playBtn.scaleX = 1f; playBtn.scaleY = 1f
         }
         movePill(tab, animate && changed)
-        if (animate && changed) navItems[tab]?.first?.let { bounce(if (tab == CENTER && this::playBtn.isInitialized) playBtn else it) }
+        if (animate && changed && tab.inNav && tab != CENTER) navItems[tab]?.first?.let { bounce(it) }
         screen.onShow()
         renderCallsDot()
     }
@@ -722,6 +746,8 @@ class MainActivity : ComponentActivity() {
         Tab.SHIFT -> YardScreen(this)
         Tab.RUN -> RunScreen(this)
         Tab.AGENTS -> AgentsScreen(this)
+        Tab.CIRCLE -> net.solardepin.solarchik.ui.CircleScreen(this)
+        Tab.ME -> net.solardepin.solarchik.ui.MeScreen(this)
         Tab.SOL -> SolScreen(this)
         Tab.SETTINGS -> SettingsScreen(this)
         Tab.SEASON -> net.solardepin.solarchik.ui.SeasonScreen(this)
