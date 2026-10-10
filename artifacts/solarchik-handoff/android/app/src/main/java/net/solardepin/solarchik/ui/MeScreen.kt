@@ -97,12 +97,12 @@ class MeScreen(host: MainActivity) : Screen(host) {
         fun tile(sym: String, letter: String, c1: Int, c2: Int, v: Double?, digits: Int, tagName: String) {
             val t = Ui.column(ctx).apply {
                 background = Ui.rounded(Ui.withAlpha(Ui.BG, 0x55), dp(22).toFloat(), Kit.HAIR, dp(1))
-                setPadding(dp(14), dp(14), dp(10), dp(14))
+                setPadding(dp(12), dp(14), dp(8), dp(14))
             }
-            val r = Ui.row(ctx, gap = 8).apply { gravity = Gravity.CENTER_VERTICAL }
-            r.addView(Ui.text(ctx, letter, 13f, Color.WHITE, 900).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(c1, c2)).apply { shape = GradientDrawable.OVAL } }, LinearLayout.LayoutParams(dp(28), dp(28)))
+            val r = Ui.row(ctx, gap = 6).apply { gravity = Gravity.CENTER_VERTICAL }
+            r.addView(Ui.text(ctx, letter, 12f, Color.WHITE, 900).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(c1, c2)).apply { shape = GradientDrawable.OVAL } }, LinearLayout.LayoutParams(dp(24), dp(24)))
             // the ticker takes the rest of the row (it was cut to "SO" / "US" when sized by wrap inside the tile)
-            r.addView(Ui.text(ctx, sym, 15f, Ui.TEXT, 800).apply { maxLines = 1; setHorizontallyScrolling(false); tag = "me-tile-sym" }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            r.addView(Ui.text(ctx, sym, 15f, Ui.TEXT, 800).apply { maxLines = 1; tag = "me-tile-sym"; setAutoSizeTextTypeUniformWithConfiguration(10, 15, 1, android.util.TypedValue.COMPLEX_UNIT_SP) }, LinearLayout.LayoutParams(0, dp(22), 1f))
             t.addView(r)
             t.addView(Ui.top(Ui.display(ctx, when { v != null -> num(v, digits); failed -> "—"; else -> "…" }, 20f).apply {
                 tag = tagName; maxLines = 1
