@@ -213,4 +213,5 @@
     <string name="calls_transcript_show">Показати · рядків: %d</string>
     <string name="calls_transcript_hide">Сховати</string>
     <string name="calls_transcript_collapsed">Нотатку вище написано з цієї розмови.</string>
+    <string name="call_back_who">Передзвонити: %s</string>
 </resources>

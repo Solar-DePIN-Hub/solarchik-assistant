@@ -213,4 +213,5 @@
     <string name="calls_transcript_show">Show · %d lines</string>
     <string name="calls_transcript_hide">Hide</string>
     <string name="calls_transcript_collapsed">The note above is written from this conversation.</string>
+    <string name="call_back_who">Call %s back</string>
 </resources>

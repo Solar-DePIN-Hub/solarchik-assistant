@@ -100,8 +100,9 @@ class MeScreen(host: MainActivity) : Screen(host) {
                 setPadding(dp(14), dp(14), dp(10), dp(14))
             }
             val r = Ui.row(ctx, gap = 8).apply { gravity = Gravity.CENTER_VERTICAL }
-            r.addView(Ui.text(ctx, letter, 14f, Color.WHITE, 900).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(c1, c2)).apply { shape = GradientDrawable.OVAL } }, LinearLayout.LayoutParams(dp(30), dp(30)))
-            r.addView(Ui.text(ctx, sym, 15f, Ui.TEXT, 800).apply { maxLines = 1 })
+            r.addView(Ui.text(ctx, letter, 13f, Color.WHITE, 900).apply { gravity = Gravity.CENTER; background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(c1, c2)).apply { shape = GradientDrawable.OVAL } }, LinearLayout.LayoutParams(dp(28), dp(28)))
+            // the ticker takes the rest of the row (it was cut to "SO" / "US" when sized by wrap inside the tile)
+            r.addView(Ui.text(ctx, sym, 15f, Ui.TEXT, 800).apply { maxLines = 1; setHorizontallyScrolling(false); tag = "me-tile-sym" }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             t.addView(r)
             t.addView(Ui.top(Ui.display(ctx, when { v != null -> num(v, digits); failed -> "—"; else -> "…" }, 20f).apply {
                 tag = tagName; maxLines = 1

@@ -364,7 +364,7 @@ class CallsActivity : ComponentActivity() {
         if (num.isNotBlank()) {
             // 1.2.7: "Call Ira back" is the sticky primary at the bottom of the screen (one yellow button)
             val who = CallText.who(this, it).ifBlank { "" }
-            val back = Kit.primary(this, if (who.isNotBlank() && it.callerName.isNotBlank()) getString(R.string.card_call, it.callerName) else getString(R.string.calls_call_back), R.drawable.lc_phone) { dial(num) }.apply { tag = "call-back" }
+            val back = Kit.primary(this, if (who.isNotBlank() && it.callerName.isNotBlank()) getString(R.string.call_back_who, it.callerName) else getString(R.string.calls_call_back), R.drawable.lc_phone) { dial(num) }.apply { tag = "call-back" }
             sticky.addView(back, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             sticky.visibility = View.VISIBLE
         }
