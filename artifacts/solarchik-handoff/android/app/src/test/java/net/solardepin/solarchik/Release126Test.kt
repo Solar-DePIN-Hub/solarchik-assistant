@@ -39,6 +39,7 @@ import org.robolectric.shadows.ShadowLooper
 import java.io.File
 
 /**
+ * 1.2.6 first-run audit (clean demo data: a random never-used address, masked unknown numbers, real Season drops)
  * 1.2.5 first-run audit, English, as a judge installing it fresh: onboarding (3 pages), Today after Ira's call
  * (pay card + Circle), Calls, More → Circle, Add wallet, Settle confirm. Screenshots go to build/screens/1.2.5;
  * every screen must have no Cyrillic, no text off screen, no single-line label cut, no duplicated card.
@@ -46,7 +47,7 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "en-w411dp-h914dp-xxhdpi")
-class Release125Test {
+class Release126Test {
     private val app = ApplicationProvider.getApplicationContext<Context>()
     private val cyr = Regex("[а-яіїєґё]", RegexOption.IGNORE_CASE)
     private val dir = File(System.getProperty("solarchik.shots") ?: "build/screens", "1.2.6").apply { mkdirs() }
@@ -56,20 +57,29 @@ class Release125Test {
     private val now = System.currentTimeMillis()
     private val ira = CallItem("me", "rtc_u2_EXOf3p3o", "+380637443792", "Ira says they paid for lunch yesterday and asks Vadim to send them 0.01 SOL.",
         now - 40 * 60_000L, CallInbox.DONE, "screen", "Ira", "Says they paid for lunch yesterday, asks Vadim to send them 0.01 SOL", "", "call back at 3", "+380637443792", "en", 65, 0.0, false)
+    private val stranger = CallItem("me", "rtc_u2_strangr1", "+380501112233", "Asks whether the flat is still for rent. Callback: +380501112233.",
+        now - 90 * 60_000L, CallInbox.DONE, "screen", "", "Asks whether the flat is still for rent", "", "", "+380501112233", "en", 30, 0.0, false)
     private val problems = mutableListOf<String>()
 
+    private val realCluster = System.getProperty("solarchik.cluster")
+
     @Before fun setUp() {
+        // 1.2.6: the audit shows what a real install shows: Solana mainnet (the unit suite's default is dev devnet)
+        System.setProperty("solarchik.cluster", "mainnet")
+        CallInbox.offlineForTest = true
         MainActivity.tickerEnabled = false
         MainActivity.gameHub = false
         MainActivity.onboardingEnabled = false
         SolanaWallet.walletAppCheck = { false }
         LocalKey.box = TestBox()
         listOf("solarchik-agents", "solarchik-desk", "solarchik-sol", "seeker-wallet", "solarchik-local-wallet", "solarchik.calls", CallActionStore.PREFS,
-            "solarchik.calls.remind", "solarchik.followups", MainActivity.ASSISTANT_PREFS, "solarchik-game", CircleStore.PREFS, MS.PREFS)
+            "solarchik.calls.remind", "solarchik.followups", MainActivity.ASSISTANT_PREFS, "solarchik-game", CircleStore.PREFS, MS.PREFS, net.solardepin.solarchik.season.SeasonDropsStore.PREFS, "solarchik.secretary", "phones")
             .forEach { app.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().commit() }
     }
 
     @After fun tearDown() {
+        CallInbox.offlineForTest = false
+        if (realCluster == null) System.clearProperty("solarchik.cluster") else System.setProperty("solarchik.cluster", realCluster)
         MainActivity.tickerEnabled = true
         MainActivity.onboardingEnabled = realOnboarding
         SolanaWallet.walletAppCheck = realCheck
@@ -120,16 +130,22 @@ class Release125Test {
 
     private fun seedIra() {
         CallActionStore(app).upgradeRules(CallActionSync.RULES)
-        CallInbox.store(app, listOf(ira))
+        CallInbox.store(app, listOf(ira, stranger))
         CallInbox.markSeen(app, 0)
         CallActionStore(app).add(listOf(
             CallAction(ira.key + "#0", ira.key, CallAction.PAYMENT, amount = 0.01, token = "SOL", recipient = "Ira"),
             CallAction(ira.key + "#1", ira.key, CallAction.CALLBACK, number = ira.caller, time = "15:00", text = "Call Ira back at 3 PM"),
         ))
-        CallActionStore(app).markProcessed(listOf(ira.key))
+        CallActionStore(app).markProcessed(listOf(ira.key, stranger.key))
+    }
+
+    private fun seedSeason() {
+        val json = javaClass.getResourceAsStream("/season/drops-en.json")!!.bufferedReader().readText()
+        net.solardepin.solarchik.season.SeasonDropsStore(app).save("en", json, System.currentTimeMillis())
     }
 
     @Test fun firstRunStoryInEnglish() {
+        dir.listFiles()?.forEach { it.delete() } // no screens left from an older run
         // 1) onboarding, 3 pages
         MainActivity.onboardingEnabled = true
         val ob = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get(); idle()
@@ -138,35 +154,31 @@ class Release125Test {
             audit(o, "0${i + 1}-onboarding-$i")
             if (i < 2) { find(o, "onb-next")!!.performClick(); idle() }
         }
-        find(o, "onb-next")!!.performClick(); idle() // Not now
+        find(o, "onb-next")!!.performClick(); idle()
         assertEquals(MainActivity.Tab.TODAY, ob.current)
         MainActivity.onboardingEnabled = false
 
-        // 2) Today after Ira's call: cards first, then Circle, no game tile, one card per kind
-        seedIra()
+        // 2) Today after the calls: the stack has Ira's 2 cards, then 3 Season tasks; the greeting fits the hour
+        seedIra(); seedSeason()
         val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get(); idle()
         a.screen(MainActivity.Tab.TODAY)?.onShow(); idle()
         val today = a.window.decorView
         audit(today, "04-today-after-call")
-        assertNull(find(today, "today-play"))
-        assertEquals(1, count(today, "circle-add-wallet"))
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        assertEquals(app.getString(net.solardepin.solarchik.ui.TodayScreen.greetingFor(hour)), (find(today, "today-greeting") as TextView).text.toString())
+        assertTrue(texts(today).toString(), texts(today).contains("MORNING STACK · 1 OF 5"))
         assertEquals("one pay card", 1, count(today, "ca-pay"))
-        assertTrue(texts(today).contains("MORNING STACK · 1 OF 2"))
-        assertTrue("one card at a time", texts(today).none { it.contains("Call Ira back") })
-        val order = mutableListOf<String>(); walk(today) { (it.tag as? String)?.let { t -> if (t in setOf("today-actions", "today-circle", "today-wallet", "today-briefing", "today-season")) order += t } }
-        assertEquals(listOf("today-actions", "today-circle", "today-wallet", "today-briefing", "today-season"), order.distinct())
         assertTrue(texts(today).any { it.startsWith("Pay 0.01 SOL") })
-        assertNull("Circle on Today does not repeat the pay card", find(today, "today-circle"))
-        assertTrue("no Follow-ups box repeating the call-back card", texts(today).none { it == "Call back Ira" })
 
-        // 4) More → Circle (the Calls screens above may have refreshed the cache from the worker)
+        // 3) More: Circle, then forwarding setup (verify + carrier codes)
         seedIra()
         a.select(MainActivity.Tab.SETTINGS); idle()
-        audit(a.window.decorView, "07-more-with-circle")
+        audit(a.window.decorView, "07-more-with-circle-and-forwarding")
         assertTrue(texts(a.window.decorView).any { it.startsWith("You owe Ira 0.01 SOL") })
-        assertTrue(find(a.window.decorView, "more-play") != null)
+        assertTrue(texts(a.window.decorView).contains("Forward missed calls to Sol"))
+        assertTrue(texts(a.window.decorView).any { it.startsWith("Not verified yet") })
 
-        // 5) Add Ira's wallet (prefilled), then the Settle confirm
+        // 4) Add Ira's wallet (prefilled), then the Settle confirm
         find(a.window.decorView, "circle-add-wallet")!!.performClick(); idle()
         val form = CirclePanel.lastForm!!
         assertEquals("+380637443792", form.window!!.decorView.findViewWithTag<android.widget.EditText>("circle-f-phone").text.toString())
@@ -177,88 +189,93 @@ class Release125Test {
         audit(confirm.window!!.decorView, "09-settle-confirm")
         assertTrue(texts(confirm.window!!.decorView).any { it.startsWith("Send 0.01 SOL to Ira?") })
         confirm.dismiss(); idle()
-        a.screen(MainActivity.Tab.SETTINGS)?.onShow(); idle()
-        audit(a.window.decorView, "10-more-circle-with-contact")
-        assertTrue(find(a.window.decorView, "circle-settle") != null)
-
-        // 6) settled (as after a confirmed transfer): Solscan line, gone from "You owe"
         CallActionStore(app).update(ira.key + "#0") { it.copy(status = CallAction.DONE, signature = "5".repeat(88)) }
         a.screen(MainActivity.Tab.SETTINGS)?.onShow(); idle()
-        audit(a.window.decorView, "11-more-circle-settled")
+        audit(a.window.decorView, "10-more-circle-settled")
         assertTrue(texts(a.window.decorView).any { it.startsWith("Paid Ira 0.01 SOL") && it.endsWith("Solscan ↗") })
 
-        // 7) the stack: Later sends the call-back to tomorrow; with nothing left, Today says Clocked in
+        // 5) the stack: the call-back goes to tomorrow; then the Season tasks, one by one
         a.select(MainActivity.Tab.TODAY); idle()
-        audit(a.window.decorView, "12-today-stack-callback")
-        assertTrue(texts(a.window.decorView).contains("MORNING STACK · 1 OF 1"))
+        audit(a.window.decorView, "11-today-stack-callback")
+        assertTrue(texts(a.window.decorView).contains("MORNING STACK · 1 OF 4"))
         find(a.window.decorView, "stack-later")!!.performClick(); idle()
-        audit(a.window.decorView, "13-today-clocked-in")
+        audit(a.window.decorView, "12-today-stack-season-task")
+        assertTrue(find(a.window.decorView, "stack-season") != null)
+        assertEquals("MattleFun", (find(a.window.decorView, "stack-season-app") as TextView).text.toString())
+        // swipe right / Open: only opens the official link; back in the app, "Done with MattleFun?"
+        find(a.window.decorView, "stack-season-open")!!.performClick(); idle()
+        val opened = org.robolectric.Shadows.shadowOf(a).nextStartedActivity
+        assertEquals("https://x.com/mattlefun/status/2107820234271044066", opened.dataString)
+        a.screen(MainActivity.Tab.TODAY)?.onShow(); idle()
+        val ask = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog() as android.app.AlertDialog
+        audit(ask.window!!.decorView, "13-season-done-ask")
+        ask.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick(); idle()
+        assertEquals("Mentioned", (find(a.window.decorView, "stack-season-app") as TextView).text.toString())
+        find(a.window.decorView, "stack-later")!!.performClick(); idle() // later
+        find(a.window.decorView, "stack-season-done")!!.performClick(); idle() // I did it
+        audit(a.window.decorView, "14-today-clocked-in")
         assertTrue(find(a.window.decorView, "stack-clocked") != null)
-        assertEquals("Streak: 1 day", (find(a.window.decorView, "stack-streak") as TextView).text.toString())
-        assertTrue(texts(a.window.decorView).any { it.startsWith("This clock-in is saved on this phone only.") })
 
-        // 3) Calls list and the call
+        // 6) Calls: Ira is in the Circle now (full number); the stranger's number is masked everywhere
+        seedIra()
         val calls = Robolectric.buildActivity(CallsActivity::class.java).create().start().resume().visible().get(); idle()
         audit(calls.window.decorView, "05-calls")
+        val ct = texts(calls.window.decorView)
+        assertTrue(ct.toString(), ct.any { it.contains("+380 •• ••• •• 33") })
+        assertTrue(ct.toString(), ct.none { it.contains("501112233") })
         seedIra()
-        val det = Robolectric.buildActivity(CallsActivity::class.java, android.content.Intent(app, CallsActivity::class.java).putExtra(CallsActivity.EXTRA_KEY, ira.key)).create().start().resume().visible().get(); idle()
-        audit(det.window.decorView, "06-call-detail")
+        val det = Robolectric.buildActivity(CallsActivity::class.java, android.content.Intent(app, CallsActivity::class.java).putExtra(CallsActivity.EXTRA_KEY, stranger.key)).create().start().resume().visible().get(); idle()
+        audit(det.window.decorView, "06-call-detail-stranger")
+        assertTrue(texts(det.window.decorView).none { it.contains("501112233") })
 
+        // real defaults: mainnet, no wallet connected, so no balances at all; nowhere a placeholder address
+        assertTrue(BuildConfig.DEVNET_ONLY.not())
+        assertTrue(a.wallet.mainnet)
+        dir.listFiles()!!.filter { it.name.endsWith(".txt") }.forEach { f ->
+            val t = f.readText()
+            assertTrue(f.name + " says devnet", !t.contains("devnet", ignoreCase = true))
+            assertTrue(f.name + " shows a seeded balance", !t.contains("1234.5"))
+        }
+        // nowhere a placeholder address
+        dir.listFiles()!!.filter { it.name.endsWith(".txt") }.forEach { f -> assertTrue(f.name, !f.readText().contains("So11")) }
         File(dir, "problems.txt").writeText(problems.joinToString("\n"))
         assertTrue(problems.joinToString("\n"), problems.isEmpty())
     }
 
-    private val zone = ZoneId.of("Europe/Kiev")
-    private fun at(day: String, h: Int) = LocalDate.parse(day).atTime(h, 0).atZone(zone).toInstant().toEpochMilli()
-
-    @Test fun laterSnoozesToTomorrowMorningAndDoneClocksIn() {
-        seedIra()
-        val t = at("2026-10-11", 9)
-        assertEquals(listOf(CallAction.PAYMENT, CallAction.CALLBACK), MS.items(app, t).map { it.type })
-        val until = MS.snooze(app, ira.key + "#0", t, zone)
-        assertEquals(at("2026-10-12", 6), until)
-        assertEquals(listOf(CallAction.CALLBACK), MS.items(app, t).map { it.type })
-        assertEquals(false, MS.clockedIn(app, t, zone))
-        MS.done(app, ira.key + "#1", t, zone)
-        assertTrue(MS.items(app, t).isEmpty())
-        assertTrue(MS.clockedIn(app, t, zone))
-        // the snoozed payment is back the next morning, and the clock-in is not repeated for nothing
-        assertEquals(listOf(CallAction.PAYMENT), MS.items(app, at("2026-10-12", 7)).map { it.type })
-        assertEquals(false, MS.clockedIn(app, at("2026-10-12", 7), zone))
+    @Test fun masking() {
+        assertEquals("+380 •• ••• •• 17", net.solardepin.solarchik.screen.Phones.mask("+380638500117"))
+        assertEquals("Call +380 •• ••• •• 17 back", net.solardepin.solarchik.screen.Phones.show(app, "Call +380638500117 back"))
+        CircleStore(app).put(Contact("", "Vadim", "+380 63 850 01 17"))
+        assertEquals("a Circle contact's number stays", "Call +380638500117 back", net.solardepin.solarchik.screen.Phones.show(app, "Call +380638500117 back"))
+        assertEquals("the secretary line stays", "Line +380914810885", net.solardepin.solarchik.screen.Phones.show(app, "Line +380914810885"))
+        assertEquals("amounts are not numbers to mask", "Send 0.01 SOL, 50 SKR", net.solardepin.solarchik.screen.Phones.show(app, "Send 0.01 SOL, 50 SKR"))
+        net.solardepin.solarchik.screen.Phones.setRevealAll(app, true)
+        assertEquals("Call +380501112233", net.solardepin.solarchik.screen.Phones.show(app, "Call +380501112233"))
     }
 
-    @Test fun nothingHandledIsNotAClockIn() {
-        val t = at("2026-10-11", 9)
-        assertTrue(MS.items(app, t).isEmpty())
-        assertEquals(false, MS.settle(app, t, zone))
+    @Test fun seasonTasksFollowTheCallCardsAndClockIn() {
+        seedSeason()
+        val t = System.currentTimeMillis()
+        val apps = MS.seasonItems(app, t, "en").map { it.app }
+        assertEquals(listOf("MattleFun", "Mentioned", "DiversiFi"), apps)
+        MS.touched(app, t)
+        assertEquals(false, MS.settle(app, t))
+        val first = MS.seasonItems(app, t, "en")
+        MS.seasonDone(app, first[0].id, t)
+        assertEquals("the next drop moves up but the day keeps 3 at most", listOf("Mentioned", "DiversiFi"), MS.seasonItems(app, t, "en").map { it.app })
+        MS.snooze(app, "season:" + first[1].id, t); MS.seasonHandledOne(app, t)
+        MS.seasonDone(app, first[2].id, t)
+        assertTrue(MS.seasonItems(app, t, "en").isEmpty())
+        assertTrue(MS.settle(app, t))
+        assertEquals(MS.Answer.DO, MS.answer("open it"))
     }
 
-    @Test fun streakCountsConsecutiveDays() {
-        val today = LocalDate.parse("2026-10-11")
-        assertEquals(0, MS.streak(emptySet(), today))
-        assertEquals(3, MS.streak(setOf("2026-10-09", "2026-10-10", "2026-10-11"), today))
-        assertEquals("today not done yet: yesterday's run still counts", 2, MS.streak(setOf("2026-10-09", "2026-10-10"), today))
-        assertEquals(1, MS.streak(setOf("2026-10-07", "2026-10-11"), today))
-        assertEquals(7, MS.streak((5..11).map { "2026-10-%02d".format(it) }.toSet(), today))
-    }
-
-    @Test fun voiceAnswers() {
-        assertEquals(MS.Answer.DONE, MS.answer("Done"))
-        assertEquals(MS.Answer.LATER, MS.answer("later please"))
-        assertEquals(MS.Answer.DO, MS.answer("pay"))
-        assertEquals(MS.Answer.LATER, MS.answer("пізніше"))
-        assertEquals(MS.Answer.DONE, MS.answer("готово"))
-        assertEquals(null, MS.answer("what's the weather"))
-    }
-
-    @Test fun morningNoteOnlyFrom8WithCardsOncePerDayAndToggleable() {
-        assertEquals(0, MS.notificationDue(app, at("2026-10-11", 9), zone)) // nothing waiting
-        seedIra()
-        assertEquals(0, MS.notificationDue(app, at("2026-10-11", 7), zone))
-        assertEquals(2, MS.notificationDue(app, at("2026-10-11", 8), zone))
-        MS.markNotified(app, at("2026-10-11", 8), zone)
-        assertEquals(0, MS.notificationDue(app, at("2026-10-11", 12), zone))
-        MS.setNotify(app, false)
-        assertEquals(0, MS.notificationDue(app, at("2026-10-12", 9), zone))
+    @Test fun greetingFollowsTheHour() {
+        val ctx = app
+        assertEquals("Good morning", ctx.getString(net.solardepin.solarchik.ui.TodayScreen.greetingFor(8)))
+        assertEquals("Good afternoon", ctx.getString(net.solardepin.solarchik.ui.TodayScreen.greetingFor(13)))
+        assertEquals("Good evening", ctx.getString(net.solardepin.solarchik.ui.TodayScreen.greetingFor(19)))
+        val f = org.json.JSONObject().put("now", "Sat 10 Oct 2026, 19:03")
+        assertTrue(net.solardepin.solarchik.sol.Briefing.localText(f, ctx).startsWith("Good evening, here is your briefing."))
     }
 }

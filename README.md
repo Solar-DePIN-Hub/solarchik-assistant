@@ -6,7 +6,11 @@ I'm Vadym, and I build Solarchik on my own under Solar DePIN. Solarchik Assistan
 
 I built this repo for the Colosseum Crypto World's Fair (Solana track, AI / agents). Submissions close 12 Oct 2026, 11:59pm PT (13 Oct, 09:59 Kyiv). My older game build, CLOCK IN, lives in [Solar-DePIN-Hub/Solarchik](https://github.com/Solar-DePIN-Hub/Solarchik), and I didn't change it for this. In this app the game is only a small "Play" tile.
 
-**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.5/solarchik-assistant.apk) (v1.2.4, Android 8+, sha256 `8a2a3c5ac07e331500c496bff2bc43a5a18f4760e6911e914088af61e38d6801`)
+**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.6/solarchik-assistant.apk) (v1.2.6, Android 8+, sha256 `593feaa078d2ada494412ed4914079cfb6fa3c9161592c8dffa367e175641b7a`)
+
+**Fixed in 1.2.6 (payments):** on a real tablet, Circle "Send" showed Phantom's Connect prompt and then Phantom went to its home screen with nothing to sign and no message in the app. Now the transfer is built with a fresh blockhash before the wallet opens, so the wallet session only has to authorize and sign (one session), and a status sheet stays on screen: "Approve in your wallet", then "Not sent" with the reason, or "Sent" and "Settled ✓" with a Solscan link once Solana confirms it. The app's identity is now https://app.solardepin.net, which serves a Digital Asset Links file for this package and signing certificate, so Phantom can verify the app instead of warning that its identity could not be verified (the main Framer site can't serve /.well-known files).
+
+**New in 1.2.6:** **Forward missed calls to Sol** (More → Phone secretary). Step 1 verifies this phone's number without SMS: you tap Verify, then call the secretary line once from this phone; the line recognises your caller ID, links the number to your account and hangs up without answering. Step 2 opens your dialer with the standard GSM forwarding codes (all conditional `**004*<line>#`, or only no answer `**61`, busy `**67`, unreachable `**62`; off `##004#`); you press call and your carrier sets it up, and it may charge for forwarded calls. A forwarded call reaches you in two ways: if the carrier passes your number with the call (Diversion / History-Info headers), it matches your verified number; if not, it matches a caller your phone screened a moment ago (Solarchik as the call screening app sends only a hash of that caller's number, kept 3 minutes). A call the line can't match goes to the line owner's demo inbox. The per-day minute caps stay the same. Which of the two your carrier gives us still needs a live forwarded call to confirm. The **Morning stack** now continues with up to 3 Season tasks a day from official Solana Mobile posts, after the call cards: Open only opens the post, and the app asks "Done?" when you come back; Later or voice work too. Clearing the stack is the clock-in. Phone numbers of people outside your Circle are masked on screen ("+380 •• ••• •• 33"; a switch shows them in full), and the briefing greets you for the time of day.
 
 **New in 1.2.5:** **Morning stack**: Today shows the cards your calls left you (pay, call back, remind) one at a time, payments first. Swipe right or use the card's button to do it (opens the dialer, the prefilled wallet confirm, or sets the reminder), swipe left or tap Later to push it to tomorrow morning, or tap Read aloud and answer "done", "later" or "pay". When nothing is left, Today says you're clocked in and shows your streak. That clock-in is stored on this phone; signing today's CLOCK IN memo on Solana is optional and done in your wallet. A notification at 8:00 appears only when cards are waiting, and you can turn it off in More → Reminders. A **first-run tour** walks through calling the secretary (tap to dial the demo line), where the note shows up, and connecting Phantom (optional). On **Today**, cards come first, then the wallet, briefing and Season; the game moved to More. Wallet connect errors now read in plain words (for example Phantom's -32603 "internal error"). Not in this version: bonus secretary minutes for a 7-day streak. The streak is counted on the phone, so the server can't check it yet.
 
@@ -129,7 +133,7 @@ These are from the devnet builds before 1.1.0. I checked every signature below w
 
 ## Install
 
-1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.5/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.5).
+1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.6/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.6).
 2. Allow installs from your browser or file manager when Android asks.
 3. Open the app. It installs as **Solarchik Assistant** (`net.solardepin.solarchik.assistant`), next to the CLOCK IN game if you have it.
 4. To connect a wallet, tap "Set up wallet" on Today. You need Phantom, Solflare or Seed Vault; it's a mainnet wallet with real funds. Without a wallet app you can still use Sol, the secretary, the briefing and the Watcher's prices.
@@ -183,7 +187,7 @@ What I couldn't verify myself, because it needs a real wallet with real money: t
 | Item | URL |
 | --- | --- |
 | This repo | https://github.com/Solar-DePIN-Hub/solarchik-assistant |
-| Release v1.2.4 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.5 |
+| Release v1.2.6 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.6 |
 | Game repo (CLOCK IN, unchanged) | https://github.com/Solar-DePIN-Hub/Solarchik |
 | API / market (devnet) | https://solarchik-market.vercel.app |
 | Demo video (CLOCK IN cut, an Assistant cut is coming) | https://youtu.be/oAxoliLwUXo |

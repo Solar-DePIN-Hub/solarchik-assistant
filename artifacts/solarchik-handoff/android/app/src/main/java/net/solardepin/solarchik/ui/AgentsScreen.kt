@@ -613,6 +613,7 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
 
     private fun onWalletPill() {
         if (host.wallet.connected) {
+            host.toast(ctx.getString(R.string.agents_balance_refresh)) // 1.2.6: the tap always answers, even before the RPC does
             refreshChain()
             return
         }

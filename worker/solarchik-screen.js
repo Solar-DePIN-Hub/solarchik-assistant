@@ -447,6 +447,63 @@ export function callParties(sipHeaders, env = {}) {
   };
 }
 
+/** 1.2.6: the caller's number as a short hash (the phone sends this, never the number itself). */
+export async function callerHash(n) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("solarchik-fwd:" + e164(n)));
+  return [...new Uint8Array(d)].slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * 1.2.6 phone verification without SMS: the app asks (POST /phone/verify), then the user calls the secretary
+ * line from that SIM within 5 minutes. A call whose caller ID is that number links it (phone:<number>) and is
+ * rejected at once, never answered and never charged.
+ */
+export async function startVerify(env, body) {
+  const userId = String(body.userId || "").trim();
+  const n = e164(body.number);
+  if (!validUserId(userId) || !n) return { status: 400, body: { error: "userId and number (E.164) required" } };
+  if (n === ownLine(env)) return { status: 400, body: { error: "that is the secretary line" } };
+  await env.BALANCES.put("verify:" + n, userId, { expirationTtl: 300 });
+  return { status: 200, body: { ok: true, number: n, line: ownLine(env), expiresSec: 300 } };
+}
+
+export async function verifyCall(env, caller) {
+  const n = e164(caller);
+  if (!n) return "";
+  const userId = await env.BALANCES.get("verify:" + n);
+  if (!userId) return "";
+  const prev = await env.BALANCES.get("phoneof:" + userId);
+  if (prev && prev !== n) await env.BALANCES.delete?.("phone:" + prev);
+  await env.BALANCES.put("phone:" + n, userId);
+  await env.BALANCES.put("phoneof:" + userId, n);
+  await env.BALANCES.delete?.("verify:" + n);
+  return userId;
+}
+
+export async function phoneStatus(env, userId) {
+  const n = (await env.BALANCES.get("phoneof:" + userId)) || "";
+  const ok = n && (await env.BALANCES.get("phone:" + n)) === userId;
+  return { userId, number: ok ? n : "", verified: Boolean(ok), line: ownLine(env) };
+}
+
+export async function forwardExpect(env, body) {
+  const userId = String(body.userId || "").trim();
+  const h = String(body.h || "").toLowerCase();
+  if (!validUserId(userId) || !/^[0-9a-f]{32}$/.test(h)) return { status: 400, body: { error: "userId and h required" } };
+  if (!(await phoneStatus(env, userId)).verified) return { status: 403, body: { error: "verify your number first" } };
+  await env.BALANCES.put("fwdexp:" + h, userId, { expirationTtl: 180 });
+  return { status: 200, body: { ok: true } };
+}
+
+/** Last SIP header names seen and how each call was routed (no numbers), for checking what the carrier passes. */
+async function sipDiag(env, entry) {
+  try {
+    const list = JSON.parse((await env.BALANCES.get("sipdiag")) || "[]");
+    list.push(entry);
+    await env.BALANCES.put("sipdiag", JSON.stringify(list.slice(-20)), { expirationTtl: 30 * 86400 });
+  } catch {}
+}
+
 /** KV phone:<number> -> userId (set with POST /phone); the secretary's own number -> OWNER_USER_ID. */
 export async function playerFor(env, parties) {
   return (await playerRoute(env, parties)).userId;
@@ -462,6 +519,10 @@ export async function playerRoute(env, parties) {
     const mapped = await env.BALANCES.get("phone:" + n);
     if (mapped) return { userId: mapped, via: "phone" };
   }
+  // 1.2.6: no forwarding number in the headers: the user's own phone just screened this caller and told us
+  // (POST /forward/expect, a hash of the caller's number, 3 min). Only phones verified by a call count.
+  const exp = parties.caller && parties.caller !== "unknown" ? await env.BALANCES.get("fwdexp:" + (await callerHash(parties.caller))) : null;
+  if (exp) return { userId: exp, via: "screened" };
   if (isOwnLine(env, parties)) {
     const claimed = await claimedPlayer(env, parties.caller);
     if (claimed) return { userId: claimed, via: "claim" };
@@ -1248,7 +1309,20 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
     return { body: { ok: true, duplicate: true }, meta: null };
   };
   if (await callMark(env, callId)) return dup();
+  // 1.2.6: a verification call from the user's own SIM: link the number, reject (free), done
+  const verified = await verifyCall(env, parties.caller).catch(() => "");
+  await sipDiag(env, { at: Date.now(), names: (Array.isArray(sipHeaders) ? sipHeaders : []).map((h) => String(h?.name || "")).slice(0, 30),
+    via: parties.via || (parties.assumed ? "assumed_own_line" : ""), forwarded: Boolean(parties.forwardedFrom), verify: Boolean(verified) });
+  if (verified) {
+    await putMark(env, callId, { userId: verified, caller: parties.caller, at: Date.now(), state: "rejected" });
+    await fetch("https://api.openai.com/v1/realtime/calls/" + encodeURIComponent(callId) + "/reject", {
+      method: "POST", headers: { Authorization: "Bearer " + env.OPENAI_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ status_code: 486 }),
+    }).catch(() => null);
+    console.log(JSON.stringify({ event: "phone_verified", callId: String(callId).slice(-8), caller: last4(parties.caller) }));
+    return { body: { accepted: false, verified: true }, meta: null };
+  }
   const route = await playerRoute(env, parties);
+  console.log(JSON.stringify({ event: "sip_route", callId: String(callId).slice(-8), via: route.via }));
   const userId = route.userId;
   const own = isOwnLine(env, parties);
   const lang = await langOf(env, userId);
@@ -2322,6 +2396,24 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/mcp") return mcp(env, request);
+
+    if (request.method === "POST" && url.pathname === "/phone/verify") {
+      const r = await startVerify(env, await request.json().catch(() => ({})));
+      return json(r.body, r.status);
+    }
+    if (request.method === "GET" && url.pathname === "/phone/status") {
+      const userId = String(url.searchParams.get("userId") || "").trim();
+      if (!validUserId(userId)) return json({ error: "userId required" }, 400);
+      return json(await phoneStatus(env, userId));
+    }
+    if (request.method === "POST" && url.pathname === "/forward/expect") {
+      const r = await forwardExpect(env, await request.json().catch(() => ({})));
+      return json(r.body, r.status);
+    }
+    if (request.method === "GET" && url.pathname === "/sip-diag") {
+      if (!(await operatorOk(env, request))) return json({ error: "unauthorized" }, 401);
+      return json({ items: JSON.parse((await env.BALANCES.get("sipdiag")) || "[]") });
+    }
 
     if (request.method === "POST" && url.pathname === "/phone") {
       if (!(await operatorOk(env, request))) return json({ error: "unauthorized" }, 401);

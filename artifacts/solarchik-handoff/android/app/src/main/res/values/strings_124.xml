@@ -83,4 +83,46 @@
     <plurals name="stack_streak"><item quantity="one">Streak: %d day</item><item quantity="other">Streak: %d days</item></plurals>
     <plurals name="stack_week_left"><item quantity="one">%d more day for a 7-day streak.</item><item quantity="other">%d more days for a 7-day streak.</item></plurals>
     <plurals name="stack_note_body"><item quantity="one">%d card from your calls is waiting: pay, call back or remind.</item><item quantity="other">%d cards from your calls are waiting: pay, call back or remind.</item></plurals>
+    <string name="fw_title">Forward missed calls to Sol</string>
+    <string name="fw_body">Sol can answer the calls you don\'t pick up on this phone and leave you a note. Two steps, once: verify your number, then turn on forwarding with your carrier.</string>
+    <string name="fw_step1">1 · Your number</string>
+    <string name="fw_number_hint">This phone\'s number, e.g. +380 63 123 45 67</string>
+    <string name="fw_verify">Verify</string>
+    <string name="fw_call_line">Call %1$s from this phone</string>
+    <string name="fw_waiting">Waiting for your call. The line recognises your number and hangs up by itself in a second; Sol doesn\'t answer it. Your carrier\'s normal rate for a call applies.</string>
+    <string name="fw_not_verified">Not verified yet. No SMS: you call the secretary line once from this phone.</string>
+    <string name="fw_verified">Verified: %1$s ✓</string>
+    <string name="fw_verified_toast">Number verified.</string>
+    <string name="fw_bad_number">Enter your number with the country code, e.g. +380 63 123 45 67.</string>
+    <string name="fw_offline">No connection. Try again in a moment.</string>
+    <string name="fw_step2">2 · Turn on forwarding</string>
+    <string name="fw_all">Forward missed, busy and unreachable calls (**004#)</string>
+    <string name="fw_one_case">Or only one case:</string>
+    <string name="fw_no_answer">No answer</string>
+    <string name="fw_busy">Busy</string>
+    <string name="fw_unreachable">Unreachable</string>
+    <string name="fw_off">Turn forwarding off (%1$s)</string>
+    <string name="fw_carrier">Each button opens your dialer with a standard GSM code; you press call and your carrier sets it up. Your carrier may charge for forwarded calls. Some carriers (and CDMA networks) use their own app or codes instead.</string>
+    <string name="fw_how">How Sol knows a forwarded call is yours: if your carrier passes your number along with the call, it matches your verified number. If not, it matches the caller your phone just screened (Solarchik must be the call screening app; that covers numbers outside your contacts). A call the line can\'t match goes to the line owner\'s demo inbox, not to you.</string>
+    <string name="stack_season_pill">SEASON TASK</string>
+    <string name="stack_season_until">Until %1$s</string>
+    <string name="stack_season_source">From an official Solana Mobile post. Opening it only opens the link.</string>
+    <string name="stack_season_open">Open</string>
+    <string name="stack_season_did">I did it</string>
+    <string name="stack_season_not_yet">Not yet</string>
+    <string name="stack_season_ask">Done with %1$s?</string>
+    <string name="stack_spoken_season">Season task: %1$s. %2$s. Open it, done, or later?</string>
+    <string name="phones_reveal">Show full phone numbers (otherwise only your Circle contacts)</string>
+    <string name="pay_what">%1$s %2$s to %3$s</string>
+    <string name="pay_waiting_title">Approve in your wallet</string>
+    <string name="pay_waiting">Your wallet opens to approve %1$s. If it only asks to connect, approve that and the payment comes right after. Nothing is sent until you approve it there.</string>
+    <string name="pay_sent_title">Sent</string>
+    <string name="pay_sent">%1$s sent. Waiting for Solana to confirm it…</string>
+    <string name="pay_unconfirmed">%1$s was sent, but Solana hasn\'t confirmed it yet. Check it on Solscan in a minute.</string>
+    <string name="pay_settled_title">Settled ✓</string>
+    <string name="pay_settled">%1$s is confirmed on Solana.</string>
+    <string name="pay_failed_title">Not sent</string>
+    <string name="pay_failed">Nothing was sent. %1$s</string>
+    <string name="pay_solscan">View on Solscan</string>
+    <string name="agents_balance_refresh">Updating your balance…</string>
 </resources>

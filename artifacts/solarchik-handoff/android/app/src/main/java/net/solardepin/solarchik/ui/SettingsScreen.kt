@@ -34,6 +34,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     private lateinit var walletBox: LinearLayout
     private var diagPanel: WalletDiagPanel? = null
     private var circlePanel: CirclePanel? = null
+    private var forwardPanel: ForwardPanel? = null
     internal val seekerPanel by lazy { SeekerPanel(host) { renderSeeker() } }
     private var seekerBox: LinearLayout? = null
     private lateinit var networkBody: TextView
@@ -48,9 +49,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     private var secLangBusy = false
     private var secBusy = false
     private var refreshAfterPay = false
-    private lateinit var fwdInput: android.widget.EditText
-    private lateinit var fwdStatus: TextView
-    private val fwdOnButtons = mutableListOf<View>()
 
     override fun build(): View = page {
         addView(Ui.display(ctx, ctx.getString(R.string.settings_title), 26f))
@@ -109,7 +107,12 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         addView(section(R.string.sec_title, R.drawable.ic_mic, Ui.PURPLE).apply {
             secretaryBox = Ui.column(ctx)
             addView(Ui.top(secretaryBox, 8))
-            addView(Ui.top(buildForward(), 16))
+            // 1.2.6: numbers are masked on screen unless the caller is in your Circle
+            addView(Ui.top(switchRow(ctx.getString(R.string.phones_reveal), net.solardepin.solarchik.screen.Phones.revealAll(ctx)) { _, on ->
+                net.solardepin.solarchik.screen.Phones.setRevealAll(ctx, on)
+            }.apply { tag = "settings-reveal-phones" }, 10))
+            // 1.2.6: verify this phone, then the carrier forwarding codes
+            addView(Ui.top(ForwardPanel(host).also { forwardPanel = it }.view, 16))
         })
 
         addView(section(R.string.settings_run_sound, R.drawable.ic_run_volume, Ui.CYAN).apply {
@@ -348,7 +351,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         renderNotes()
         renderVoice()
         renderSecretary()
-        renderForward()
+        forwardPanel?.refresh()
         val w = host.wallet
         networkBody.text = ctx.getString(
             R.string.join_dot,
@@ -557,84 +560,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             if (detail.isNotBlank()) box.addView(Ui.top(Ui.muted(ctx, detail, 12f), 2))
         }
 
-    }
-
-    /**
-     * Carrier call forwarding to the Sol secretary number. Built once (so typing survives re-renders).
-     * Each button only pre-fills the system dialer with a GSM MMI code (ACTION_DIAL, no CALL_PHONE);
-     * the player presses call, and the carrier does the forwarding.
-     */
-    private fun buildForward(): View = Ui.column(ctx).apply {
-        addView(Ui.label(ctx, ctx.getString(R.string.fwd_title)))
-        addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fwd_body), 12f).apply { setLineSpacing(0f, 1.3f) }, 6))
-        val numRow = Ui.row(ctx, gap = 10)
-        fwdInput = android.widget.EditText(ctx).apply {
-            hint = ctx.getString(R.string.fwd_number_hint)
-            setHintTextColor(Ui.MUTED)
-            setTextColor(Ui.TEXT)
-            textSize = 15f
-            typeface = Ui.tfMedium()
-            background = Ui.rounded(Ui.SURFACE2, dp(14).toFloat(), Ui.STROKE, dp(1))
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            inputType = android.text.InputType.TYPE_CLASS_PHONE
-            isSingleLine = true
-            contentDescription = ctx.getString(R.string.fwd_number_label)
-            setText(Secretary.forwardNumber(ctx))
-        }
-        numRow.addView(Ui.weight(fwdInput))
-        // 1.2.1: no auto-size on a wrap_content button (it took the whole row and pushed the field out)
-        numRow.addView(Ui.button(ctx, ctx.getString(R.string.fwd_save), Ui.Btn.GHOST) { saveForwardNumber() }.apply {
-            setAutoSizeTextTypeWithDefaults(android.widget.TextView.AUTO_SIZE_TEXT_TYPE_NONE); textSize = 15f; tag = "fwd-save"
-        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-        addView(Ui.top(numRow, 10))
-        fwdStatus = Ui.muted(ctx, "", 12f)
-        addView(Ui.top(fwdStatus, 6))
-
-        addView(Ui.top(Ui.label(ctx, ctx.getString(R.string.fwd_on_label)), 12))
-        fwdOnButtons.clear()
-        listOf(
-            Secretary.Forward.NO_ANSWER to R.string.fwd_no_answer,
-            Secretary.Forward.BUSY to R.string.fwd_busy,
-            Secretary.Forward.UNREACHABLE to R.string.fwd_unreachable,
-        ).forEach { (kind, label) ->
-            val b = Ui.button(ctx, ctx.getString(label, "**${kind.code}"), Ui.Btn.SECONDARY) {
-                val code = Secretary.forwardOnCode(kind, Secretary.forwardNumber(ctx))
-                if (code == null) host.toast(ctx.getString(R.string.fwd_need_number)) else dial(code)
-            }
-            fwdOnButtons += b
-            addView(Ui.top(b, 8))
-        }
-
-        addView(Ui.top(Ui.label(ctx, ctx.getString(R.string.fwd_off_label)), 14))
-        val offRow = Ui.row(ctx, gap = 8)
-        Secretary.Forward.values().forEach { kind ->
-            val code = Secretary.forwardOffCode(kind)
-            offRow.addView(Ui.weight(Ui.button(ctx, code, Ui.Btn.GHOST) { dial(code) }))
-        }
-        addView(Ui.top(offRow, 8))
-        addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.fwd_off_all, Secretary.FORWARD_ALL_OFF), Ui.Btn.GHOST) {
-            dial(Secretary.FORWARD_ALL_OFF)
-        }.apply { maxLines = 2 }, 8))
-        addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fwd_note), 12f).apply { setLineSpacing(0f, 1.3f) }, 10))
-    }
-
-    private fun renderForward() {
-        if (!this::fwdStatus.isInitialized) return
-        val num = Secretary.forwardNumber(ctx)
-        fwdStatus.text = if (num.isEmpty()) ctx.getString(R.string.fwd_number_empty) else ctx.getString(R.string.fwd_number_set, num)
-        fwdStatus.setTextColor(if (num.isEmpty()) Ui.AMBER else Ui.MUTED)
-        fwdOnButtons.forEach { Ui.setEnabled(it, num.isNotEmpty()) }
-    }
-
-    private fun saveForwardNumber() {
-        val saved = Secretary.setForwardNumber(ctx, fwdInput.text?.toString().orEmpty())
-        if (saved == null) {
-            host.toast(ctx.getString(R.string.fwd_number_bad))
-        } else {
-            fwdInput.setText(saved)
-            host.toast(ctx.getString(if (saved.isEmpty()) R.string.fwd_number_cleared else R.string.fwd_number_saved))
-        }
-        renderForward()
     }
 
     /** Opens the dialer pre-filled; nothing is dialed until the player presses call. */

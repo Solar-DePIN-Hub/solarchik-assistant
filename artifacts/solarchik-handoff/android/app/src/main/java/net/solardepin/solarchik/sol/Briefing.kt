@@ -150,7 +150,10 @@ object Briefing {
     /** Offline fallback from the same facts (also what tests read). */
     fun localText(f: JSONObject, ctx: Context): String {
         val parts = ArrayList<String>()
-        parts += ctx.getString(R.string.br_hello)
+        // 1.2.6: the greeting follows the local time in the facts ("…, 19:03" -> good evening)
+        val hour = Regex(", (\\d{1,2}):\\d{2}$").find(f.optString("now"))?.groupValues?.get(1)?.toIntOrNull()
+        val hi = when (hour) { null -> ctx.getString(R.string.br_hi); in 5..22 -> ctx.getString(net.solardepin.solarchik.ui.TodayScreen.greetingFor(hour)); else -> ctx.getString(R.string.br_hi) }
+        parts += ctx.getString(R.string.br_hello, hi)
         val calls = f.optJSONArray("calls") ?: JSONArray()
         if (calls.length() == 0) parts += ctx.getString(R.string.br_no_calls)
         else {

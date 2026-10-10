@@ -18,6 +18,12 @@ class IncomingScreenService : CallScreeningService() {
             details.callDirection == Call.Details.DIRECTION_INCOMING
         val action = Secretary.decide(incoming, PlayerIds.screeningOn(this), Secretary.mode(this))
         respondToCall(details, response(action))
+        // 1.2.6: if this call goes on to the secretary (declined = busy forward, or not answered), the line knows it
+        // is ours: a hash of the caller's number, kept 3 minutes, only for a verified phone. Never blocks the call.
+        if (incoming && Secretary.ownVerified(this)) {
+            val n = Secretary.e164(details.handle?.schemeSpecificPart.orEmpty())
+            if (n.isNotBlank()) { val app = applicationContext; Thread { runCatching { ScreenApi.forwardExpect(PlayerIds.get(app), Secretary.callerHash(n)) } }.start() }
+        }
         if (action == Secretary.Action.ALLOW) return
 
         val number = details.handle?.schemeSpecificPart.orEmpty().ifBlank { "unknown" }

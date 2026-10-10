@@ -339,7 +339,7 @@ class AgentsBriefingActionsTest {
         assertEquals(6.65, w.getDouble("skrDelta"), 1e-9)
         assertEquals("SOL down 6.0% to $94", f.getJSONArray("alerts").getString(0))
         val text = Briefing.localText(f, app)
-        assertTrue(text, text.startsWith("Good morning, here is your briefing. 5 calls since yesterday. Olena at") || text.contains("5 calls since yesterday."))
+        assertTrue(text, text.contains("here is your briefing. 5 calls since yesterday. Olena at") || text.contains("5 calls since yesterday."))
         assertTrue(text, text.contains("Your wallet is down 0.0105 SOL, now 0.4213 SOL."))
         assertTrue(text, text.contains("One action from a call waits for your confirmation."))
         assertTrue(text, text.contains("Petro at 05:30: Call back at 3 about the contract. Call back on +380501234567."))
@@ -385,7 +385,7 @@ class AgentsBriefingActionsTest {
         today.briefingPost = { u, b -> TodayScreen.postOverride!!(u, b) }
         today.playBriefing(); repeat(60) { idle() }
         assertEquals(2, spoken.size)
-        assertTrue(spoken[1], spoken[1].startsWith("Good morning, here is your briefing."))
+        assertTrue(spoken[1], Regex("^Good (morning|afternoon|evening)|^Hi").containsMatchIn(spoken[1]) && spoken[1].contains(", here is your briefing."))
     }
 
     // ------------------------------------------------------------------ call -> action

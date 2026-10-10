@@ -195,7 +195,11 @@ object CallInbox {
     fun setBlockedLocal(ctx: Context, numbers: Collection<String>) { prefs(ctx).edit().putStringSet("blocked", numbers.toSet()).apply() }
 
     /** Fetches every watched id; returns the merged list (null when every request failed). */
+    /** Tests (screen audits): the worker is not asked, the seeded list stays. */
+    @Volatile internal var offlineForTest = false
+
     fun refresh(ctx: Context): List<CallItem>? {
+        if (offlineForTest) return null
         val lists = ids(ctx).map { ScreenApi.calls(it) }
         if (lists.all { it == null }) return null
         val merged = merge(lists.filterNotNull())

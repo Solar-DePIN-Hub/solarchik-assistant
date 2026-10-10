@@ -1,0 +1,8 @@
+name = "solardepin-assetlinks"
+main = "index.js"
+compatibility_date = "2026-09-19"
+workers_dev = true
+routes = [
+  { pattern = "solardepin.net/.well-known/assetlinks.json", zone_name = "solardepin.net" },
+  { pattern = "app.solardepin.net", custom_domain = true },
+]

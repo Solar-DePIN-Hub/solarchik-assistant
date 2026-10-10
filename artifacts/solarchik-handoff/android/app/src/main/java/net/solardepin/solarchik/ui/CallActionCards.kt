@@ -30,7 +30,9 @@ import java.time.ZoneId
  *  - reminder: a local notification at the time.
  */
 object CallActionCards {
-    fun title(ctx: Context, a: CallAction, who: String): String = when (a.type) {
+    fun title(ctx: Context, a: CallAction, who: String): String = net.solardepin.solarchik.screen.Phones.show(ctx, rawTitle(ctx, a, who))
+
+    private fun rawTitle(ctx: Context, a: CallAction, who: String): String = when (a.type) {
         CallAction.PAYMENT -> ctx.getString(R.string.ca_pay_title, amount(a), a.token.ifBlank { "?" }, a.recipient.ifBlank { who.ifBlank { ctx.getString(R.string.calls_unknown) } })
         CallAction.CALLBACK -> if (a.time.isNotBlank()) ctx.getString(R.string.ca_cb_title_at, who.ifBlank { a.number }, a.time) else ctx.getString(R.string.ca_cb_title, who.ifBlank { a.number })
         else -> inUi(a.text).ifBlank { ctx.getString(R.string.ca_rem_title) } + (if (a.time.isNotBlank() && !a.text.contains(a.time)) " · ${a.time}" else "")
@@ -68,7 +70,7 @@ object CallActionCards {
         })
         addView(head)
         addView(Ui.top(Ui.text(ctx, title(ctx, a, who), 15f, Ui.TEXT, 800).apply { tag = "ca-title" }, 6))
-        quote(a, call).takeIf { it.isNotBlank() }?.let { q -> addView(Ui.top(Ui.muted(ctx, "“$q”", 12f).apply { tag = "ca-quote" }, 4)) }
+        quote(a, call).takeIf { it.isNotBlank() }?.let { q -> addView(Ui.top(Ui.muted(ctx, "“" + net.solardepin.solarchik.screen.Phones.show(ctx, q) + "”", 12f).apply { tag = "ca-quote" }, 4)) }
         if (a.remindAt > System.currentTimeMillis()) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.ca_reminder_set, CallText.time(a.remindAt)), 12f, Ui.GOLD, 700).apply { tag = "ca-reminder-at" }, 4))
         // 1.1.0 polish: the main action gets its own full-width row so labels never truncate (EN and UK)
         var main: View? = null
@@ -190,26 +192,53 @@ object CallActionCards {
         lastSheet = dlg
     }
 
+    /**
+     * 1.2.6: the payment's own status sheet, so nothing fails silently: "Approve in your wallet" while the wallet is
+     * open, then either a clear error, or "Sent" -> "Settled" with the Solscan link once the chain confirms it.
+     */
+    @androidx.annotation.VisibleForTesting
+    var lastStatus: android.app.AlertDialog? = null
+
+    private fun status(host: MainActivity, title: String, msg: String, sig: String? = null): android.app.AlertDialog {
+        lastStatus?.let { runCatching { it.dismiss() } }
+        val b = android.app.AlertDialog.Builder(host).setTitle(title).setMessage(msg).setPositiveButton(android.R.string.ok, null)
+        if (sig != null) b.setNeutralButton(R.string.pay_solscan) { _, _ -> host.openUrl(host.wallet.txUrl(sig)) }
+        val d = b.create()
+        d.window?.setBackgroundDrawable(android.graphics.drawable.GradientDrawable().apply { setColor(0xFF0E1C27.toInt()); cornerRadius = 22f * host.resources.displayMetrics.density })
+        if (!host.isFinishing) d.show()
+        lastStatus = d
+        return d
+    }
+
     private fun send(host: MainActivity, a: CallAction, recipient: String, onChange: () -> Unit, contact: net.solardepin.solarchik.circle.Contact? = null) {
+        val what = host.getString(R.string.pay_what, net.solardepin.solarchik.circle.Circle.amount(a.amount), a.token, contact?.name ?: Fmt.short(recipient))
+        status(host, host.getString(R.string.pay_waiting_title), host.getString(R.string.pay_waiting, what))
         host.scope.launch {
             val raw = CallActionRules.amountRaw(a.token, a.amount)
-            val r = host.wallet.signAndSend(host.sender) { payer, blockhash -> CallActionRules.paymentTx(payer, PublicKey(recipient), a.token, raw, blockhash) }
+            val r = runCatching { host.wallet.signAndSend(host.sender) { payer, blockhash -> CallActionRules.paymentTx(payer, PublicKey(recipient), a.token, raw, blockhash) } }
+                .getOrElse { e -> if (e is kotlinx.coroutines.CancellationException) throw e else Result.failure(e) }
             r.onSuccess { sent ->
                 val store = CallActionStore(host)
                 if (store.all().none { it.id == a.id }) store.add(listOf(a.copy(status = CallAction.DONE, signature = sent.signature))) // sent from Circle
                 else store.update(a.id) { it.copy(status = CallAction.DONE, signature = sent.signature) }
+                status(host, host.getString(R.string.pay_sent_title), host.getString(R.string.pay_sent, what), sent.signature)
+                onChange()
                 // the secretary may tell this caller next time that it was sent (number, amount, token, signature only)
                 val call = CallInbox.cached(host).firstOrNull { it.key == a.callKey }
                 val number = contact?.phone?.takeIf { it.isNotBlank() } ?: call?.dialNumber.orEmpty()
-                // only after the chain confirms it
-                if (number.isNotBlank()) host.scope.launch {
-                    val ok = withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { host.wallet.waitConfirmed(sent.signature) }.getOrDefault(false) }
-                    if (ok) withContext(kotlinx.coroutines.Dispatchers.IO) { net.solardepin.solarchik.circle.Settled.report(host, number, net.solardepin.solarchik.circle.Circle.amount(a.amount), a.token, sent.signature, call?.owner) }
-                    else net.solardepin.solarchik.wallet.WalletDiag.log("circle", "payment " + Fmt.short(sent.signature) + " not confirmed yet; the secretary is not told")
+                val ok = withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { host.wallet.waitConfirmed(sent.signature) }.getOrDefault(false) }
+                if (ok) {
+                    status(host, host.getString(R.string.pay_settled_title), host.getString(R.string.pay_settled, what), sent.signature)
+                    if (number.isNotBlank()) withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { net.solardepin.solarchik.circle.Settled.report(host, number, net.solardepin.solarchik.circle.Circle.amount(a.amount), a.token, sent.signature, call?.owner) } }
+                } else {
+                    net.solardepin.solarchik.wallet.WalletDiag.log("circle", "payment " + Fmt.short(sent.signature) + " not confirmed yet; the secretary is not told")
+                    status(host, host.getString(R.string.pay_sent_title), host.getString(R.string.pay_unconfirmed, what), sent.signature)
                 }
-                host.toast(host.getString(R.string.ca_sent, Fmt.short(sent.signature)))
-            }.onFailure { host.toast(host.errorText(it)) }
-            onChange()
+                onChange()
+            }.onFailure {
+                status(host, host.getString(R.string.pay_failed_title), host.getString(R.string.pay_failed, host.errorText(it)))
+                onChange()
+            }
         }
     }
 

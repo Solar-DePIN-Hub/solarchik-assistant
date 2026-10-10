@@ -132,6 +132,31 @@ object Secretary {
     fun forwardOnCode(kind: Forward, number: String): String? = cleanNumber(number)?.let { "**${kind.code}*$it#" }
     fun forwardOffCode(kind: Forward): String = "##${kind.code}#"
 
+    /** 1.2.6: all conditional forwarding (no answer + busy + unreachable) in one code. */
+    fun forwardAllCode(number: String): String? = cleanNumber(number)?.let { "**004*$it#" }
+
+    /** 1.2.6: this phone's own number, verified by a call from it to the line (see ForwardPanel). */
+    fun ownNumber(ctx: Context): String = prefs(ctx).getString("ownNumber", "").orEmpty()
+    fun ownVerified(ctx: Context): Boolean = prefs(ctx).getBoolean("ownVerified", false)
+    fun setOwn(ctx: Context, number: String, verified: Boolean) = prefs(ctx).edit().putString("ownNumber", number).putBoolean("ownVerified", verified).apply()
+
+    /** Same hash as the worker's callerHash: SHA-256("solarchik-fwd:" + E.164), first 16 bytes, hex. */
+    fun callerHash(e164: String): String {
+        val d = java.security.MessageDigest.getInstance("SHA-256").digest(("solarchik-fwd:" + e164).toByteArray())
+        return d.take(16).joinToString("") { "%02x".format(it) }
+    }
+
+    /** "+380 63 744 37 92" / "0637443792" -> "+380637443792" (Ukraine default for a leading 0), "" if not a number. */
+    fun e164(raw: String): String {
+        val d = raw.filter { it.isDigit() }
+        return when {
+            raw.trim().startsWith("+") && d.length in 8..15 -> "+$d"
+            d.startsWith("380") && d.length == 12 -> "+$d"
+            d.startsWith("0") && d.length == 10 -> "+38$d"
+            else -> ""
+        }
+    }
+
     /** tel: URI for ACTION_DIAL; "#" must be escaped or the dialer drops everything after it. */
     fun dialUri(code: String): Uri = Uri.parse("tel:" + Uri.encode(code))
 

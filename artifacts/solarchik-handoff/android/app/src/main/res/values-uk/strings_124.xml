@@ -83,4 +83,46 @@
     <plurals name="stack_streak"><item quantity="one">Серія: %d день</item><item quantity="few">Серія: %d дні</item><item quantity="many">Серія: %d днів</item><item quantity="other">Серія: %d дня</item></plurals>
     <plurals name="stack_week_left"><item quantity="one">Ще %d день до серії з 7 днів.</item><item quantity="few">Ще %d дні до серії з 7 днів.</item><item quantity="many">Ще %d днів до серії з 7 днів.</item><item quantity="other">Ще %d дня до серії з 7 днів.</item></plurals>
     <plurals name="stack_note_body"><item quantity="one">Чекає %d картка з дзвінків: оплатити, передзвонити чи нагадати.</item><item quantity="few">Чекають %d картки з дзвінків: оплатити, передзвонити чи нагадати.</item><item quantity="many">Чекають %d карток з дзвінків: оплатити, передзвонити чи нагадати.</item><item quantity="other">Чекають %d картки з дзвінків: оплатити, передзвонити чи нагадати.</item></plurals>
+    <string name="fw_title">Пересилай пропущені дзвінки Солу</string>
+    <string name="fw_body">Сол може відповідати на дзвінки, які ти не береш на цьому телефоні, і залишати нотатку. Два кроки, один раз: підтвердь номер і ввімкни переадресацію в оператора.</string>
+    <string name="fw_step1">1 · Твій номер</string>
+    <string name="fw_number_hint">Номер цього телефону, напр. +380 63 123 45 67</string>
+    <string name="fw_verify">Підтвердити</string>
+    <string name="fw_call_line">Подзвонити на %1$s з цього телефону</string>
+    <string name="fw_waiting">Чекаю на дзвінок. Лінія впізнає номер і сама завершить дзвінок за секунду; Сол не відповідає. Звичайний тариф оператора за дзвінок.</string>
+    <string name="fw_not_verified">Ще не підтверджено. Без SMS: один раз подзвони на лінію секретаря з цього телефону.</string>
+    <string name="fw_verified">Підтверджено: %1$s ✓</string>
+    <string name="fw_verified_toast">Номер підтверджено.</string>
+    <string name="fw_bad_number">Введи номер з кодом країни, напр. +380 63 123 45 67.</string>
+    <string name="fw_offline">Немає зв\'язку. Спробуй ще раз за хвилину.</string>
+    <string name="fw_step2">2 · Увімкни переадресацію</string>
+    <string name="fw_all">Пересилати пропущені, зайняті й недоступні (**004#)</string>
+    <string name="fw_one_case">Або лише один випадок:</string>
+    <string name="fw_no_answer">Без відповіді</string>
+    <string name="fw_busy">Зайнято</string>
+    <string name="fw_unreachable">Недоступний</string>
+    <string name="fw_off">Вимкнути переадресацію (%1$s)</string>
+    <string name="fw_carrier">Кожна кнопка відкриває набір номера зі стандартним GSM-кодом; ти тиснеш виклик, і оператор усе налаштовує. Оператор може брати плату за переадресовані дзвінки. Деякі оператори (і мережі CDMA) мають власний застосунок або коди.</string>
+    <string name="fw_how">Як Сол знає, що переадресований дзвінок твій: якщо оператор передає твій номер разом із дзвінком, він збігається з підтвердженим. Якщо ні, Сол бере абонента, якого щойно перевірив твій телефон (Solarchik має бути застосунком перевірки дзвінків; це номери поза контактами). Дзвінок, який лінія не може зіставити, потрапляє в демо-скриньку власника лінії, а не тобі.</string>
+    <string name="stack_season_pill">ЗАВДАННЯ СЕЗОНУ</string>
+    <string name="stack_season_until">До %1$s</string>
+    <string name="stack_season_source">З офіційного допису Solana Mobile. Кнопка лише відкриває посилання.</string>
+    <string name="stack_season_open">Відкрити</string>
+    <string name="stack_season_did">Я зробив</string>
+    <string name="stack_season_not_yet">Ще ні</string>
+    <string name="stack_season_ask">Готово з %1$s?</string>
+    <string name="stack_spoken_season">Завдання сезону: %1$s. %2$s. Відкрити, готово чи пізніше?</string>
+    <string name="phones_reveal">Показувати номери повністю (інакше лише контакти з Кола)</string>
+    <string name="pay_what">%1$s %2$s для %3$s</string>
+    <string name="pay_waiting_title">Підтвердь у гаманці</string>
+    <string name="pay_waiting">Гаманець відкриється, щоб підтвердити %1$s. Якщо він лише просить підключення, підтвердь його, і платіж з\'явиться одразу після. Нічого не надсилається, поки ти не підтвердиш.</string>
+    <string name="pay_sent_title">Надіслано</string>
+    <string name="pay_sent">%1$s надіслано. Чекаю підтвердження Solana…</string>
+    <string name="pay_unconfirmed">%1$s надіслано, але Solana ще не підтвердила. Перевір у Solscan за хвилину.</string>
+    <string name="pay_settled_title">Розраховано ✓</string>
+    <string name="pay_settled">%1$s підтверджено в Solana.</string>
+    <string name="pay_failed_title">Не надіслано</string>
+    <string name="pay_failed">Нічого не надіслано. %1$s</string>
+    <string name="pay_solscan">Відкрити в Solscan</string>
+    <string name="agents_balance_refresh">Оновлюю баланс…</string>
 </resources>

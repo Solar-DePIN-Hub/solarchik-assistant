@@ -194,36 +194,33 @@ class SecretaryTest {
         assertFalse("android.permission.CALL_PHONE" in perms)
     }
 
-    @Test fun settingsForwardButtonsOpenTheDialerOnly() {
+    @Test fun settingsForwardPanelVerifyThenCarrierCodesInTheDialerOnly() {
         val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get()
         a.select(MainActivity.Tab.SETTINGS)
         val root = a.window.decorView
-        val noAnswer = ctx.getString(R.string.fwd_no_answer, "**61")
-        val input = all(root).filterIsInstance<EditText>().single { it.hint == ctx.getString(R.string.fwd_number_hint) }
-        assertEquals("+380914810885", input.text.toString())
-        assertTrue(texts(root).contains(ctx.getString(R.string.fwd_number_set, "+380914810885")))
-        find(root, noAnswer)!!.performClick()
-        assertEquals("**61*+380914810885#", shadowOf(a).nextStartedActivity.data!!.schemeSpecificPart)
-
-        // Cleared: the button does nothing but explain.
-        input.setText("")
-        find(root, ctx.getString(R.string.fwd_save))!!.performClick()
-        assertTrue(texts(root).contains(ctx.getString(R.string.fwd_number_empty)))
-        find(root, noAnswer)!!.performClick()
-        assertNull(shadowOf(a).nextStartedActivity)
-
-        input.setText("+380 44 123 45 67")
-        find(root, ctx.getString(R.string.fwd_save))!!.performClick()
-        assertEquals("+380441234567", Secretary.forwardNumber(ctx))
-        assertTrue(texts(root).contains(ctx.getString(R.string.fwd_number_set, "+380441234567")))
-
-        find(root, noAnswer)!!.performClick()
-        val dial = shadowOf(a).nextStartedActivity
+        assertTrue(texts(root).contains("Forward missed calls to Sol"))
+        val tagged = { t: String -> all(root).first { it.tag == t } }
+        tagged("fw-all").performClick()
+        var dial = shadowOf(a).nextStartedActivity
         assertEquals(Intent.ACTION_DIAL, dial.action)
-        assertEquals("**61*+380441234567#", dial.data!!.schemeSpecificPart)
-
-        find(root, ctx.getString(R.string.fwd_off_all, "##004#"))!!.performClick()
+        assertEquals("**004*+380914810885#", dial.data!!.schemeSpecificPart)
+        tagged("fw-61").performClick()
+        assertEquals("**61*+380914810885#", shadowOf(a).nextStartedActivity.data!!.schemeSpecificPart)
+        tagged("fw-off").performClick()
         assertEquals("##004#", shadowOf(a).nextStartedActivity.data!!.schemeSpecificPart)
+        // a number that is not a phone number is refused before anything goes to the server
+        (tagged("fw-number") as EditText).setText("hello")
+        tagged("fw-verify").performClick()
+        assertEquals("", Secretary.ownNumber(ctx))
+        assertTrue(texts(root).any { it.startsWith("Not verified yet") })
+    }
+
+    @Test fun callerHashMatchesTheWorker() {
+        // worker: callerHash("+380501112233") (solarchik-screen.js, 1.2.6)
+        assertEquals("ec40efff9208c9a5d9f5ab956a6a017c", Secretary.callerHash("+380501112233"))
+        assertEquals("+380637443792", Secretary.e164("063 744 37 92"))
+        assertEquals("+380637443792", Secretary.e164("+380 63 744-37-92"))
+        assertEquals("", Secretary.e164("12"))
     }
 
     private fun all(v: View): List<View> = listOf(v) + if (v is ViewGroup) (0 until v.childCount).flatMap { all(v.getChildAt(it)) } else emptyList()

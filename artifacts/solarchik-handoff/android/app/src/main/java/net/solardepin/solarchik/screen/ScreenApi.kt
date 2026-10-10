@@ -105,6 +105,22 @@ object ScreenApi {
         return CallInbox.parseDetail(userId, code, body)
     }
 
+    /** 1.2.6: start the SMS-free check: the user then calls the line from this number within 5 minutes. */
+    fun verifyStart(userId: String, number: String): JSONObject? {
+        val (code, body) = request("POST", "$BASE/phone/verify", JSONObject().put("userId", userId).put("number", number).toString())
+        return if (code == 200) runCatching { JSONObject(body) }.getOrNull() else null
+    }
+
+    /** {number, verified, line} for this user. */
+    fun phoneStatus(userId: String): JSONObject? {
+        val (code, body) = request("GET", "$BASE/phone/status?userId=${enc(userId)}", null)
+        return if (code == 200) runCatching { JSONObject(body) }.getOrNull() else null
+    }
+
+    /** The phone just screened a caller: tell the line who may be forwarded in a moment (a hash, never the number). */
+    fun forwardExpect(userId: String, hash: String): Boolean =
+        request("POST", "$BASE/forward/expect", JSONObject().put("userId", userId).put("h", hash).toString()).first == 200
+
     /** Block or unblock a caller for this player (POST /block): the secretary rejects blocked numbers, never charged. */
     fun block(userId: String, number: String, blocked: Boolean): List<String>? {
         val (code, body) = request("POST", "$BASE/block", JSONObject().put("userId", userId).put("number", number).put("blocked", blocked).toString())

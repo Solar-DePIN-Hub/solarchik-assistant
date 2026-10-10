@@ -137,7 +137,10 @@ class StickyBlockhash(private val fetch: suspend () -> ByteArray) {
  * for an absolute one, right after the wallet app was opened: 1.1.4 passed "https://solardepin.net/favicon.ico",
  * so Phantom opened, got no authorize request and every connect failed with "something went wrong".
  */
-internal const val IDENTITY_URI = "https://solardepin.net"
+// 1.2.6: Phantom checks Digital Asset Links for the identity domain ("This app's identity could not be verified").
+// app.solardepin.net (a Cloudflare Worker on our zone) serves /.well-known/assetlinks.json with this package and
+// the release certificate, and /favicon.ico; the Framer site at solardepin.net cannot serve /.well-known files.
+internal const val IDENTITY_URI = "https://app.solardepin.net"
 internal const val ICON_RELATIVE_URI = "favicon.ico"
 internal const val IDENTITY_NAME = "Solarchik"
 
@@ -440,6 +443,11 @@ class SolanaWallet(context: Context) {
         return e
     }
 
+    /** Tests: sign requests made inside a wallet session. */
+    @Volatile internal var signRequests = 0
+    /** Tests: the wallet's answer to signAndSendTransactions (the signature for these bytes). */
+    @Volatile internal var signSeam: ((ByteArray) -> ByteArray)? = null
+
     private suspend fun signAndSendOnce(
         sender: ActivityResultSender,
         client: Rpc,
@@ -449,16 +457,34 @@ class SolanaWallet(context: Context) {
         adapter.rpcCluster = rpcCluster()
         val cluster = clusterName
         var buildError: Throwable? = null
+        // 1.2.6 (tablet: Phantom showed Connect, then went home, nothing to sign): the transaction is built with a
+        // fresh blockhash BEFORE the wallet opens, for the connected account, so the session only has to
+        // authorize and sign; nothing slow (RPC) runs while the wallet waits. A different account approved in
+        // the wallet is rebuilt in the session (pure, the blockhash is already here).
+        val saved = address
+        val pre: Pair<String, ByteArray>? = if (saved.isBlank()) null else try {
+            val bh = hash.get()
+            saved to build(PublicKey(saved), bh).serialize()
+        } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException) throw t
+            WalletDiag.error("tx build failed before the wallet opened", t)
+            return Result.failure(buildFailure(t))
+        }
+        if (pre != null) WalletDiag.log("tx ready", "built for " + WalletDiag.shortAddr(saved) + " before opening the wallet")
         // 1.2.0: the logged direct session (same wait and wallet pick as connect) when the app is in front
         direct { client, auth ->
-            val payer = PublicKey(accountKey(auth) ?: error("No account"))
-            val tx = try {
-                kotlinx.coroutines.runBlocking { build(payer, hash.get()) }
+            val acct = accountKey(auth)?.let { Base58.encode(it) } ?: error("No account")
+            val bytes = if (pre != null && pre.first == acct) pre.second else try {
+                WalletDiag.log("tx rebuild", "wallet approved " + WalletDiag.shortAddr(acct))
+                kotlinx.coroutines.runBlocking { build(PublicKey(acct), hash.get()) }.serialize()
             } catch (t: Throwable) {
                 buildError = t
                 throw t
             }
-            client.signAndSendTransactions(arrayOf(tx.serialize()), null).get(MwaDirect.AUTHORIZE_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            WalletDiag.log("sign request", "signAndSendTransactions sent in the same session")
+            signRequests++
+            signSeam?.let { f -> return@direct MobileWalletAdapterClient.SignAndSendTransactionsResult(arrayOf(f(bytes))) }
+            client.signAndSendTransactions(arrayOf(bytes), null).get(MwaDirect.AUTHORIZE_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
         }?.let { r ->
             return r.fold(
                 onSuccess = { (auth, res) ->

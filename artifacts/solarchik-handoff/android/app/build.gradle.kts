@@ -24,8 +24,8 @@ android {
         applicationId = "net.solardepin.solarchik.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 125
-        versionName = "1.2.5"
+        versionCode = 126
+        versionName = "1.2.6"
         buildConfigField("boolean", "MAINNET_PAID_MINT", "false")
         // The assistant build never talks to mainnet, Seeker included.
         buildConfigField("boolean", "DEVNET_ONLY", "false")

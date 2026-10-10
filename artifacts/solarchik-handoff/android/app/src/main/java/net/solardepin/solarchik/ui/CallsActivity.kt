@@ -277,14 +277,14 @@ class CallsActivity : ComponentActivity() {
         setOnClickListener { _ -> openCall(it) }
         val top = Ui.row(this@CallsActivity, gap = 8).apply { gravity = Gravity.CENTER_VERTICAL }
         if (isNew) top.addView(View(this@CallsActivity).apply { background = Ui.rounded(Ui.GOLD, dp(5).toFloat()); contentDescription = getString(R.string.calls_new) }, LinearLayout.LayoutParams(dp(10), dp(10)))
-        top.addView(Ui.weight(Ui.text(this@CallsActivity, it.who.ifBlank { getString(R.string.calls_unknown) }, 16f, Ui.TEXT, 800).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }))
+        top.addView(Ui.weight(Ui.text(this@CallsActivity, CallText.who(this@CallsActivity, it).ifBlank { getString(R.string.calls_unknown) }, 16f, Ui.TEXT, 800).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }))
         top.addView(Ui.text(this@CallsActivity, CallText.time(it.at), 12f, Ui.MUTED, 700))
         addView(top)
         val pills = Ui.row(this@CallsActivity, gap = 6).apply { gravity = Gravity.CENTER_VERTICAL }
         pills.addView(Ui.pill(this@CallsActivity, CallText.status(this@CallsActivity, it), statusColor(it)))
         CallText.language(this@CallsActivity, it).takeIf { l -> l.isNotBlank() }?.let { l -> pills.addView(Ui.pill(this@CallsActivity, l, Ui.CYAN)) }
         CallInbox.duration(it.durationSec).takeIf { d -> d.isNotBlank() }?.let { d -> pills.addView(Ui.pill(this@CallsActivity, d, Ui.MUTED)) }
-        if (it.callerName.isNotBlank() && it.caller.isNotBlank() && it.caller != "unknown") pills.addView(Ui.text(this@CallsActivity, it.caller, 12f, Ui.MUTED, 700))
+        if (it.callerName.isNotBlank() && it.caller.isNotBlank() && it.caller != "unknown") pills.addView(Ui.text(this@CallsActivity, net.solardepin.solarchik.screen.Phones.show(this@CallsActivity, it.caller), 12f, Ui.MUTED, 700))
         addView(Ui.top(pills, 8))
         addView(Ui.top(Ui.text(this@CallsActivity, CallText.summary(this@CallsActivity, it), 14f, Ui.TEXT, 600).apply { maxLines = 3; ellipsize = android.text.TextUtils.TruncateAt.END }, 8))
     }
@@ -308,7 +308,7 @@ class CallsActivity : ComponentActivity() {
     private fun renderDetail(base: CallItem) {
         val d = detail
         val it = d?.item?.copy(owner = base.owner) ?: base
-        header(it.who.ifBlank { getString(R.string.calls_unknown) }, back = true)
+        header(CallText.who(this, it).ifBlank { getString(R.string.calls_unknown) }, back = true)
         val card = Ui.card(this, accent = statusColor(it), pad = 16).apply { tag = "call-detail" }
         val pills = Ui.row(this, gap = 6).apply { gravity = Gravity.CENTER_VERTICAL }
         pills.addView(Ui.pill(this, CallText.status(this, it), statusColor(it)))
@@ -322,8 +322,8 @@ class CallsActivity : ComponentActivity() {
             card.addView(Ui.top(r, 8))
         }
         fact(R.string.calls_f_time, CallText.time(it.at) + " · " + getString(R.string.calls_kyiv))
-        fact(R.string.calls_f_number, it.caller.takeIf { c -> c != "unknown" }.orEmpty().ifBlank { getString(R.string.calls_hidden) })
-        if (it.callback.isNotBlank() && it.callback != it.caller) fact(R.string.calls_f_callback, it.callback)
+        fact(R.string.calls_f_number, net.solardepin.solarchik.screen.Phones.show(this, it.caller.takeIf { c -> c != "unknown" }.orEmpty()).ifBlank { getString(R.string.calls_hidden) })
+        if (it.callback.isNotBlank() && it.callback != it.caller) fact(R.string.calls_f_callback, net.solardepin.solarchik.screen.Phones.show(this, it.callback))
         fact(R.string.calls_f_name, it.callerName)
         fact(R.string.calls_f_duration, CallInbox.duration(d?.durationSec ?: it.durationSec))
         fact(R.string.calls_f_urgency, when (it.urgency) { "high" -> getString(R.string.calls_urg_high); "medium" -> getString(R.string.calls_urg_medium); "low" -> getString(R.string.calls_urg_low); else -> "" })
@@ -386,7 +386,7 @@ class CallsActivity : ComponentActivity() {
                         val wrap = LinearLayout(this@CallsActivity).apply { gravity = if (l.caller) Gravity.START else Gravity.END }
                         val col = Ui.column(this@CallsActivity)
                         col.addView(Ui.text(this@CallsActivity, getString(if (l.caller) R.string.calls_who_caller else R.string.calls_who_secretary), 10f, if (l.caller) Ui.CYAN else Ui.PURPLE, 800))
-                        col.addView(Ui.top(Ui.text(this@CallsActivity, l.text, 14f, Ui.TEXT, 600).apply {
+                        col.addView(Ui.top(Ui.text(this@CallsActivity, net.solardepin.solarchik.screen.Phones.show(this@CallsActivity, l.text), 14f, Ui.TEXT, 600).apply {
                             background = Ui.rounded(if (l.caller) Ui.SURFACE2 else Ui.withAlpha(Ui.PURPLE, 0x30), dp(14).toFloat(), Ui.STROKE, dp(1))
                             setPadding(dp(12), dp(8), dp(12), dp(8))
                             setTextIsSelectable(true)

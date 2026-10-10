@@ -44,7 +44,7 @@ Native Kotlin Android app. Sol for voice. Secretary on a real line with transcri
 - CLOCK IN game repo (separate): https://github.com/Solar-DePIN-Hub/Solarchik
 - API / market: https://solarchik-market.vercel.app
 - Demo (CLOCK IN cut, reuse until Assistant cut): https://youtu.be/oAxoliLwUXo
-- APK: https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.5/solarchik-assistant.apk
+- APK: https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.6/solarchik-assistant.apk
 - Deck PDF (CLOCK IN frames; refresh for Assistant): docs/clockin-deck.pdf in this repo
 - X: https://x.com/SolarDePin
 - Email: team.solardepinhub@gmail.com

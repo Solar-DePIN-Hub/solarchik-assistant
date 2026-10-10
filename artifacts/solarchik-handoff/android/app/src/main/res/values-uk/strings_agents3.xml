@@ -68,7 +68,8 @@
     <string name="br_preparing">Готую…</string>
     <string name="br_note_title">Твоє ранкове зведення готове</string>
     <string name="br_note_body">Торкнись, і Сол розповість про дзвінки, справи, гаманець і план сезону.</string>
-    <string name="br_hello">Доброго ранку, ось твоє зведення.</string>
+    <string name="br_hello">%1$s, ось твоє зведення.</string>
+    <string name="br_hi">Привіт</string>
     <string name="br_no_calls">Від учора дзвінків не було.</string>
     <plurals name="br_calls">
         <item quantity="one">Від учора %1$d дзвінок.</item>

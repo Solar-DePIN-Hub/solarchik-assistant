@@ -383,7 +383,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             else -> Ui.GREEN
         }
         top.addView(View(ctx).apply { background = Ui.rounded(dot, dp(4).toFloat()) }, LinearLayout.LayoutParams(dp(8), dp(8)))
-        top.addView(Ui.weight(Ui.text(ctx, c.who.ifBlank { ctx.getString(R.string.calls_unknown) }, 15f, Ui.TEXT, 800).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END }))
+        top.addView(Ui.weight(Ui.text(ctx, CallText.who(ctx, c).ifBlank { ctx.getString(R.string.calls_unknown) }, 15f, Ui.TEXT, 800).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END }))
         top.addView(Ui.text(ctx, CallText.time(c.at), 12f, Ui.MUTED, 700))
         addView(top)
         addView(Ui.top(Ui.text(ctx, CallText.summary(ctx, c), 13.5f, Ui.withAlpha(Ui.TEXT, 0xDD), 500).apply {
@@ -529,9 +529,27 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     private fun renderActions() {
         // 1.2.5 Morning stack: one card at a time (pay first), Do it / Later, swipe right / left, or read aloud
         val items = net.solardepin.solarchik.stack.MorningStack.items(ctx)
+        val season = net.solardepin.solarchik.stack.MorningStack.seasonItems(ctx)
         actionsShown = items.map { it.id }.toSet()
         actionsBox.removeAllViews()
         val stackLabel = (actionsWrap as? ViewGroup)?.getChildAt(0) as? TextView
+        if (items.isEmpty() && season.isNotEmpty()) {
+            // 1.2.6: the call cards are done; today's Season tasks follow in the same stack
+            actionsWrap.visibility = View.VISIBLE
+            habitView?.visibility = View.VISIBLE
+            stackLabel?.text = ctx.getString(R.string.stack_label_n, 1, season.size).uppercase()
+            val d = season.first()
+            val card = seasonStackCard(d)
+            swipe(card, onRight = { seasonOpen(d) }, onLeft = { seasonLater(d) })
+            actionsBox.addView(card)
+            val row = Ui.row(ctx, gap = 8)
+            row.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.stack_later), Ui.Btn.GHOST) { seasonLater(d) }.apply { tag = "stack-later"; textSize = 14f }))
+            row.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.stack_read), Ui.Btn.GHOST, R.drawable.ic_mic) { readStack() }.apply { tag = "stack-voice"; textSize = 14f }))
+            actionsBox.addView(row)
+            actionsBox.addView(Ui.muted(ctx, ctx.getString(R.string.stack_hint), 11.5f).apply { tag = "stack-hint"; gravity = Gravity.CENTER })
+            renderCircle()
+            return
+        }
         if (items.isEmpty()) {
             val clocked = net.solardepin.solarchik.stack.MorningStack.settle(ctx)
             actionsWrap.visibility = if (clocked) View.VISIBLE else View.GONE
@@ -543,7 +561,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         }
         actionsWrap.visibility = View.VISIBLE
         habitView?.visibility = View.VISIBLE
-        stackLabel?.text = ctx.getString(R.string.stack_label_n, 1, items.size).uppercase()
+        stackLabel?.text = ctx.getString(R.string.stack_label_n, 1, items.size + season.size).uppercase()
         val top = items.first()
         val card = CallActionCards.card(host, top) { net.solardepin.solarchik.stack.MorningStack.touched(ctx); render() }
         swipe(card, onRight = { stackDo(top) }, onLeft = { stackLater(top) })
@@ -611,6 +629,50 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         }
     }
 
+    private fun seasonStackCard(d: net.solardepin.solarchik.season.SeasonDrop): View = Ui.card(ctx, accent = Ui.CYAN, pad = 14).apply {
+        tag = "stack-season"
+        addView(Ui.pill(ctx, ctx.getString(R.string.stack_season_pill), Ui.CYAN))
+        addView(Ui.top(Ui.text(ctx, d.app, 16f, Ui.TEXT, 800).apply { tag = "stack-season-app" }, 8))
+        addView(Ui.top(Ui.muted(ctx, d.perk, 13f).apply { setLineSpacing(0f, 1.25f) }, 4))
+        if (d.deadline.isNotBlank()) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.stack_season_until, d.deadline), 12f, Ui.AMBER, 700), 4))
+        addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.stack_season_source), 11.5f), 6))
+        val row = Ui.row(ctx, gap = 8)
+        row.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.stack_season_open), Ui.Btn.PRIMARY, R.drawable.ic_open) { seasonOpen(d) }.apply { tag = "stack-season-open"; textSize = 14f }))
+        row.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.stack_season_did), Ui.Btn.SECONDARY) { seasonDid(d) }.apply { tag = "stack-season-done"; textSize = 14f }))
+        addView(Ui.top(row, 10))
+    }
+
+    /** Opens the official link only (assist-only); on return, Today asks whether it is done. */
+    internal var pendingSeason: net.solardepin.solarchik.season.SeasonDrop? = null
+    internal fun seasonOpen(d: net.solardepin.solarchik.season.SeasonDrop) {
+        pendingSeason = d
+        host.openUrl(d.sourceUrl)
+        render()
+    }
+
+    internal fun seasonDid(d: net.solardepin.solarchik.season.SeasonDrop) {
+        pendingSeason = null
+        net.solardepin.solarchik.stack.MorningStack.seasonDone(ctx, d.id)
+        render()
+    }
+
+    internal fun seasonLater(d: net.solardepin.solarchik.season.SeasonDrop) {
+        net.solardepin.solarchik.stack.MorningStack.snooze(ctx, "season:" + d.id)
+        net.solardepin.solarchik.stack.MorningStack.seasonHandledOne(ctx)
+        net.solardepin.solarchik.stack.MorningStack.touched(ctx)
+        host.toast(ctx.getString(R.string.stack_snoozed))
+        render()
+    }
+
+    /** Back from the link: "Done with MattleFun?" (nothing is marked done without the user saying so). */
+    private fun askSeasonDone() {
+        val d = pendingSeason ?: return
+        pendingSeason = null
+        android.app.AlertDialog.Builder(ctx).setMessage(ctx.getString(R.string.stack_season_ask, d.app))
+            .setPositiveButton(R.string.stack_season_did) { _, _ -> seasonDid(d) }
+            .setNegativeButton(R.string.stack_season_not_yet, null).show()
+    }
+
     internal fun stackLater(a: CallAction) {
         net.solardepin.solarchik.stack.MorningStack.snooze(ctx, a.id)
         host.toast(ctx.getString(R.string.stack_snoozed))
@@ -651,6 +713,12 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     private fun readTop(listen: Boolean) {
         val a = net.solardepin.solarchik.stack.MorningStack.items(ctx).firstOrNull()
         val v = stackVoice ?: net.solardepin.solarchik.sol.SolVoice(host).also { stackVoice = it }
+        val sd = if (a == null) net.solardepin.solarchik.stack.MorningStack.seasonItems(ctx).firstOrNull() else null
+        if (sd != null) {
+            v.onIdle = { _ -> if (listen) hearSeason(sd) }
+            if (!v.speak(ctx.getString(R.string.stack_spoken_season, sd.app, sd.perk), host.lang)) host.toast(ctx.getString(R.string.chat_tts_missing))
+            return
+        }
         if (a == null) {
             v.onIdle = null
             v.speak(ctx.getString(R.string.stack_spoken_zero), host.lang)
@@ -660,6 +728,19 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         val ask = ctx.getString(if (a.type == CallAction.PAYMENT) R.string.stack_spoken_ask_pay else R.string.stack_spoken_ask)
         v.onIdle = { _ -> if (listen) hear(a) }
         if (!v.speak(CallActionCards.title(ctx, a, who) + ". " + ask, host.lang)) host.toast(ctx.getString(R.string.chat_tts_missing))
+    }
+
+    private fun hearSeason(d: net.solardepin.solarchik.season.SeasonDrop) {
+        val ears = stackEars ?: net.solardepin.solarchik.sol.SolEars(host).also { stackEars = it }
+        if (!ears.available()) return
+        ears.listen(host.lang, onPartial = {}) { heard ->
+            when (net.solardepin.solarchik.stack.MorningStack.answer(heard)) {
+                net.solardepin.solarchik.stack.MorningStack.Answer.LATER -> { seasonLater(d); readTop(true) }
+                net.solardepin.solarchik.stack.MorningStack.Answer.DONE -> { seasonDid(d); readTop(true) }
+                net.solardepin.solarchik.stack.MorningStack.Answer.DO -> seasonOpen(d)
+                null -> if (++stackMisses < 2) readTop(true) else host.toast(ctx.getString(R.string.stack_not_heard))
+            }
+        }
     }
 
     private fun hear(a: CallAction) {
@@ -727,7 +808,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         addView(FrameLayout(ctx).apply {
             addView(check, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
         }, LinearLayout.LayoutParams(dp(44), dp(44)))
-        val who = f.item.who.ifBlank { f.item.callback.ifBlank { ctx.getString(R.string.calls_unknown) } }
+        val who = CallText.who(ctx, f.item).ifBlank { net.solardepin.solarchik.screen.Phones.show(ctx, f.item.callback).ifBlank { ctx.getString(R.string.calls_unknown) } }
         val col = Ui.column(ctx).apply {
             isClickable = true
             setOnClickListener { CallsActivity.openCall(host, f.item.key) }
@@ -761,7 +842,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         if (!w.connected) {
             walletBody.addView(Ui.muted(ctx, ctx.getString(if (w.mainnet) R.string.mn_today_wallet_none else R.string.today_wallet_none), 13.5f).apply { setLineSpacing(0f, 1.25f) })
             // 1.1.5: on mainnet this is the user's own wallet app (MWA connect), never "create a wallet"
-            walletBody.addView(Ui.top(Ui.button(ctx, ctx.getString(if (w.mainnet) R.string.mn_today_wallet_connect else R.string.today_wallet_setup), Ui.Btn.PRIMARY, R.drawable.ic_wallet) { setupWallet() }.apply { tag = "today-wallet-setup" }, 14))
+            walletBody.addView(Ui.top(Ui.button(ctx, ctx.getString(if (w.mainnet) R.string.mn_today_wallet_connect else R.string.today_wallet_setup), Ui.Btn.PRIMARY, R.drawable.ic_wallet) { setupWallet() }.apply { tag = "today-wallet-setup"; maxLines = 2 }, 14))
             return
         }
         // 1.2.4: the same live read Settings shows (shared through host.walletSol), for this address only
@@ -951,13 +1032,14 @@ class TodayScreen(host: MainActivity) : Screen(host) {
 
     override fun onShow() {
         render()
+        askSeasonDone()
         refreshBalance()
         syncActions()
         // 1.2.1: Season partner perks for the line on the Season card (hourly at most)
         if (MainActivity.tickerEnabled) host.scope.launch {
             val lang = host.lang
             val fresh = withContext(Dispatchers.IO) { runCatching { net.solardepin.solarchik.season.SeasonDropsSync.refresh(ctx, lang) }.getOrDefault(false) }
-            if (fresh && this@TodayScreen::seasonSub.isInitialized) renderSeason()
+            if (fresh && this@TodayScreen::seasonSub.isInitialized) render() // 1.2.6: the stack has Season tasks too
         }
         // 1.1.0: a briefing posted this morning and not heard yet plays once when Today opens.
         val st = net.solardepin.solarchik.sol.BriefingStore(ctx)
@@ -1013,7 +1095,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         val seen = CallInbox.seenAt(ctx)
         val fresh = today.firstOrNull { !it.blocked && it.at > seen && it.status != CallInbox.PENDING }
         return when {
-            fresh != null -> ctx.getString(R.string.today_line_call, fresh.who.ifBlank { ctx.getString(R.string.calls_unknown) }, kyivClock(fresh.at), CallText.summary(ctx, fresh).trim())
+            fresh != null -> ctx.getString(R.string.today_line_call, CallText.who(ctx, fresh).ifBlank { ctx.getString(R.string.calls_unknown) }, kyivClock(fresh.at), CallText.summary(ctx, fresh).trim())
             todos.isNotEmpty() -> ctx.resources.getQuantityString(R.plurals.today_line_todo, todos.size, todos.size)
             host.save.signedToday() -> ctx.getString(R.string.today_line_signed)
             else -> ctx.getString(R.string.today_line_idle)

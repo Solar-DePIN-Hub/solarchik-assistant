@@ -28,6 +28,35 @@ object MorningStack {
         return open.sortedBy { when (it.type) { CallAction.PAYMENT -> 0; CallAction.CALLBACK -> 1; else -> 2 } }
     }
 
+    /**
+     * 1.2.6: after the call cards, today's Season tasks (official partner drops from the Season agent). Opening one
+     * only opens the official link (assist-only); it counts as done when the user says so. Done is kept per drop.
+     */
+    fun seasonItems(ctx: Context, now: Long = System.currentTimeMillis(), lang: String = net.solardepin.solarchik.core.AppLocale.lang(ctx)): List<net.solardepin.solarchik.season.SeasonDrop> =
+        net.solardepin.solarchik.season.SeasonDropsStore(ctx).doc(lang)?.items.orEmpty()
+            .filter { it.sourceUrl.isNotBlank() && !p(ctx).getBoolean("sdone:" + it.id, false) && snoozedUntil(ctx, "season:" + it.id) <= now }
+            .distinctBy { it.app }.take((SEASON_PER_DAY - seasonHandled(ctx, now)).coerceAtLeast(0))
+
+    /** At most 3 Season tasks a day go through the stack (done or later), so clearing it stays a short habit. */
+    const val SEASON_PER_DAY = 3
+    private fun seasonHandled(ctx: Context, now: Long): Int {
+        val d = day(now, ZoneId.systemDefault()).toString()
+        return if (p(ctx).getString("sday", "") == d) p(ctx).getInt("sn", 0) else 0
+    }
+    fun seasonHandledOne(ctx: Context, now: Long = System.currentTimeMillis()) {
+        val d = day(now, ZoneId.systemDefault()).toString()
+        p(ctx).edit().putString("sday", d).putInt("sn", seasonHandled(ctx, now) + 1).apply()
+    }
+
+    fun seasonDone(ctx: Context, id: String, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()) {
+        p(ctx).edit().putBoolean("sdone:$id", true).apply()
+        seasonHandledOne(ctx, now)
+        touched(ctx, now, zone)
+    }
+
+    /** Everything waiting: call cards first, then Season tasks. */
+    fun pendingCount(ctx: Context, now: Long = System.currentTimeMillis()): Int = items(ctx, now).size + seasonItems(ctx, now).size
+
     /** Later: back tomorrow morning (06:00 local), so the next morning's stack has it. */
     fun snooze(ctx: Context, id: String, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): Long {
         val until = day(now, zone).plusDays(1).atTime(6, 0).atZone(zone).toInstant().toEpochMilli()
@@ -52,7 +81,7 @@ object MorningStack {
     fun settle(ctx: Context, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): Boolean {
         val today = day(now, zone).toString()
         if (clockedIn(ctx, now, zone)) return true
-        if (p(ctx).getString("touched", "") != today || items(ctx, now).isNotEmpty()) return false
+        if (p(ctx).getString("touched", "") != today || pendingCount(ctx, now) > 0) return false
         val days = (days(ctx) + today).sorted().takeLast(60)
         p(ctx).edit().putString("days", days.joinToString(",")).apply()
         return true
@@ -95,7 +124,7 @@ object MorningStack {
         val m = heard.orEmpty().lowercase()
         return when {
             Regex("\\b(later|tomorrow|skip|snooze|not now)\\b|пізніше|потім|завтра|пропусти").containsMatchIn(m) -> Answer.LATER
-            Regex("\\b(pay|send|call|dial|remind|do it)\\b|заплати|оплати|надішли|подзвони|набери|нагадай|зроби").containsMatchIn(m) -> Answer.DO
+            Regex("\\b(pay|send|call|dial|remind|open|do it)\\b|відкрий|заплати|оплати|надішли|подзвони|набери|нагадай|зроби").containsMatchIn(m) -> Answer.DO
             Regex("\\b(done|did it|finished|ok|okay|yes)\\b|готово|зроблено|так|вже").containsMatchIn(m) -> Answer.DONE
             else -> null
         }

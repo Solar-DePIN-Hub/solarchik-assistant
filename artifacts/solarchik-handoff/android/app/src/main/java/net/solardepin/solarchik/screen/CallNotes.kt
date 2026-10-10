@@ -175,7 +175,12 @@ object CallText {
         return if (uk) "$day о $clock" else "$day at $clock"
     }
 
-    fun summary(ctx: Context, item: CallItem): String = when {
+    fun summary(ctx: Context, item: CallItem): String = Phones.show(ctx, rawSummary(ctx, item))
+
+    /** The caller as shown: their name, else their number (masked unless they are in the user's Circle). */
+    fun who(ctx: Context, item: CallItem): String = Phones.show(ctx, item.who)
+
+    private fun rawSummary(ctx: Context, item: CallItem): String = when {
         item.blocked -> ctx.getString(R.string.calls_blocked_line)
         // 1.1.3: the worker's daily AI call minutes cap (the caller heard a short goodbye, nothing was charged)
         item.reason == "CALL_MINUTES_GLOBAL" || item.reason == "CALL_MINUTES_ACCOUNT" -> ctx.getString(R.string.calls_missed_minutes_cap)

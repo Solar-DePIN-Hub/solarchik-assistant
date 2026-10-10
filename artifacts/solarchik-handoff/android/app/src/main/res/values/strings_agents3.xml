@@ -72,7 +72,8 @@
     <string name="br_preparing">Preparing…</string>
     <string name="br_note_title">Your morning briefing is ready</string>
     <string name="br_note_body">Tap and Sol reads you the calls, follow-ups, wallet and Season plan.</string>
-    <string name="br_hello">Good morning, here is your briefing.</string>
+    <string name="br_hello">%1$s, here is your briefing.</string>
+    <string name="br_hi">Hi</string>
     <string name="br_no_calls">No calls since yesterday.</string>
     <plurals name="br_calls">
         <item quantity="one">One call since yesterday.</item>

@@ -38,8 +38,8 @@ class Release124Test {
     private val vadim2 = item("rtc_u2_EXEyYp3o", "Vadim", "Wanted to just say hi to the owner.", "+380638500117", 600)
 
     @Test fun version() {
-        assertEquals("1.2.5", BuildConfig.VERSION_NAME)
-        assertEquals(125, BuildConfig.VERSION_CODE)
+        assertEquals("1.2.6", BuildConfig.VERSION_NAME)
+        assertEquals(126, BuildConfig.VERSION_CODE)
     }
 
     @Test fun theExactSummaryMakesAPayCardEvenOffline() {
@@ -127,7 +127,7 @@ class Release124Test {
     }
 
     // ---------------- Circle
-    private val addr = "So11111111111111111111111111111111111111112"
+    private val addr = "HpEVVYWx2LiFANXAzfMy3yPTf61X1ZVDheYDYNmDJBwT"
     private fun iraPay() = CallAction(ira.key + "#p", ira.key, CallAction.PAYMENT, amount = 0.01, token = "SOL", recipient = "Ira")
 
     @Test fun circleMatchesByNormalizedPhoneThenName() {
