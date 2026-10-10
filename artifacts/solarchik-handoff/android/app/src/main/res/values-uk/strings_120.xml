@@ -48,4 +48,6 @@
     <string name="sk_mainnet_only">Seeker Genesis Token існує в основній мережі Solana.</string>
     <string name="today_season_tasks">Бонуси партнерів сьогодні: %1$s</string>
     <string name="wd_phantom_home">Якщо Phantom лише відкриває головний екран: повністю закрий Phantom (Недавні → змахни його, або Налаштування → Програми → Phantom → Примусово зупинити), повернись сюди й знову натисни «Тест підключення». Потім натисни «Надіслати», не передруковуй журнал.</string>
+    <string name="wallet_keepalive_channel">Підключення гаманця</string>
+    <string name="wallet_keepalive_title">Чекаємо на гаманець…</string>
 </resources>

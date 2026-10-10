@@ -141,10 +141,17 @@ class CallsActivity : ComponentActivity() {
             addView(column)
         }
         root.addView(scroll, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        // 1.2.3: an opaque strip under the status bar, so the cards don't scroll (and smear) under the clock and icons
+        val scrim = View(this).apply { setBackgroundColor(Ui.BG); tag = "calls-status-scrim"; isClickable = false }
+        root.addView(scrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.TOP))
+        val navScrim = View(this).apply { setBackgroundColor(Ui.BG); tag = "calls-nav-scrim"; isClickable = false }
+        root.addView(navScrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM))
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             topInset = bars.top
             bottomInset = bars.bottom
+            scrim.layoutParams = (scrim.layoutParams as FrameLayout.LayoutParams).apply { height = bars.top }
+            navScrim.layoutParams = (navScrim.layoutParams as FrameLayout.LayoutParams).apply { height = bars.bottom }
             pad()
             insets
         }

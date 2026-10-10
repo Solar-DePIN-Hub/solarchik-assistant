@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Belt and braces: nothing may merge REORDER_TASKS back in (it came from androidx.test via MWA clientlib-ktx). -->
     <uses-permission android:name="android.permission.REORDER_TASKS" tools:node="remove" />
@@ -92,6 +93,10 @@
             android:theme="@style/Theme.Solarchik"
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode|density" />
+        <service
+            android:name=".wallet.MwaKeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="shortService" />
         <service
             android:name=".screen.IncomingScreenService"
             android:exported="true"

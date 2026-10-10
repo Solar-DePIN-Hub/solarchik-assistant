@@ -106,8 +106,10 @@ object WalletDiag {
     fun logcat(): String = runCatching {
         val p = ProcessBuilder("logcat", "-d", "-v", "time", "--pid=" + android.os.Process.myPid()).redirectErrorStream(true).start()
         val tags = listOf("LocalAssociationScenario", "MobileWalletAdapter", "WebSocket", "JsonRpc20", "SolanaWallet", "MwaDirect", "ActivityTaskManager")
-        val out = p.inputStream.bufferedReader().readLines().filter { l -> tags.any { l.contains(it) } }.takeLast(120)
+        val all = p.inputStream.bufferedReader().readLines().filter { l -> tags.any { l.contains(it) } }
         p.destroy()
+        // 1.2.3: the first lines matter most (when did the first dial happen?); keep the head and the tail
+        val out = if (all.size <= 200) all else all.take(80) + listOf("… " + (all.size - 200) + " lines skipped …") + all.takeLast(120)
         out.joinToString("\n")
     }.getOrDefault("")
 

@@ -94,7 +94,7 @@ class WalletDiagPanel(private val host: MainActivity) {
         host.scope.launch {
             val t = fullText()
             (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Solarchik wallet diagnostics", t))
-            host.toast(ctx.getString(R.string.wd_copied))
+            if (android.os.Build.VERSION.SDK_INT < 33) host.toast(ctx.getString(R.string.wd_copied)) // 13+: the system says it
         }
     }
 

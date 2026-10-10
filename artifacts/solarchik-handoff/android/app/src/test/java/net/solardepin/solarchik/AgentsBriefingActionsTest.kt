@@ -483,6 +483,7 @@ class AgentsBriefingActionsTest {
             CallAction(keys[2] + "#0", keys[2], CallAction.CALLBACK, number = "+380501234567", time = "15:00", day = "today", quote = "call me back at three"),
             CallAction(keys[0] + "#0", keys[0], CallAction.PAYMENT, amount = 10.0, token = "USDC", recipient = "Olena", quote = "send me 10 USDC"),
         ))
+        CallActionStore(app).upgradeRules(net.solardepin.solarchik.screen.CallActionSync.RULES) // already seen by the current rules
         CallActionStore(app).markProcessed(keys)
         val a = launch()
         val d = a.window.decorView
@@ -538,6 +539,7 @@ class AgentsBriefingActionsTest {
             CallAction(keys[0] + "#0", keys[0], CallAction.PAYMENT, amount = 10.0, token = "USDC", recipient = "Олена", quote = "скинь мені 10 USDC"),
             CallAction(keys[2] + "#0", keys[2], CallAction.CALLBACK, number = "+380501234567", time = "15:00", day = "today", text = "Передзвонити Петру о 15:00", quote = "передзвони о третій"),
         ))
+        CallActionStore(app).upgradeRules(net.solardepin.solarchik.screen.CallActionSync.RULES) // already seen by the current rules
         CallActionStore(app).markProcessed(keys)
         val a = launch()
         val d = a.window.decorView

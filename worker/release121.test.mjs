@@ -19,8 +19,8 @@ test("blog date: JSON-LD datePublished, then <time datetime>, then the text", ()
 });
 
 test("Ukrainian notes say the callback in Ukrainian, English stays", () => {
-  assert.equal(noteText({ caller_name: "Іра", intent: "просить 50 SKR", callback: "+380638500117" }, "uk"), "Іра: просить 50 SKR. Номер для зворотного дзвінка: +380638500117.");
-  assert.equal(noteText({ caller_name: "Ira", intent: "asks for 50 SKR", callback: "+380638500117" }), "Ira: asks for 50 SKR. Callback +380638500117.");
+  assert.equal(noteText({ caller_name: "Іра", intent: "просить 50 SKR", callback: "+380638500117" }, "uk"), "Іра просить 50 SKR. Номер для зворотного дзвінка: +380638500117.");
+  assert.equal(noteText({ caller_name: "Ira", intent: "asks for 50 SKR", callback: "+380638500117" }), "Ira asks for 50 SKR. Callback +380638500117.");
   assert.equal(callbackWord("Вадим: привіт. Callback +380638500117.", "uk"), "Вадим: привіт. Номер для зворотного дзвінка: +380638500117.");
   assert.equal(callbackWord("Vadim: hi. Callback +380638500117.", "en"), "Vadim: hi. Callback +380638500117.");
 });

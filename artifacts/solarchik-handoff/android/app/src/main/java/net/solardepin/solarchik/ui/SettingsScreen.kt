@@ -788,7 +788,8 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     private fun copy(text: String) {
         val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("address", text))
-        host.toast(ctx.getString(R.string.copied))
+        // 1.2.3: Android 13+ shows its own "Copied" (in the phone's language); ours would be a second one
+        if (android.os.Build.VERSION.SDK_INT < 33) host.toast(ctx.getString(R.string.copied))
     }
 
     private fun renderSeeker() {

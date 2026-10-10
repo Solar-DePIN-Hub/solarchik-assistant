@@ -20,12 +20,12 @@ const MAX_USD = 100;
 const MAX_AGE_SEC = 30 * 24 * 3600;
 const B58 = /^[1-9A-HJ-NP-Za-km-z]+$/;
 
-const VOICE = `You are Solarchik, the owner's phone receptionist. You take messages; you never act on them.
+export const VOICE = `You are Solarchik, the owner's phone receptionist. You take messages; you never act on them.
 Greet once, briefly. Ask the caller's name and what they want to pass on. Never ask for a company, job, or anything else personal.
 Use the caller's number as the callback; ask for another number only if they offer one.
 Every spoken line is short (under 20 words), plain and natural, like a polite human receptionist. Say only what fits the conversation: no jokes, no filler, no lines the caller did not ask for.
 You ALWAYS take the message, whatever it is. Never say you "can't" or "don't do" something the caller asks for: you pass it on to the owner.
-Money: when the caller asks the owner to send, pay, lend or return money, say you will pass the request on, then ask only what is missing: how much, what it is for, and when to call back. Never send, promise, confirm or refuse a payment, and never discuss wallets, cards or crypto.
+Money: when the caller asks the owner to send, pay, lend or return money, say you will pass the request on, then ask only what is missing: how much, what it is for, and when to call back. If they give a bare number without a currency, ask once, briefly: "SOL, SKR or USDC?" (in their language); never ask about dollars or convert anything. Never send, promise, confirm or refuse a payment, and never discuss wallets or cards.
 A callback or a reminder ("call me tomorrow", "remind him about Monday"): ask the time only if it is missing, then confirm it.
 If the caller only mumbles or you did not catch it, ask them once to repeat; never guess.
 Never give out wallets, seeds, codes, passwords, or the owner's address.
@@ -920,6 +920,11 @@ export function translateSystem(lang) {
 
 /** Applies a translated field set to an inbox item (text rebuilt from the summary when there is one). */
 /** 1.2.1: the "Callback <number>." part of a note in the reader's language. */
+/** 1.2.3: notes stored before the fix: "Ira: says they…" reads "Ira says they…". */
+export function tidyNote(text) {
+  return String(text || "").replace(/^([^:\n]{1,60}): (?=[a-zа-яіїєґ])/, "$1 ");
+}
+
 export function callbackWord(text, lang) {
   return lang === "uk" ? String(text || "").replace(/\bCallback (\+?[\d ()-]{5,24})\./g, "Номер для зворотного дзвінка: $1.") : text;
 }
@@ -934,9 +939,10 @@ export function applyNoteLang(it, tr, lang = "") {
 }
 
 export async function localizeItems(env, items, lang) {
-  if (!lang || !Array.isArray(items) || !items.length) return items;
+  if (!Array.isArray(items) || !items.length) return items;
+  if (!lang) return items.map((it) => (it && it.text ? { ...it, text: tidyNote(it.text) } : it));
   const want = items.filter((it) => it && it.callId && it.status !== "pending" && Object.values(noteFields(it)).some((v) => needsLang(v, lang)));
-  const cbFix = (list) => (lang === "uk" ? list.map((it) => (it && it.text ? { ...it, text: callbackWord(it.text, lang) } : it)) : list);
+  const cbFix = (list) => list.map((it) => (it && it.text ? { ...it, text: tidyNote(lang === "uk" ? callbackWord(it.text, lang) : it.text) } : it));
   if (!want.length) return cbFix(items);
   const done = {};
   await Promise.all(want.map(async (it) => {
@@ -971,8 +977,12 @@ export async function localizeItems(env, items, lang) {
       for (const tr of Array.isArray(out.items) ? out.items : []) {
         const it = todo.find((x) => x.callId === tr?.id);
         if (!it) continue;
-        const vals = Object.values(noteFields(applyNoteLang(it, tr)));
-        if (vals.some((v) => (lang === "en" ? CYR.test(v) : RU_ONLY.test(v) || RU_WORDS.test(v)))) continue; // still the wrong language: show the original
+        // still the wrong language: show the original. 1.2.3: a name left in its own script ("Вадим") is not a reason
+        // to throw the whole translation away, so the caller's name is left out of this check
+        const f = noteFields(applyNoteLang(it, tr));
+        const name = String(f.caller_name || it.summary?.caller_name || "").trim();
+        const vals = Object.entries(f).filter(([k]) => k !== "caller_name").map(([, v]) => (name ? String(v).split(name).join("") : String(v)));
+        if (vals.some((v) => (lang === "en" ? CYR.test(v) : RU_ONLY.test(v) || RU_WORDS.test(v)))) continue;
         done[it.callId] = tr;
         await env.BALANCES.put("note_lang3:" + it.callId + ":" + lang, JSON.stringify(tr), { expirationTtl: 60 * 60 * 24 * 30 }).catch(() => {});
       }
@@ -1084,7 +1094,10 @@ export function noteText(a, lang = "") {
   const who = clip(a.caller_name, 60);
   const cb = lang === "uk" ? "Номер для зворотного дзвінка:" : "Callback";
   const sentence = (t) => (t && !/[.!?…]$/.test(t) ? t + "." : t); // 1.2.1: "…on Monday. Callback …", not "…on Monday Callback …"
-  const parts = [who && `${who}:`, sentence(clip(a.intent, 200)), a.callback ? `${cb} ${clip(a.callback, 40)}.` : "", clip(a.notes, 240)];
+  const intent = sentence(clip(a.intent, 200));
+  const lower = /^[a-zа-яіїєґ]/.test(intent || "");
+  // 1.2.3: "Ira says they paid…" when the note starts with a verb, "Ira: Please send…" otherwise
+  const parts = [who && (lower ? who : `${who}:`), who || !intent ? intent : intent.charAt(0).toUpperCase() + intent.slice(1), a.callback ? `${cb} ${clip(a.callback, 40)}.` : "", clip(a.notes, 240)];
   return parts.filter(Boolean).join(" ").slice(0, 600);
 }
 

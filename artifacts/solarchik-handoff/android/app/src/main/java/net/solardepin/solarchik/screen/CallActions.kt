@@ -256,6 +256,18 @@ class CallActionStore(context: Context) {
     private val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun processed(): Set<String> = p.getStringSet("processed", emptySet()).orEmpty()
+
+    /**
+     * 1.2.3: calls looked at with older extraction rules are looked at once more (e.g. a payment request
+     * the old rules missed); only action types the call doesn't have yet are added, so nothing reappears.
+     */
+    fun upgradeRules(version: Int): Boolean {
+        if (p.getInt("rules", 1) >= version) return false
+        p.edit().putInt("rules", version).putStringSet("processed", emptySet()).putStringSet("recheck", processed()).apply()
+        return true
+    }
+    fun recheck(): Set<String> = p.getStringSet("recheck", emptySet()).orEmpty()
+    fun clearRecheck(keys: Collection<String>) { p.edit().putStringSet("recheck", recheck() - keys.toSet()).apply() }
     fun markProcessed(keys: Collection<String>) {
         if (keys.isEmpty()) return
         p.edit().putStringSet("processed", (processed() + keys).toList().takeLast(400).toSet()).apply()
@@ -292,6 +304,9 @@ class CallActionStore(context: Context) {
 }
 
 object CallActionSync {
+    /** Bump when extraction gets better: calls already looked at are looked at once more. */
+    const val RULES = 2
+
     /**
      * Looks at new answered calls once: the worker first, the local rules when it is unreachable.
      * Returns the new actions. [post] is the HTTP call (tests script it).
@@ -299,12 +314,21 @@ object CallActionSync {
     fun run(ctx: Context, calls: List<CallItem>, lang: String, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault(),
             post: (String, String) -> Pair<Int, String> = net.solardepin.solarchik.sol.Briefing::httpPost): List<CallAction> {
         val store = CallActionStore(ctx)
+        store.upgradeRules(RULES)
         val todo = CallActionRules.candidates(calls, store.processed(), now)
         if (todo.isEmpty()) return emptyList()
         val reply = runCatching { post(ScreenApi.BASE + "/call/actions", CallActionRules.requestBody(todo, lang, zone)) }.getOrNull()
         val parsed = reply?.takeIf { it.first == 200 }?.let { CallActionRules.parse(it.second, todo) }
-        val found = parsed?.first ?: todo.flatMap { CallActionRules.local(it) }
+        val raw = parsed?.first ?: todo.flatMap { CallActionRules.local(it) }
         val done = parsed?.second?.takeIf { it.isNotEmpty() } ?: todo.map { it.key }.toSet()
+        // a call looked at before: add only the kinds of action it doesn't have yet (with fresh ids)
+        val again = store.recheck()
+        val found = raw.groupBy { it.callKey }.flatMap { (key, list) ->
+            val had = store.forCall(key)
+            if (key !in again && had.isEmpty()) list
+            else list.filter { n -> had.none { it.type == n.type } }.mapIndexed { i, a -> a.copy(id = "$key#r$RULES-$i") }
+        }
+        store.clearRecheck(done)
         store.add(found)
         store.markProcessed(done)
         return found

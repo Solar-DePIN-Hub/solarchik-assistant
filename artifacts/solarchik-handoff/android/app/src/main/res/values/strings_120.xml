@@ -48,4 +48,6 @@
     <string name="sk_mainnet_only">The Seeker Genesis Token lives on Solana mainnet.</string>
     <string name="today_season_tasks">Partner perks today: %1$s</string>
     <string name="wd_phantom_home">If Phantom only opens its home screen: close Phantom fully (Recents → swipe it away, or Settings → Apps → Phantom → Force stop), come back here and tap Test connect again. Then tap Share log, don\'t retype it.</string>
+    <string name="wallet_keepalive_channel">Wallet connect</string>
+    <string name="wallet_keepalive_title">Waiting for your wallet…</string>
 </resources>

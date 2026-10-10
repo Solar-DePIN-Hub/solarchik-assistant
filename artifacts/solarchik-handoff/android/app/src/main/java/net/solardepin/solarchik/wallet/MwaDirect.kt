@@ -46,6 +46,18 @@ class WalletLauncher(private val activity: ComponentActivity) {
         }
     }
 
+    /** 1.2.3: logs this activity's stop/start while a connect runs; call the returned function to stop. */
+    fun watchLifecycle(): () -> Unit {
+        var armed = false // addObserver replays CREATE/START/RESUME: those are not news
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (armed && e == androidx.lifecycle.Lifecycle.Event.ON_STOP || e == androidx.lifecycle.Lifecycle.Event.ON_START ||
+                e == androidx.lifecycle.Lifecycle.Event.ON_PAUSE || e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) WalletDiag.log("app", e.name.removePrefix("ON_").lowercase())
+        }
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        main.post { activity.lifecycle.addObserver(obs); armed = true }
+        return { main.post { activity.lifecycle.removeObserver(obs) } }
+    }
+
     /** The app is in front again (the user came back from the wallet). */
     val resumed: Boolean get() = activity.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
 
@@ -126,8 +138,27 @@ object MwaDirect {
         // 1.2.2: the URI judged against the MWA spec, and the WebSocket the app will dial, in words
         WalletDiag.log("uri check", MwaUri.summary(intent.data))
         WalletDiag.log("ws client", MwaUri.wsTarget(scenario) + " protocol=" + MwaUri.SUBPROTOCOL)
+        // 1.2.3: the official order: start the scenario (its WebSocket client dials on its own thread, first try
+        // after 150 ms, then backs off) BEFORE the wallet intent, with a keep-alive so the process can't be frozen
+        // while the wallet is in front, and a probe that logs any freeze.
+        MwaKeepAliveService.start(ctx.applicationContext)
+        val probe = FreezeProbe().start()
+        val lifeLog = launcher.watchLifecycle()
+        val future = try {
+            scenario.start().also { WalletDiag.log("scenario.start", "WebSocket client dialing from now (thread " + Thread.currentThread().name + ")") }
+        } catch (t: Throwable) {
+            WalletDiag.error("scenario.start failed", t)
+            probe.stop(); lifeLog(); MwaKeepAliveService.stop(ctx.applicationContext)
+            return Result.failure(WalletError(WalletError.Kind.FAILED, "scenario: " + (t.message ?: "")))
+        }
         val sentAt = System.currentTimeMillis()
         val resultAtRef = java.util.concurrent.atomic.AtomicLong(0L)
+        val done = {
+            val gap = probe.stop()
+            lifeLog()
+            MwaKeepAliveService.stop(ctx.applicationContext)
+            WalletDiag.log("connect window", "longest freeze " + gap + " ms")
+        }
         try {
             withContext(Dispatchers.Main) {
                 launcher.launch(intent) { code ->
@@ -138,17 +169,18 @@ object MwaDirect {
             }
         } catch (e: ActivityNotFoundException) {
             WalletDiag.error("no wallet app", e)
+            done()
             runCatching { scenario.close() }
             return Result.failure(WalletError(WalletError.Kind.NO_WALLET, "No compatible wallet found."))
         } catch (t: Throwable) {
             WalletDiag.error("intent failed", t)
+            done()
             runCatching { scenario.close() }
             return Result.failure(WalletError(WalletError.Kind.FAILED, "intent: " + (t.message ?: "")))
         }
         WalletDiag.log("intent sent", "waiting for the wallet's session (up to " + START_WAIT_MS / 1000 + " s)")
         return withContext(Dispatchers.IO) {
             try {
-                val future = scenario.start()
                 var client: MobileWalletAdapterClient? = null
                 var failure: Throwable? = null
                 while (client == null && failure == null) {
@@ -233,6 +265,7 @@ object MwaDirect {
                 Result.failure(WalletError.classify(t.message, t))
             } finally {
                 runCatching { scenario.close().get(5, TimeUnit.SECONDS) }
+                done()
                 WalletDiag.log("session closed")
             }
         }
