@@ -151,7 +151,7 @@ class CallsActivity : ComponentActivity() {
         root.addView(navScrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM))
         // 1.2.7: the call detail's one primary action stays on screen (sticky), over a soft fade
         sticky = FrameLayout(this).apply {
-            tag = "call-sticky"; visibility = View.GONE; isClickable = true
+            tag = "call-sticky"; visibility = View.GONE
             background = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP, intArrayOf(Ui.BG, Ui.BG, Ui.withAlpha(Ui.BG, 0)))
         }
         root.addView(sticky, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))

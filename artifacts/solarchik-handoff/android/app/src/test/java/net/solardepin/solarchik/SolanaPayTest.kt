@@ -52,9 +52,11 @@ class SolanaPayTest {
     private val dir = File("/workspace/deliverables/redesign/compare-1.2.7/build").apply { mkdirs() }
 
     private val realCluster = System.getProperty("solarchik.cluster")
+    private val realOnboarding = MainActivity.onboardingEnabled
+    private val realTicker = MainActivity.tickerEnabled
     @org.junit.Before fun setUp() { System.setProperty("solarchik.cluster", "mainnet") } // as in the release build
 
-    @After fun tearDown() { if (realCluster == null) System.clearProperty("solarchik.cluster") else System.setProperty("solarchik.cluster", realCluster); PayWatch.rpcForTest = null; PayRequestSheet.pollEnabled = true; MainActivity.tickerEnabled = true; MainActivity.onboardingEnabled = true }
+    @After fun tearDown() { if (realCluster == null) System.clearProperty("solarchik.cluster") else System.setProperty("solarchik.cluster", realCluster); PayWatch.rpcForTest = null; PayRequestSheet.pollEnabled = true; MainActivity.tickerEnabled = realTicker; MainActivity.onboardingEnabled = realOnboarding }
 
     // ------------------------------------------------------------------ URL (spec examples)
 
