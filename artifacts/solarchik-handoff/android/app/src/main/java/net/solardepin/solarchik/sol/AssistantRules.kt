@@ -67,7 +67,7 @@ object AssistantRules {
         val day = today(real, now)
         fun one(c: CallItem): String {
             val who = c.who.ifBlank { ctx.getString(R.string.calls_unknown) }
-            return ctx.getString(R.string.as_call_one, who, CallText.time(c.at), CallText.summary(ctx, c).trim().take(140))
+            return ctx.getString(R.string.as_call_one, who, CallText.spoken(c.at, now, net.solardepin.solarchik.core.AppLocale.ui(ctx)), CallText.summary(ctx, c).trim().take(140))
         }
         return when {
             day.isNotEmpty() -> ctx.resources.getQuantityString(R.plurals.as_calls_today, day.size, day.size) + " " +

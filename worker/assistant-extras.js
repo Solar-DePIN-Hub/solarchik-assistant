@@ -73,6 +73,8 @@ export function briefingSystem(lang) {
     "Direction of money: when a caller asks for a payment, the caller wants the USER to pay them (say for example \"Olena asks you to send her 10 USDC\"), never that the caller is sending money.",
     "Order: a one-line greeting; calls since yesterday (who wants what, and who to call back with the number); follow-ups due; actions from calls waiting for the user (say they need the user's confirmation); the wallet change in plain words (real mainnet funds; say if it went up or down and by how much); Watcher alerts; the Season plan for today (what is left). End with one short encouraging line.",
     "Plain speech for text-to-speech: no markdown, lists, emoji, URLs or symbols; numbers as the user would say them; under 900 characters; 5-9 short sentences.",
+    `Write everything in ${uk ? "Ukrainian (never Russian)" : "English"}, translating call notes that are in another language; keep names, numbers and amounts. Refer to a caller by name or as "they" unless the facts make their gender clear.`,
+    "Times: say them as words a voice reads well (e.g. 'this morning at 9:30', 'yesterday at 1:32 PM' / 'сьогодні о 13:32'), never abbreviated month names.",
     "Never promise profit or Seeker Season points, never tell the user to trade or add money, and never say anything was signed or sent.",
   ].join("\n");
 }
@@ -248,7 +250,8 @@ export function daySaid(day, source) {
 
 /** The follow-up line of a money request without an amount always says so. */
 export function noAmountText(text, lang) {
-  const uk = lang === "uk" || /[а-яіїєґ]/i.test(String(text || ""));
+  // 1.1.7: the app's UI language decides (a Russian/Ukrainian call still gets an English line in an English app)
+  const uk = lang === "uk" || (lang !== "en" && /[а-яіїєґ]/i.test(String(text || "")));
   const t = clip(text, 80);
   if (!t) return uk ? "Прохання надіслати гроші (суму не названо)" : "Payment request (no amount said)";
   if (/amount|сум/i.test(t)) return t;
@@ -256,7 +259,7 @@ export function noAmountText(text, lang) {
 }
 
 /** Server-side rules on whatever the model returned: known call ids and types only, sane fields, no invented address. */
-export function sanitizeActions(raw, calls) {
+export function sanitizeActions(raw, calls, lang = "") {
   const ids = new Set(calls.map((c) => c.id));
   const byId = new Map(calls.map((c) => [c.id, c]));
   const out = [];
@@ -285,7 +288,7 @@ export function sanitizeActions(raw, calls) {
       if (amount <= 0) {
         // 1.1.5: a money request without an amount is a follow-up the user sees ("asks you to send money, no amount
         // said"), never a payment card with a made-up sum. Every app version shows a reminder card.
-        out.push({ callId: a.callId, type: "reminder", amount: 0, token: "", tokenWord: "", recipient: "", address: "", number: "", when: "", day: "", date: "", text: noAmountText(text, call.lang), quote, payment: "no_amount" });
+        out.push({ callId: a.callId, type: "reminder", amount: 0, token: "", tokenWord: "", recipient: "", address: "", number: "", when: "", day: "", date: "", text: noAmountText(text, lang || call.lang), quote, payment: "no_amount" });
         perCall.set(a.callId, n);
         continue;
       }
@@ -352,7 +355,7 @@ export async function callActionsRoute(env, request, rateOk, json) {
   } catch {
     return json({ ok: false, error: "parse", ms: Date.now() - t0 }, 502);
   }
-  const actions = sanitizeActions(raw, calls);
+  const actions = sanitizeActions(raw, calls, lang);
   console.log(JSON.stringify({ event: "call_actions", lang, calls: calls.length, actions: actions.length, model: r.model, ms: Date.now() - t0 }));
   return json({ ok: true, actions, processed: calls.map((c) => c.id), language: lang, model: r.model, ms: Date.now() - t0 });
 }

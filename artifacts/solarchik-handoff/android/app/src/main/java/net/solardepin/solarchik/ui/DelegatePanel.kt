@@ -107,7 +107,7 @@ class DelegatePanel(private val host: MainActivity, private val onChange: () -> 
         val today = java.time.LocalDate.now().toString()
         addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.dlg_today, amt(DelegateRules.spentToday(desk.store.records(), today), pol), amt(pol.perDayRaw, pol)), 12.5f).apply { tag = "dlg-today" }, 4))
         if (c != null) addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.dlg_agent_sol, Fmt.sol(c.agentLamports / 1e9, 4), Fmt.short(agent.orEmpty())), 12.5f).apply { tag = "dlg-agent" }, 4))
-        if (pol.approvedAt > 0L) addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.dlg_expires, DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(pol.expiresAt()))), 12.5f).apply { tag = "dlg-expiry" }, 4))
+        if (pol.approvedAt > 0L) addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.dlg_expires, DateFormat.getDateInstance(DateFormat.MEDIUM, net.solardepin.solarchik.core.AppLocale.ui()).format(Date(pol.expiresAt()))), 12.5f).apply { tag = "dlg-expiry" }, 4))
         val row = Ui.row(ctx, gap = 8)
         row.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.dlg_refresh), Ui.Btn.GHOST) { chainAt = 0L; refresh(force = true) }.apply { tag = "dlg-refresh" }))
         if (agent != null) row.addView(Ui.weight(Ui.button(ctx, "Solscan", Ui.Btn.GHOST) { host.openUrl(SolarchikConfig.solscanAccount(agent, "mainnet")) }))

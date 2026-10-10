@@ -86,7 +86,8 @@ class Fixes0219Test {
 
     @Test fun callTimeIsKyivLocal() {
         // 1790979027789 = 2026-10-02 22:10:27 UTC = 3 Oct 01:10 in Kyiv (UTC+3)
-        assertEquals("3 Oct, 01:10", CallText.time(1790979027789, Locale.ENGLISH))
+        assertEquals("Oct 3, 1:10 AM", CallText.time(1790979027789, Locale.ENGLISH))
+        assertEquals("3 жовт., 01:10", CallText.time(1790979027789, Locale("uk", "UA")))
     }
 
     @Test fun linkedIdsAreValidatedAndCapped() {

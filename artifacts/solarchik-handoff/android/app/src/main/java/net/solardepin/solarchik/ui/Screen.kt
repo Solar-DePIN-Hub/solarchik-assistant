@@ -88,9 +88,9 @@ object Fmt {
         else String.format(Locale.US, "%02d:%02d:%02d", h, m, s)
     }
 
-    fun clock(ms: Long): String = if (ms <= 0) "—" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ms))
+    fun clock(ms: Long): String = if (ms <= 0) "—" else SimpleDateFormat("HH:mm", net.solardepin.solarchik.core.AppLocale.ui()).format(Date(ms))
 
-    fun time(ms: Long): String = if (ms <= 0) "—" else SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(ms))
+    fun time(ms: Long): String = if (ms <= 0) "—" else SimpleDateFormat(if (net.solardepin.solarchik.core.AppLocale.isUk(net.solardepin.solarchik.core.AppLocale.ui())) "d MMM, HH:mm" else "MMM d, HH:mm", net.solardepin.solarchik.core.AppLocale.ui()).format(Date(ms))
 
     fun pct(rate: Double): String = BigDecimal(rate * 100).setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "%"
 }

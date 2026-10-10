@@ -1,3 +1,4 @@
+# 1.1.7 (10 Oct 2026): /inbox and /call take ?lang=en|uk and return notes in that language (gpt-4o-mini translation, KV note_lang3:<callId>:<lang>, 30 days). Live a04fedd6.. -> dd90bc61-f809-42b1-a891-48417a0851da. Rollback to 1.1.6: npx wrangler rollback 51ca66aa-1ace-48a3-ab27-544e010ab42d --name solarchik-screen
 # 1.1.3 (10 Oct 2026): call cost cap + reminders. Every AI call is wrapped up at CALL_WRAP_SEC (165 s: the secretary says it
 # will pass the message on) and hung up at CALL_MAX_SEC (180 s) by the CallRoom alarms (POST /v1/realtime/calls/{id}/hangup);
 # daily AI call minutes per UTC day: CALL_DAILY_MIN_GLOBAL (30) and CALL_DAILY_MIN_ACCOUNT (20); over the cap a call gets a

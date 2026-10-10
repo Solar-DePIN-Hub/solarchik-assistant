@@ -85,20 +85,23 @@ object ScreenApi {
         return parseScreen(code, body)
     }
 
+    /** 1.1.7: the worker writes call notes in the app's UI language (translated on read, cached per call). */
+    fun uiLang(): String = if (net.solardepin.solarchik.core.AppLocale.isUk(net.solardepin.solarchik.core.AppLocale.ui())) "uk" else "en"
+
     fun inbox(userId: String): List<Voicemail>? {
-        val (code, body) = request("GET", "$BASE/inbox?userId=${enc(userId)}", null)
+        val (code, body) = request("GET", "$BASE/inbox?userId=${enc(userId)}&lang=${uiLang()}", null)
         return parseInbox(code, body)
     }
 
     /** 0.21.9: the secretary's calls for [userId] (GET /inbox, with call ids, status, summary, duration). */
     fun calls(userId: String): List<CallItem>? {
-        val (code, body) = request("GET", "$BASE/inbox?userId=${enc(userId)}", null)
+        val (code, body) = request("GET", "$BASE/inbox?userId=${enc(userId)}&lang=${uiLang()}", null)
         return CallInbox.parse(userId, code, body)
     }
 
     /** One call with its transcript (GET /call). */
     fun call(userId: String, callId: String): CallDetail? {
-        val (code, body) = request("GET", "$BASE/call?userId=${enc(userId)}&callId=${enc(callId)}", null)
+        val (code, body) = request("GET", "$BASE/call?userId=${enc(userId)}&callId=${enc(callId)}&lang=${uiLang()}", null)
         return CallInbox.parseDetail(userId, code, body)
     }
 

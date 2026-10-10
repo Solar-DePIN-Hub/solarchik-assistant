@@ -169,6 +169,18 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             voiceBox.addView(Ui.top(r, 6))
         }
         voiceBox.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.settings_sol_voice_preview), Ui.Btn.GHOST, R.drawable.ic_nav_sol) { previewSolVoice() }.apply { tag = "voice-preview" }, 8))
+        // 1.1.7: wipe the Sol chat (e.g. old Ukrainian messages before recording an English demo)
+        voiceBox.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.settings_clear_chat), Ui.Btn.GHOST) {
+            android.app.AlertDialog.Builder(ctx)
+                .setMessage(R.string.settings_clear_chat_confirm)
+                .setPositiveButton(R.string.settings_clear_chat) { _, _ ->
+                    net.solardepin.solarchik.sol.SolChatStore(ctx).clear()
+                    host.toast(ctx.getString(R.string.settings_clear_chat_done))
+                    host.renderAll()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }.apply { tag = "clear-chat" }, 8))
         val src = net.solardepin.solarchik.sol.VoiceStats.source(ctx)
         val ms = net.solardepin.solarchik.sol.VoiceStats.ms(ctx)
         val engine = when {
@@ -188,7 +200,10 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     }
 
     private fun previewSolVoice() {
-        val v = previewVoice ?: net.solardepin.solarchik.sol.SolVoice(host).also { previewVoice = it }
+        val v = previewVoice ?: net.solardepin.solarchik.sol.SolVoice(host).also { pv ->
+            previewVoice = pv
+            pv.onIdle = { n -> if (n == 0) host.toast(ctx.getString(R.string.sol_voice_failed)) }
+        }
         v.speak(ctx.getString(R.string.settings_sol_voice_sample), host.lang)
         voiceBox.postDelayed({ renderVoice() }, 4000)
     }

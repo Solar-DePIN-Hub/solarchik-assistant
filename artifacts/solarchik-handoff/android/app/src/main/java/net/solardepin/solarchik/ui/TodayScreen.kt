@@ -78,7 +78,12 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     internal var briefingPlaying = false
     /** Tests: the worker call (POST) and the voice are scripted. */
     internal var briefingPost: (String, String) -> Pair<Int, String> = { url, body -> (postOverride ?: defaultPost)(url, body) }
-    internal var speak: (String, String) -> Boolean = { text, lang -> (voice ?: net.solardepin.solarchik.sol.SolVoice(host).also { voice = it }).speak(text, lang) }
+    internal var speak: (String, String) -> Boolean = { text, lang -> (voice ?: net.solardepin.solarchik.sol.SolVoice(host).also { v ->
+        voice = v
+        // 1.1.7: the button went back to "Play" only on a tap (which then stopped instead of playing), and a
+        // briefing that could not be voiced was silent. Now it resets when Sol is done, with a toast if nothing played.
+        v.onIdle = { n -> briefingPlaying = false; if (n == 0) host.toast(ctx.getString(R.string.sol_voice_failed)); render() }
+    }).speak(text, lang) }
     private var actionsSynced = 0L
 
     override fun build(): View = page {

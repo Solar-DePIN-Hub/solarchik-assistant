@@ -78,7 +78,7 @@ class AutopilotPanel(private val host: MainActivity, private val onChange: () ->
     private fun row(a: AutoAction, open: Boolean) = Ui.row(ctx, gap = 8).apply {
         tag = "ap-action-${a.kind.name.lowercase()}"
         gravity = Gravity.CENTER_VERTICAL
-        val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(a.at))
+        val time = DateFormat.getTimeInstance(DateFormat.SHORT, net.solardepin.solarchik.core.AppLocale.ui()).format(Date(a.at))
         val what = when (a.kind) {
             AutoKind.SWAP -> ctx.getString(R.string.ap_kind_swap, Fmt.sol(a.lamports / 1e9, 4), a.to)
             AutoKind.CHECKIN -> ctx.getString(R.string.ap_kind_checkin)

@@ -54,7 +54,7 @@ class WatcherPanel(private val host: MainActivity, private val onChange: () -> U
         addView(Ui.top(Ui.label(ctx, ctx.getString(R.string.wt_alerts)), 14))
         if (alerts.isEmpty()) addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.wt_no_alerts), 12.5f).apply { tag = "wt-none" }, 6))
         alerts.take(6).forEach {
-            val t = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it.at))
+            val t = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, net.solardepin.solarchik.core.AppLocale.ui()).format(Date(it.at))
             addView(Ui.top(Ui.text(ctx, "$t · " + AgentTicks.text(ctx, it), 12.5f, Ui.TEXT, 600).apply { tag = "wt-alert" }, 6))
         }
         val btns = Ui.row(ctx, gap = 8)
@@ -64,7 +64,7 @@ class WatcherPanel(private val host: MainActivity, private val onChange: () -> U
         // 1.1.5: "Check now" answers on the card itself (the toast alone was easy to miss)
         val result = when {
             checking -> ctx.getString(R.string.wt_checking)
-            lastResultAt > 0L -> ctx.getString(R.string.wt_last_check, DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(lastResultAt)),
+            lastResultAt > 0L -> ctx.getString(R.string.wt_last_check, DateFormat.getTimeInstance(DateFormat.SHORT, net.solardepin.solarchik.core.AppLocale.ui()).format(Date(lastResultAt)),
                 ctx.getString(if (lastAlert) R.string.wt_alert_short else R.string.wt_quiet_short))
             else -> ""
         }

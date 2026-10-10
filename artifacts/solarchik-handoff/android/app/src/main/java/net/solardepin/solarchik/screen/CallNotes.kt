@@ -145,11 +145,34 @@ object CallText {
     val KYIV: java.util.TimeZone = java.util.TimeZone.getTimeZone("Europe/Kyiv").takeIf { it.id != "GMT" } ?: java.util.TimeZone.getTimeZone("Europe/Kiev")
 
     /** "3 Oct, 01:10" in Kyiv time (the secretary line is Ukrainian; the screen says so). */
-    fun time(ms: Long, locale: java.util.Locale = java.util.Locale.getDefault()): String {
+    fun time(ms: Long, locale: java.util.Locale = net.solardepin.solarchik.core.AppLocale.ui()): String {
         if (ms <= 0) return "—"
-        val f = java.text.SimpleDateFormat("d MMM, HH:mm", locale)
+        // 1.1.7: English "Oct 10, 1:32 PM", Ukrainian "10 жовт., 13:32", always in the app's UI language
+        val f = if (net.solardepin.solarchik.core.AppLocale.isUk(locale)) java.text.SimpleDateFormat("d MMM, HH:mm", locale)
+            else java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.US)
         f.timeZone = KYIV
         return f.format(java.util.Date(ms))
+    }
+
+    /**
+     * 1.1.7: a time Sol can say out loud: "today at 1:32 PM", "yesterday at 9:05 AM", "on October 8 at 6:00 PM"
+     * (Ukrainian: "сьогодні о 13:32", "учора о 09:05", "8 жовтня о 18:00"). Kyiv time, like the call list.
+     */
+    fun spoken(ms: Long, now: Long = System.currentTimeMillis(), locale: java.util.Locale = net.solardepin.solarchik.core.AppLocale.ui()): String {
+        if (ms <= 0) return ""
+        val uk = net.solardepin.solarchik.core.AppLocale.isUk(locale)
+        val zone = KYIV.toZoneId()
+        val d = java.time.Instant.ofEpochMilli(ms).atZone(zone)
+        val today = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        val clock = if (uk) java.time.format.DateTimeFormatter.ofPattern("HH:mm", locale).format(d)
+            else java.time.format.DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.US).format(d)
+        val day = when (d.toLocalDate()) {
+            today -> if (uk) "сьогодні" else "today"
+            today.minusDays(1) -> if (uk) "учора" else "yesterday"
+            else -> if (uk) java.time.format.DateTimeFormatter.ofPattern("d MMMM", locale).format(d)
+                else "on " + java.time.format.DateTimeFormatter.ofPattern("MMMM d", java.util.Locale.US).format(d)
+        }
+        return if (uk) "$day о $clock" else "$day at $clock"
     }
 
     fun summary(ctx: Context, item: CallItem): String = when {

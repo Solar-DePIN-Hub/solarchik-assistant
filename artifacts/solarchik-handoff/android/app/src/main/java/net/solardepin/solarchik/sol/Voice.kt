@@ -56,6 +56,10 @@ class SolVoice(context: Context) {
     /** Engine that voiced the last line: "openai:<voice>", "gemini" or "system". */
     var lastSource: String = ""
         private set
+    /** 1.1.7: lines actually heard since the last [speak]/[stop]; [onIdle] gets it when the queue runs dry. */
+    @Volatile private var played = 0
+    /** Main thread, after the last queued line ended (not after [stop]): how many lines were heard. */
+    var onIdle: ((played: Int) -> Unit)? = null
 
     /** Replaces whatever is playing with [text] (split into sentences). False only if [lang] has no offline voice. */
     fun speak(text: String, lang: String): Boolean {
@@ -109,38 +113,44 @@ class SolVoice(context: Context) {
             while (true) {
                 val (line, lang) = queue.tryReceive().getOrNull() ?: break
                 speaking = true
-                try { playLine(line, lang) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Throwable) {}
+                try { if (playLine(line, lang)) played++ } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
+                    runCatching { android.util.Log.w("SolVoice", "line failed: ${t.message}") }
+                }
             }
             speaking = false
+            val n = played
+            played = 0
+            onIdle?.invoke(n)
         }
     }
 
-    private suspend fun playLine(line: String, lang: String) {
+    private suspend fun playLine(line: String, lang: String): Boolean {
         val t0 = android.os.SystemClock.elapsedRealtime()
         var firstAudio = -1L
         val v = OpenAiVoice.voice(app)
         val g = gen
         inflight[OpenAiVoice.key(line, lang, v)]?.let { runCatching { it.await() } }
-        if (gen != g) return
+        if (gen != g) return false
         val ok = withContext(Dispatchers.IO) {
             OpenAiVoice.play(app, line, lang, v, alive = { gen == g }, onTrack = { track = it }) {
                 if (firstAudio < 0) { firstAudio = android.os.SystemClock.elapsedRealtime() - t0; SolLatency.firstAudio(app) }
             }
         }
-        if (gen != g) return
+        if (gen != g) return false
         track = null
-        if (ok) { note("openai:$v", firstAudio); return }
+        if (ok) { note("openai:$v", firstAudio); return true }
         val file = NeuralVoice.clip(app, line, lang)
         if (file != null) {
             note("gemini", android.os.SystemClock.elapsedRealtime() - t0)
             SolLatency.firstAudio(app)
             playFile(file)
-            return
+            return true
         }
         note("system", android.os.SystemClock.elapsedRealtime() - t0)
         SolLatency.firstAudio(app)
         val sys = system ?: SystemVoice(app).also { system = it }
-        if (!sys.speakAndWait(line, lang)) missingLanguage = lang
+        if (!sys.speakAndWait(line, lang)) { missingLanguage = lang; return false }
+        return true
     }
 
     private fun note(source: String, ms: Long) {
@@ -173,6 +183,7 @@ class SolVoice(context: Context) {
 
     fun stop() {
         gen++
+        played = 0
         while (queue.tryReceive().isSuccess) { /* drop queued lines */ }
         inflight.clear()
         worker?.cancel()

@@ -45,6 +45,7 @@ data class WalletSnap(val at: Long, val sol: Double?, val skr: Double?)
 
 class BriefingStore(context: Context) {
     private val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val lang = net.solardepin.solarchik.core.AppLocale.lang(context)
 
     fun policy() = BriefingPolicy(p.getBoolean("enabled", true), p.getInt("hour", 8), p.getInt("minute", 30)).clamped()
     fun setPolicy(v: BriefingPolicy) { val c = v.clamped(); p.edit().putBoolean("enabled", c.enabled).putInt("hour", c.hour).putInt("minute", c.minute).apply() }
@@ -59,9 +60,10 @@ class BriefingStore(context: Context) {
     var playedAt: Long
         get() = p.getLong("playedAt", 0L)
         set(v) { p.edit().putLong("playedAt", v).apply() }
+    /** 1.1.7: kept per UI language; after a language switch the old text is not shown (the next play makes a new one). */
     var lastText: String
-        get() = p.getString("text", "").orEmpty()
-        set(v) { p.edit().putString("text", v).apply() }
+        get() = if (p.getString("textLang", "uk") == lang) p.getString("text", "").orEmpty() else ""
+        set(v) { p.edit().putString("text", v).putString("textLang", lang).apply() }
 
     /** Balances at the last played briefing: the wallet change is measured against these. */
     fun snap(): WalletSnap? = p.getLong("snapAt", 0L).takeIf { it > 0 }?.let {

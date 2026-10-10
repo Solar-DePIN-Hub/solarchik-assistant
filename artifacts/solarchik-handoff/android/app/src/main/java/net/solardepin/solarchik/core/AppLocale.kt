@@ -48,11 +48,21 @@ object AppLocale {
 
     fun lang(ctx: Context): String = resolve(choice(ctx), deviceLocale())
 
+    /**
+     * 1.1.7: the app UI locale for every date/time on screen and in Sol's lines. Locale.getDefault() is not
+     * enough: Android resets it to the phone's language on configuration changes (a Ukrainian tablet showed
+     * "10 жовт." in the English UI).
+     */
+    @Volatile var ui: Locale? = null
+    fun ui(ctx: Context? = null): Locale = ctx?.let { localeOf(lang(it)) } ?: ui ?: Locale.getDefault()
+    fun isUk(locale: Locale): Boolean = locale.language == "uk"
+
     fun localeOf(lang: String): Locale = if (lang == UK) Locale("uk", "UA") else Locale.US
 
     /** Use from attachBaseContext: resources, formatting and Locale.getDefault() follow the app language. */
     fun wrap(base: Context): Context {
         val loc = localeOf(lang(base))
+        ui = loc
         Locale.setDefault(loc)
         val cfg = Configuration(base.resources.configuration)
         cfg.setLocales(LocaleList(loc))

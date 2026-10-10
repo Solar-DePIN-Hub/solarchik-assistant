@@ -72,7 +72,7 @@ class SeasonRulesPanel(private val host: MainActivity, private val onChange: () 
                 other.forEachIndexed { i, c -> addView(Ui.top(changeRow(c, "sr-noted-$i"), 6)) }
             }
             if (applied.isEmpty() && pending.isEmpty()) addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.sr_no_change), 12f).apply { tag = "sr-no-change" }, 10))
-            val t = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(doc.checkedAt))
+            val t = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, net.solardepin.solarchik.core.AppLocale.ui()).format(Date(doc.checkedAt))
             addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.sr_status, doc.version, t), 11f).apply { tag = "sr-status" }, 10))
         }
         addView(Ui.top(Ui.switchRow(ctx, ctx.getString(R.string.sr_adapt), store.enabled) { _, on -> store.enabled = on; onChange() }.apply { tag = "sr-switch" }, 10))

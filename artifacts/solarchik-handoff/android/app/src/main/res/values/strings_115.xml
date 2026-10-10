@@ -13,4 +13,8 @@
     <string name="as_skills_short">Three things: I answer your calls and write the notes, I keep your follow-ups and reminders, and I watch your Solana wallet. Payments always wait for your approval.</string>
     <string name="as_skills_alt">Try: “Who called today?”, “What’s my balance?” or “Remind me to call back.” Every payment waits for your approval in the wallet.</string>
     <string name="err_d_assoc">the wallet opened but never showed the connect request. Open Phantom yourself, unlock it, come back and tap Connect again</string>
+    <string name="sol_voice_failed">Couldn\'t play Sol\'s voice. Check the volume and the connection, then try again.</string>
+    <string name="settings_clear_chat">Clear chat with Sol</string>
+    <string name="settings_clear_chat_confirm">Delete all messages in the chat with Sol on this phone?</string>
+    <string name="settings_clear_chat_done">Chat cleared</string>
 </resources>

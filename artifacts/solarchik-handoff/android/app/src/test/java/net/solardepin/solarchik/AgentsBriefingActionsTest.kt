@@ -413,8 +413,8 @@ class AgentsBriefingActionsTest {
         val callAt = LocalDate.of(2026, 10, 9).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
         val noon = callAt + 60_000
         assertEquals(LocalDate.of(2026, 10, 9).atTime(15, 0).atZone(zone).toInstant().toEpochMilli(), CallActionRules.remindAt(cb, callAt, noon, zone))
-        assertEquals(LocalDate.of(2026, 10, 10).atTime(9, 30).atZone(zone).toInstant().toEpochMilli(), CallActionRules.remindAt(rem.copy(time = "09:30", day = "tomorrow"), callAt, noon, zone))
-        assertEquals(LocalDate.of(2026, 10, 10).atTime(9, 30).atZone(zone).toInstant().toEpochMilli(), CallActionRules.remindAt(rem.copy(time = "09:30"), callAt, noon, zone))
+        assertEquals(LocalDate.of(2026, 10, 10).atTime(9, 30).atZone(zone).toInstant().toEpochMilli(), CallActionRules.remindAt(rem.copy(time = "09:30", day = "tomorrow", date = ""), callAt, noon, zone))
+        assertEquals(LocalDate.of(2026, 10, 10).atTime(9, 30).atZone(zone).toInstant().toEpochMilli(), CallActionRules.remindAt(rem.copy(time = "09:30", date = ""), callAt, noon, zone))
     }
 
     @Test fun workerReplyIsParsedAndOfflineFallsBackToLocalRules() {

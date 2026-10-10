@@ -87,7 +87,7 @@ object Notes {
         NoteKind.WINDOW -> ctx.getString(R.string.note_window_body)
         NoteKind.REPORT -> ctx.getString(
             R.string.note_report_body,
-            java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(NotePlanner.reportDayEnd(now))),
+            java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT, net.solardepin.solarchik.core.AppLocale.ui()).format(java.util.Date(NotePlanner.reportDayEnd(now))),
         )
         NoteKind.DESK -> ""
     }

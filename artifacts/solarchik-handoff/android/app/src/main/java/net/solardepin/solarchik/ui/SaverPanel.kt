@@ -63,7 +63,7 @@ class SaverPanel(private val host: MainActivity, private val onChange: () -> Uni
         addView(Ui.top(chips(shares.map { if (it == 0) ctx.getString(R.string.sv_share_off) else "$it%" }, shares.indexOf(pol.sharePct), "sv-share") { set(pol.copy(sharePct = shares[it])) }, 6))
         val next = SaverRules.nextDue(pol, store.lastScheduledAt, store.enabledAt.takeIf { it > 0 } ?: System.currentTimeMillis(), ZoneId.systemDefault())
         addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.sv_now, Fmt.sol(pol.amountLamports / 1e9, 3), pol.target,
-            DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(next))), 12f).apply { tag = "sv-now"; setLineSpacing(0f, 1.2f) }, 8))
+            DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, net.solardepin.solarchik.core.AppLocale.ui()).format(Date(next))), 12f).apply { tag = "sv-now"; setLineSpacing(0f, 1.2f) }, 8))
 
         val btns = Ui.row(ctx, gap = 8)
         btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.sv_save_now, Fmt.sol(pol.amountLamports / 1e9, 3), pol.target), Ui.Btn.PRIMARY) { saveNow() }.apply { tag = "sv-save-now"; textSize = 13f }))
@@ -81,7 +81,7 @@ class SaverPanel(private val host: MainActivity, private val onChange: () -> Uni
     private fun row(a: SaveAction, canOpen: Boolean) = Ui.row(ctx, gap = 8).apply {
         tag = "sv-action-" + a.kind
         gravity = Gravity.CENTER_VERTICAL
-        val time = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(a.at))
+        val time = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, net.solardepin.solarchik.core.AppLocale.ui()).format(Date(a.at))
         val kind = ctx.getString(if (a.kind == SaveAction.CHANGE) R.string.sv_kind_change else R.string.sv_kind_scheduled)
         val st = ctx.getString(when (a.status) { SaveAction.DONE -> R.string.ap_s_done; SaveAction.SKIPPED -> R.string.ap_s_skipped; else -> R.string.ap_s_notified })
         addView(Ui.weight(Ui.text(ctx, "$time · $kind · ${Fmt.sol(a.lamports / 1e9, 4)} SOL → ${a.target} · $st", 12.5f, if (a.status == SaveAction.DONE) Ui.GREEN else Ui.TEXT, 600)))

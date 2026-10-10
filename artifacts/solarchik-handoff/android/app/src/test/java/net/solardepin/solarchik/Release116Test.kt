@@ -36,7 +36,7 @@ class Release116Test {
 
     @org.junit.After fun restore() { MainActivity.tickerEnabled = true }
 
-    @Test fun versionIs116() = assertEquals("1.1.6", BuildConfig.VERSION_NAME)
+    @Test fun versionIs117() = assertEquals("1.1.7", BuildConfig.VERSION_NAME)
 
     @Test fun associationFailuresAreNotDeclinesAndSayTheWalletNeverAsked() {
         val assoc = app.getString(R.string.err_d_assoc)

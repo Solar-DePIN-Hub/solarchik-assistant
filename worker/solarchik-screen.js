@@ -882,6 +882,96 @@ export function canonCallId(id) {
  * The inbox as the apps get it: per call, a failed "could not pick up" ghost (the live_ twin of an answered call)
  * is dropped when the same call also has an answered/pending/blocked line. Old KV data still has such ghosts.
  */
+// ---- 1.1.7: notes in the app UI language (translated on read, cached per call + language) ----
+const RU_ONLY = /[ыэёъ]/i;
+const CYR = /[а-яіїєґё]/i;
+// an English note that guessed the caller's gender ("He paid for lunch" about Ira) is rewritten with the name / "they"
+const GENDERED_EN = /\b(he|him|his|she|her|hers)\b/i;
+const RU_WORDS = /(^|[^а-яіїєґё])(пожалуйста|отправь|отправить|переведи|перезвони|спасибо|деньги|сегодня|завтра|что|это|мне нужно|он|она|просит|хочет)(?=$|[^а-яіїєґё])/i;
+/** True when this note text should be translated for a reader of `lang` (en: any Cyrillic; uk: Russian letters or no Cyrillic). */
+export function needsLang(text, lang) {
+  const t = String(text || "");
+  if (!t.trim()) return false;
+  if (lang === "en") return CYR.test(t) || GENDERED_EN.test(t);
+  if (lang === "uk") return RU_ONLY.test(t) || RU_WORDS.test(t) || (!CYR.test(t) && /[a-z]{3,}/i.test(t));
+  return false;
+}
+
+export function noteLangOf(v) {
+  const l = String(v || "").toLowerCase().slice(0, 2);
+  return l === "uk" || l === "en" ? l : "";
+}
+
+function noteFields(it) {
+  const s = it && it.summary && typeof it.summary === "object" ? it.summary : null;
+  return s ? { caller_name: clip(s.caller_name, 60), intent: clip(s.intent, 200), notes: clip(s.notes, 400) } : { text: clip(it && it.text, 600) };
+}
+
+export function translateSystem(lang) {
+  const target = lang === "uk" ? "Ukrainian" : "English";
+  return `You translate short phone-call notes for the app owner. Translate every string value into ${target}${lang === "uk" ? " (never Russian)" : ""}. Keep names, numbers, amounts, token symbols (SOL, USDC), phone numbers and times exactly. Do not add or drop facts. Pronouns: replace every he/she/him/her/his (він/вона/його/її) that refers to the caller with the caller's name or "they" (${lang === "uk" ? "neutral Ukrainian forms" : "they/them/their"}), even when the input already uses one; the input may have guessed the gender wrong. Write caller_name in the target script (e.g. Вадим → Vadym in English). JSON only, same keys: {"items":[{"id":"","caller_name":"","intent":"","notes":"","text":""}]} (keep only the keys you were given).`;
+}
+
+/** Applies a translated field set to an inbox item (text rebuilt from the summary when there is one). */
+export function applyNoteLang(it, tr) {
+  if (!tr || typeof tr !== "object") return it;
+  if (it.summary && typeof it.summary === "object") {
+    const summary = { ...it.summary, caller_name: clip(tr.caller_name, 60) || it.summary.caller_name, intent: clip(tr.intent, 200) || it.summary.intent, notes: clip(tr.notes, 400) || it.summary.notes };
+    return { ...it, summary, text: noteText(summary) || it.text };
+  }
+  return tr.text ? { ...it, text: clip(tr.text, 600) } : it;
+}
+
+export async function localizeItems(env, items, lang) {
+  if (!lang || !Array.isArray(items) || !items.length) return items;
+  const want = items.filter((it) => it && it.callId && it.status !== "pending" && Object.values(noteFields(it)).some((v) => needsLang(v, lang)));
+  if (!want.length) return items;
+  const done = {};
+  await Promise.all(want.map(async (it) => {
+    try {
+      const v = await env.BALANCES.get("note_lang3:" + it.callId + ":" + lang);
+      if (v) done[it.callId] = JSON.parse(v);
+    } catch {
+      /* cache miss */
+    }
+  }));
+  const todo = want.filter((it) => !done[it.callId]).slice(0, 12);
+  if (todo.length && env.OPENAI_API_KEY) {
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + env.OPENAI_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          temperature: 0,
+          max_tokens: 1500,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: translateSystem(lang) },
+            { role: "user", content: JSON.stringify({ items: todo.map((it) => ({ id: it.callId, ...noteFields(it) })) }) },
+          ],
+        }),
+        signal: AbortSignal.timeout(12000),
+      });
+      const j = await res.json().catch(() => ({}));
+      const out = JSON.parse(j.choices?.[0]?.message?.content || "{}");
+      console.log(JSON.stringify({ event: "note_lang", lang, asked: todo.length, status: res.status, got: Array.isArray(out.items) ? out.items.length : -1, err: j.error?.message?.slice(0, 120) }));
+      for (const tr of Array.isArray(out.items) ? out.items : []) {
+        const it = todo.find((x) => x.callId === tr?.id);
+        if (!it) continue;
+        const vals = Object.values(noteFields(applyNoteLang(it, tr)));
+        if (vals.some((v) => (lang === "en" ? CYR.test(v) : RU_ONLY.test(v) || RU_WORDS.test(v)))) continue; // still the wrong language: show the original
+        done[it.callId] = tr;
+        await env.BALANCES.put("note_lang3:" + it.callId + ":" + lang, JSON.stringify(tr), { expirationTtl: 60 * 60 * 24 * 30 }).catch(() => {});
+      }
+    } catch (e) {
+      console.log(JSON.stringify({ event: "note_lang_fail", lang, error: String((e && e.message) || e).slice(0, 160) }));
+      /* translation is best effort: the original note stays */
+    }
+  }
+  return items.map((it) => (it && done[it.callId] ? applyNoteLang(it, done[it.callId]) : it));
+}
+
 export function cleanInbox(items) {
   const list = (Array.isArray(items) ? items : []).filter((it) => it && typeof it === "object");
   const good = new Set(list.filter((it) => it.callId && it.status !== "failed").map((it) => canonCallId(it.callId)));
@@ -962,7 +1052,7 @@ const NOTE_TOOL = {
       intent: {
         type: "string",
         description:
-          "Every request of the caller, in the caller's language, one or two sentences. Name money requests plainly (\"asks you to send him money: amount not said, for rent\"), callbacks with their time and reminders with their day; never reduce a request to a greeting.",
+          "Every request of the caller, in the caller's language (Ukrainian or English; Russian callers get Ukrainian), one or two sentences. Refer to the caller by name or as \"they\" unless the call makes their gender clear. Name money requests plainly (\"asks you to send him money: amount not said, for rent\"), callbacks with their time and reminders with their day; never reduce a request to a greeting.",
       },
       urgency: { type: "string", enum: ["low", "medium", "high"] },
       spam_risk: { type: "string", enum: ["low", "medium", "high"] },
@@ -1265,7 +1355,7 @@ export async function finishNote(env, callId, userId, caller, lines = []) {
           {
             role: "system",
             content:
-              'Summarise this phone call for the person who was called. JSON only: {"caller_name":"","intent":"every request in one or two sentences: money they ask the owner to send (amount if said, what for), callbacks with time, reminders with day; never reduce a request to a greeting","urgency":"low|medium|high","spam_risk":"low|medium|high","action":"callback|ignore|block","notes":""}. Write intent and notes in the language the caller spoke. Leave a field empty when unknown. Never invent details.',
+              'Summarise this phone call for the person who was called. JSON only: {"caller_name":"","intent":"every request in one or two sentences: money they ask the owner to send (amount if said, what for), callbacks with time, reminders with day; never reduce a request to a greeting","urgency":"low|medium|high","spam_risk":"low|medium|high","action":"callback|ignore|block","notes":""}. Write intent and notes in the language the caller spoke (Ukrainian or English; if the caller spoke Russian, write Ukrainian). Refer to the caller by name or as \"they\" unless the call makes their gender clear. Leave a field empty when unknown. Never invent details.',
           },
           { role: "user", content: said.map((l) => (l.who === "caller" ? "Caller: " : "Secretary: ") + clip(l.text, 400)).join("\n").slice(0, 6000) },
         ],
@@ -2169,9 +2259,10 @@ export default {
     if (request.method === "GET" && url.pathname === "/inbox") {
       const userId = url.searchParams.get("userId") || "";
       if (!userId) return json({ error: "userId required" }, 400);
-      return readCached(ctx, "inbox:" + userId, 8, async () => {
+      const nl = noteLangOf(url.searchParams.get("lang"));
+      return readCached(ctx, "inbox:" + userId + (nl ? ":" + nl : ""), 8, async () => {
         const raw = await env.BALANCES.get("inbox:" + userId);
-        return { userId, items: cleanInbox(raw ? JSON.parse(raw) : []) };
+        return { userId, items: await localizeItems(env, cleanInbox(raw ? JSON.parse(raw) : []), nl) };
       });
     }
 
@@ -2180,7 +2271,8 @@ export default {
       const userId = url.searchParams.get("userId") || "";
       const callId = url.searchParams.get("callId") || "";
       if (!validUserId(userId) || !callId) return json({ error: "userId and callId required" }, 400);
-      return readCached(ctx, "call:" + userId + ":" + callId, 3, async () => {
+      const nl = noteLangOf(url.searchParams.get("lang"));
+      return readCached(ctx, "call:" + userId + ":" + callId + (nl ? ":" + nl : ""), 3, async () => {
         let rawInbox = "[]";
         try {
           rawInbox = (await env.BALANCES.get("inbox:" + userId)) || "[]";
@@ -2189,7 +2281,8 @@ export default {
           rawInbox = "[]";
         }
         const items = cleanInbox(JSON.parse(rawInbox));
-        const item = items.find((it) => it.callId === callId) || null;
+        const found = items.find((it) => it.callId === callId) || null;
+        const item = found && nl ? (await localizeItems(env, [found], nl))[0] : found;
         let rec = null;
         try {
           rec = JSON.parse((await env.BALANCES.get("transcript:" + callId)) || "null");
