@@ -16,7 +16,8 @@ import java.util.Locale
 abstract class Screen(val host: MainActivity) {
     val ctx: Context get() = host
     protected lateinit var column: LinearLayout
-    private var scroll: ScrollView? = null
+    internal var scroll: ScrollView? = null
+        private set
 
     val view: View by lazy { build() }
 
@@ -52,7 +53,7 @@ abstract class Screen(val host: MainActivity) {
     open fun applyInsets() {
         if (!this::column.isInitialized) return
         val side = ctx.dp(18)
-        column.setPadding(side, host.topInset + ctx.dp(14), side, host.bottomInset + ctx.dp(112))
+        column.setPadding(side, host.topInset + ctx.dp(14), side, host.navClearance())
     }
 
     open fun render() {}

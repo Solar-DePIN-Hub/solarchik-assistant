@@ -12,6 +12,7 @@ import net.solardepin.solarchik.BuildConfig
 import net.solardepin.solarchik.core.SolarchikConfig
 import net.solardepin.solarchik.game.GameSave
 import net.solardepin.solarchik.solana.LegacyTx
+import net.solardepin.solarchik.solana.MemoIx
 import net.solardepin.solarchik.solana.Rpc
 import org.sol4k.PublicKey
 import java.time.LocalDate
@@ -348,14 +349,15 @@ class SolanaWallet(context: Context) {
         if (launcher != null) {
             val pkg = walletPackage.takeIf { it.isNotBlank() && it in installedWallets() }
             val forget = { adapter.authToken = null; prefs.edit().remove("auth").apply() }
-            var r = MwaDirect.authorize(app, launcher, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", prefs.getString("auth", null), forget)
+            val keep: (MobileWalletAdapterClient.AuthorizationResult) -> Unit = { auth -> remember(auth.authToken, accountKey(auth)?.let { Base58.encode(it) }) }
+            var r = MwaDirect.authorize(app, launcher, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", prefs.getString("auth", null), forget, keep)
             // 1.2.4: the wallet refused the saved token and closed the session: one new session, no token (the approve prompt)
             if (r.exceptionOrNull()?.message?.startsWith(MwaDirect.NEW_SESSION) == true) {
                 forget()
                 val again = directLauncher()
                 if (again != null) {
                     WalletDiag.log("retry", "new session without the saved token")
-                    r = MwaDirect.authorize(app, again, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", null, forget)
+                    r = MwaDirect.authorize(app, again, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", null, forget, keep)
                 }
             }
             return r.fold(
@@ -368,7 +370,6 @@ class SolanaWallet(context: Context) {
                 },
                 onFailure = { e ->
                     val err = e as? WalletError ?: WalletError.classify(e.message, e)
-                    if (err.authRejected) { adapter.authToken = null; prefs.edit().remove("auth").apply() }
                     if (err.kind == WalletError.Kind.NO_WALLET && offerAfterNoWallet()) Result.success(WalletSession(address, "")) else Result.failure(err)
                 },
             )
@@ -426,14 +427,12 @@ class SolanaWallet(context: Context) {
         adapter.rpcCluster = rpcCluster()
         val pkg = walletPackage.takeIf { it.isNotBlank() && it in installedWallets() }
         return MwaDirect.transact(app, l, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", prefs.getString("auth", null),
-            onTokenRejected = { adapter.authToken = null; prefs.edit().remove("auth").apply() }, block = block)
+            onTokenRejected = { adapter.authToken = null; prefs.edit().remove("auth").apply() },
+            onAuthorized = { auth -> remember(auth.authToken, accountKey(auth)?.let { Base58.encode(it) }) }, block = block)
     }
 
-    private fun directFailure(e: Throwable): WalletError {
-        val err = e as? WalletError ?: WalletError.classify(e.message, e)
-        if (err.authRejected) { adapter.authToken = null; prefs.edit().remove("auth").apply() }
-        return err
-    }
+    /** 1.2.9: a failure never wipes the token here; only the wallet refusing it at authorize does (onTokenRejected). */
+    private fun directFailure(e: Throwable): WalletError = e as? WalletError ?: WalletError.classify(e.message, e)
 
     private fun fail(result: TransactionResult.Failure<*>): WalletError {
         WalletDiag.log("wallet request failed", result.message + " | " + WalletDiag.chain(result.e))
@@ -661,11 +660,13 @@ class SolanaWallet(context: Context) {
     ): Result<ClockProof> {
         val memo = MemoTx.clockMemo(day, meters, streak)
         if (useLocal()) return localMemo(memo)
-        val sent = sendMemo(sender, memo)
-        if (sent.isSuccess) return sent
-        val err = sent.exceptionOrNull()
-        if (stopAfter(err)) return Result.failure(err ?: WalletError(WalletError.Kind.DECLINED))
-        return signMessage(sender, memo)
+        // 1.2.9 (tablet: Phantom opened, never showed Connect, "the wallet opened but never showed the connect
+        // request"): the memo used the old clientlib-ktx session. It now goes through exactly the payment path
+        // (signAndSend: prebuilt with a fresh blockhash + min_context_slot, simulated, authorize + sign-and-send in one
+        // logged session, sign-only fallback). No second wallet trip to a detached message signature.
+        val cluster = clusterName
+        return signAndSend(sender) { payer, blockhash -> LegacyTx.compile(payer, blockhash, listOf(MemoIx.memo(payer, memo))) }
+            .map { ClockProof(it.address, it.signature, cluster, "tx", prefs.getString("auth", null).orEmpty()) }
     }
 
     /** CLOCK IN with the built-in wallet: a devnet memo tx (or a detached signature when it has no SOL for the fee). */
@@ -681,31 +682,6 @@ class SolanaWallet(context: Context) {
             onSuccess = { ClockProof(addr, it, clusterName, "tx", "") },
             onFailure = { ClockProof(addr, Base58.encode(kp.sign(memo.encodeToByteArray())), clusterName, "message", "") },
         )
-    }
-
-    private suspend fun sendMemo(sender: ActivityResultSender, memo: String): Result<ClockProof> {
-        adapter.rpcCluster = rpcCluster()
-        val cluster = clusterName
-        val blockhash = runCatching { rpc.latestBlockhash() }.getOrElse {
-            return Result.failure(WalletError(WalletError.Kind.NETWORK, it.message ?: ""))
-        }
-        return when (
-            val result = adapter.transact(sender) { auth ->
-                val payer = accountKey(auth) ?: error("No account")
-                val tx = MemoTx.build(payer, blockhash, memo)
-                signAndSendTransactions(arrayOf(tx))
-            }
-        ) {
-            is TransactionResult.Success -> {
-                val payer = accountKey(result.authResult)?.let { Base58.encode(it) } ?: ""
-                remember(result.authResult.authToken, payer)
-                val sig = result.payload.signatures.firstOrNull()?.let { Base58.encode(it) } ?: ""
-                if (sig.isBlank()) Result.failure(WalletError(WalletError.Kind.FAILED, "Wallet sent no signature"))
-                else Result.success(ClockProof(payer, sig, cluster, "tx", result.authResult.authToken ?: ""))
-            }
-            is TransactionResult.NoWalletFound -> Result.failure(WalletError(WalletError.Kind.NO_WALLET))
-            is TransactionResult.Failure -> Result.failure(fail(result))
-        }
     }
 
     /**

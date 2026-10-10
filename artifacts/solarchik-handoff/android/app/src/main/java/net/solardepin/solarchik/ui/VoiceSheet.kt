@@ -53,11 +53,11 @@ object VoiceSheet {
         overlay = null
         val ctx = host
         val o = FrameLayout(ctx).apply { tag = "voice-sheet"; isClickable = true; setOnClickListener { close() } }
-        val scrim = View(ctx).apply { setBackgroundColor(Color.argb(0x99, 3, 8, 15)) }
+        val scrim = View(ctx).apply { setBackgroundColor(Color.argb(0xE0, 3, 8, 15)) /* 1.2.9: dark, no blur (was muddy on the tablet) */ }
         o.addView(scrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         val sheet = Ui.column(ctx).apply {
             isClickable = true
-            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Kit.S3, Kit.S2)).apply { cornerRadius = ctx.dp(32).toFloat(); setStroke(ctx.dp(1), Ui.withAlpha(Color.WHITE, 0x1A)) }
+            background = GradientDrawable().apply { setColor(Color.parseColor("#0B1220")); cornerRadius = ctx.dp(32).toFloat(); setStroke(ctx.dp(1), Ui.withAlpha(Ui.GOLD, 0x55)) }
             setPadding(ctx.dp(22), ctx.dp(14), ctx.dp(22), ctx.dp(22))
             gravity = Gravity.CENTER_HORIZONTAL
         }
@@ -81,14 +81,14 @@ object VoiceSheet {
         val label = Ui.text(ctx, ctx.getString(R.string.voice_listening).uppercase(), 14f, Ui.GOLD, 800).apply { letterSpacing = 0.14f; tag = "voice-label" }
         sheet.addView(label)
         val transcript = Ui.display(ctx, ctx.getString(R.string.voice_hint), 24f).apply {
-            tag = "voice-transcript"; gravity = Gravity.CENTER; setTextColor(Ui.withAlpha(Ui.TEXT, 0x99)); maxLines = 4
+            tag = "voice-transcript"; gravity = Gravity.CENTER; setTextColor(Ui.withAlpha(Ui.TEXT, 0xD9)); maxLines = 4
         }
         sheet.addView(Ui.top(transcript, 12), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = ctx.dp(12) })
         val wave = Wave(ctx).apply { tag = "voice-wave" }
         sheet.addView(wave, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ctx.dp(56)).apply { topMargin = ctx.dp(16) })
         val intentRow = Ui.row(ctx, gap = 12).apply {
             gravity = Gravity.CENTER_VERTICAL
-            background = Ui.rounded(Kit.S1, ctx.dp(22).toFloat(), Kit.HAIR, ctx.dp(1))
+            background = Ui.rounded(Color.parseColor("#16213A"), ctx.dp(22).toFloat(), Ui.withAlpha(Color.WHITE, 0x22), ctx.dp(1))
             setPadding(ctx.dp(14), ctx.dp(10), ctx.dp(10), ctx.dp(10))
             tag = "voice-intent"
         }
@@ -117,9 +117,6 @@ object VoiceSheet {
         val navIdx = (0 until root.childCount).firstOrNull { root.getChildAt(it).tag == "nav-wrap" } ?: root.childCount
         root.addView(o, navIdx, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         overlay = o
-        if (android.os.Build.VERSION.SDK_INT >= 31 && !Kit.reducedMotion(ctx)) runCatching {
-            root.getChildAt(0).setRenderEffect(android.graphics.RenderEffect.createBlurEffect(24f, 24f, android.graphics.Shader.TileMode.CLAMP))
-        }
         scrim.alpha = 0f; scrim.animate().alpha(1f).setDuration(200).start()
         sheet.translationY = ctx.dp(420).toFloat()
         sheet.animate().translationY(0f).setDuration(320).setInterpolator(android.view.animation.PathInterpolator(0.05f, 0.7f, 0.1f, 1f)).start()

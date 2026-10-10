@@ -189,7 +189,7 @@ class Release125Test {
         // 7) the stack: Later on what's left; with nothing left, Today says Clocked in (no money needed)
         a.select(MainActivity.Tab.TODAY); idle()
         audit(a.window.decorView, "12-today-stack-callback")
-        repeat(5) { find(a.window.decorView, "stack-later")?.performClick(); idle() }
+        StackKit.clear(a); idle()
         audit(a.window.decorView, "13-today-clocked-in")
         assertTrue(find(a.window.decorView, "stack-clocked") != null)
         assertEquals("1 day in a row. Your stack is clear.", (find(a.window.decorView, "stack-streak") as TextView).text.toString())
@@ -219,6 +219,9 @@ class Release125Test {
         assertEquals(false, MS.clockedIn(app, t, zone))
         MS.done(app, ira.key + "#1", t, zone)
         assertTrue(MS.items(app, t).isEmpty())
+        assertEquals("1.2.9: never by itself", false, MS.clockedIn(app, t, zone))
+        assertTrue(MS.readyToClock(app, t, zone))
+        assertTrue(MS.settle(app, t, zone))
         assertTrue(MS.clockedIn(app, t, zone))
         // the snoozed payment is back the next morning, and the clock-in is not repeated for nothing
         assertEquals(listOf(CallAction.PAYMENT), MS.items(app, at("2026-10-12", 7)).map { it.type })

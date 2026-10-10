@@ -84,7 +84,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
 
     override fun applyInsets() {
         if (!this::colView.isInitialized) return
-        colView.setPadding(dp(18), host.topInset + dp(12), dp(18), host.bottomInset + dp(108))
+        colView.setPadding(dp(18), host.topInset + dp(12), dp(18), host.navClearance() - dp(14)) // Today does not scroll: 6 dp above the bar
     }
 
     // ------------------------------------------------------------------ header + progress
@@ -110,6 +110,18 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             setPadding(dp(14), dp(10), dp(16), dp(10))
             background = Ui.rounded(Ui.withAlpha(Ui.GOLD, 0x1C), dp(18).toFloat(), Ui.withAlpha(Ui.GOLD, 0x55), dp(1))
         }
+        // 1.2.9 (tablet: Season tasks were buried in Me): a compact Seeker Season pill in the header (no deck height
+        // lost); today's Season task is also a card in the stack by default.
+        seasonText = Kit.chip(ctx, "", Ui.PURPLE, R.drawable.lc_spark, size = 17f).apply {
+            setPadding(dp(12), dp(10), dp(14), dp(10))
+            background = Ui.ripple(Ui.rounded(Ui.withAlpha(Ui.PURPLE, 0x1C), dp(18).toFloat(), Ui.withAlpha(Ui.PURPLE, 0x55), dp(1)), dp(18).toFloat())
+        }
+        seasonRow = seasonText.apply {
+            tag = "today-season-row"
+            isClickable = true
+            setOnClickListener { Kit.haptic(it, "tick"); host.select(MainActivity.Tab.SEASON, animate = true) }
+        }
+        addView(seasonRow)
         addView(streakPill)
     }
 
@@ -154,6 +166,17 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         })
     }
 
+    private lateinit var seasonRow: View
+    private lateinit var seasonText: TextView
+
+    private fun renderSeasonRow() {
+        if (!this::seasonRow.isInitialized) return
+        val n = if (!Habits.on(ctx, Habits.SEASON)) 0 else net.solardepin.solarchik.season.SeasonDropsStore(ctx).doc(host.lang)?.items.orEmpty().count { it.sourceUrl.isNotBlank() }
+        seasonRow.visibility = if (n > 0) View.VISIBLE else View.GONE
+        seasonText.text = Fmt.count(n)
+        seasonText.contentDescription = ctx.resources.getQuantityString(R.plurals.today_season_row, n, n)
+    }
+
     private fun playTile(): View = Ui.row(ctx, gap = 14).apply {
         tag = "today-play"
         gravity = Gravity.CENTER_VERTICAL
@@ -190,19 +213,22 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         val best = host.save.bestDistance
         playSub.text = if (best > 0) ctx.getString(R.string.play_best, best) else ctx.getString(R.string.play_first)
 
+        renderSeasonRow()
         val items = MorningStack.deck(ctx, now)
         shown = items
         deckBox.removeAllViews()
         deck = null
         if (items.isEmpty()) {
-            val clocked = MorningStack.settle(ctx, now)
-            val st = MorningStack.streak(ctx, now) // after settle: today's clock-in counts
+            // 1.2.9: clocking in is the user's tap on "Clock in" (never a side effect of a card leaving the stack)
+            val clocked = MorningStack.clockedIn(ctx, now)
+            val ready = !clocked && MorningStack.readyToClock(ctx, now)
+            val st = MorningStack.streak(ctx, now)
             streakPill.text = Fmt.count(st)
             streakPill.contentDescription = ctx.getString(R.string.streak_desc, st)
             progressRow.visibility = View.GONE
             hints.visibility = View.GONE
             playTile.visibility = if (clocked) View.GONE else View.VISIBLE
-            deckBox.addView(if (clocked) clockedView(st) else emptyView(), FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            deckBox.addView(if (clocked) clockedView(st) else if (ready) readyView() else emptyView(), FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             return
         }
         progressRow.visibility = View.VISIBLE
@@ -216,18 +242,27 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         val views = items.take(3).mapIndexed { i, it -> cardFor(it, i == 0).also { v -> if (i > 0) peekTags(v) } }
         d.setCards(views)
         val topItem = items.first()
-        d.rightSpringsBack = topItem is StackItem.Call && (topItem.a.type == CallAction.PAYMENT || topItem.a.type == CallAction.OWED)
+        topNow = topItem
+        // 1.2.9: a card that needs a real action (pay, call, Season task, Save USDC, call someone) never flies off as
+        // Done on a swipe: it springs back and either opens the wallet (pay) or asks "Did you do it?".
+        d.rightSpringsBack = needsAction(topItem)
         d.stampRight = (views.first() as? ViewGroup)?.findViewWithTag("stamp-right")
         d.stampLeft = (views.first() as? ViewGroup)?.findViewWithTag("stamp-left")
         d.onProgress = { p ->
             tintR.alpha = p.coerceIn(0f, 1f); tintL.alpha = (-p).coerceIn(0f, 1f)
             hintMid.text = when {
-                p >= 1f -> ctx.getString(if (d.rightSpringsBack) R.string.stack_release_settle else R.string.stack_release_done)
+                p >= 1f -> ctx.getString(when {
+                    topItem is StackItem.Call && (topItem.a.type == CallAction.PAYMENT || topItem.a.type == CallAction.OWED) -> R.string.stack_release_settle
+                    d.rightSpringsBack -> R.string.stack_release_confirm
+                    else -> R.string.stack_release_done
+                })
                 p <= -1f -> ctx.getString(R.string.stack_release_later)
                 else -> ctx.getString(R.string.stack_hint_short)
             }
         }
-        d.onCommit = { dir -> tintR.alpha = 0f; tintL.alpha = 0f; if (dir > 0) doIt(topItem) else later(topItem) }
+        d.onCommit = { dir -> tintR.alpha = 0f; tintL.alpha = 0f; if (dir > 0) swipedDone(topItem) else later(topItem) }
+        // tap on the card = open its action (call, pay, open the dApp)
+        views.first().apply { isClickable = true; setOnClickListener { doIt(topItem) }; setOnLongClickListener { later(topItem); true }; contentDescription = labelOf(topItem) }
         deck = d
         deckBox.addView(d, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
@@ -238,7 +273,56 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         return if (p.getString("hday", "") == MorningStack.day(now).toString()) p.getInt("hn", 0) else 0
     }
 
+    /** The card on top when the stack was drawn (what a handled/snoozed count refers to). */
+    private var topNow: StackItem? = null
+    private var snoozing = false
+
+    private fun needsAction(item: StackItem): Boolean = when (item) {
+        is StackItem.Call -> item.a.type == CallAction.PAYMENT || item.a.type == CallAction.OWED || item.a.type == CallAction.CALLBACK
+        is StackItem.Habit -> item.id == Habits.SAVE || item.id == Habits.CALL
+        is StackItem.Season -> true
+    }
+
+    /** What the card is, in a few words ("Call Ira back at 15:00", "Pay Ira 0.01 SOL", "Season task: open Jupiter"). */
+    internal fun labelOf(item: StackItem): String = when (item) {
+        is StackItem.Call -> {
+            val who = CallInbox.cached(ctx).firstOrNull { it.key == item.a.callKey }?.who?.takeIf { it.isNotBlank() } ?: item.a.recipient
+            when (item.a.type) {
+                CallAction.PAYMENT -> ctx.getString(R.string.card_pay_title, who, CallActionCards.amount(item.a), item.a.token)
+                else -> CallActionCards.title(ctx, item.a, who)
+            }
+        }
+        is StackItem.Habit -> Habits.title(ctx, item.id)
+        is StackItem.Season -> ctx.getString(R.string.season_task_open, item.d.app)
+    }
+
+    /** Right swipe: Done for a plain card; for an action card, the payment opens the wallet, the rest ask "Did you do it?". */
+    private fun swipedDone(item: StackItem) {
+        if (!needsAction(item)) { doIt(item); return }
+        val pays = item is StackItem.Call && (item.a.type == CallAction.PAYMENT || item.a.type == CallAction.OWED) || (item is StackItem.Habit && item.id == Habits.SAVE)
+        if (pays) { doIt(item); return }
+        val dlg = android.app.AlertDialog.Builder(ctx).setTitle(labelOf(item)).setMessage(R.string.stack_did_q)
+            .setPositiveButton(R.string.stack_did_yes) { _, _ -> confirmDone(item) }
+            .setNegativeButton(R.string.stack_did_open) { _, _ -> doIt(item) }
+            .setNeutralButton(android.R.string.cancel, null).create()
+        dlg.show(); lastConfirm = dlg
+    }
+
+    @androidx.annotation.VisibleForTesting internal var lastConfirm: android.app.AlertDialog? = null
+
+    /** The user said "I did it": the card counts as Done (nothing is opened or sent). */
+    private fun confirmDone(item: StackItem) {
+        when (item) {
+            is StackItem.Call -> { MorningStack.done(ctx, item.a.id); countHandled() }
+            is StackItem.Habit -> { Habits.markDone(ctx, item.id); countHandled() }
+            is StackItem.Season -> { seasonDid(item.d); return }
+        }
+        render()
+    }
+
     private fun countHandled() {
+        topNow?.let { MorningStack.log(ctx, !snoozing, labelOf(it)) }
+        snoozing = false
         val now = System.currentTimeMillis()
         val p = ctx.getSharedPreferences(MorningStack.PREFS, android.content.Context.MODE_PRIVATE)
         p.edit().putString("hday", MorningStack.day(now).toString()).putInt("hn", handledToday(now) + 1).apply()
@@ -406,7 +490,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
 
     private fun seasonCard(d: net.solardepin.solarchik.season.SeasonDrop, top: Boolean): View = shell("stack-season", Ui.PURPLE, top) {
         kind(R.drawable.lc_spark, ctx.getString(R.string.kind_season), Ui.PURPLE, ctx.getString(R.string.src_season))
-        title(d.app, "stack-season-app")
+        title(ctx.getString(R.string.season_task_open, d.app), "stack-season-app")
         body(d.perk, Ui.TEXT)
         if (d.deadline.isNotBlank()) addView(Ui.top(Kit.chip(ctx, ctx.getString(R.string.card_until, d.deadline), Ui.AMBER, R.drawable.lc_clock), 12))
         addView(View(ctx), LinearLayout.LayoutParams(1, 0, 1f))
@@ -427,7 +511,39 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         }
     }
 
+    /**
+     * 1.2.9 swipe left (or long-press) = Later: the card moves to the end of today's stack right away ("Later today",
+     * the default); a small choice offers Tomorrow or Dismiss instead.
+     */
     private fun later(item: StackItem) {
+        MorningStack.laterToday(ctx, item.key)
+        render()
+        val opts = arrayOf(ctx.getString(R.string.later_today), ctx.getString(R.string.later_tomorrow), ctx.getString(R.string.later_dismiss))
+        val dlg = android.app.AlertDialog.Builder(ctx).setTitle(labelOf(item))
+            .setItems(opts) { _, i -> when (i) { 1 -> tomorrow(item); 2 -> dismiss(item) } }
+            .create()
+        dlg.show(); lastLater = dlg
+    }
+
+    @androidx.annotation.VisibleForTesting internal var lastLater: android.app.AlertDialog? = null
+
+    /** Dismiss: gone for good (a call card) or for today (a habit / Season task); nothing is done or sent. */
+    private fun dismiss(item: StackItem) {
+        MorningStack.log(ctx, MorningStack.LOG_DISMISSED, labelOf(item))
+        when (item) {
+            is StackItem.Call -> net.solardepin.solarchik.screen.CallActionStore(ctx).update(item.a.id) { it.copy(status = CallAction.DISMISSED) }
+            is StackItem.Habit -> MorningStack.snooze(ctx, Habits.key(item.id))
+            is StackItem.Season -> { MorningStack.snooze(ctx, "season:" + item.d.id); MorningStack.seasonHandledOne(ctx) }
+        }
+        MorningStack.touched(ctx)
+        topNow = null; countHandled()
+        render()
+    }
+
+    /** Tomorrow: snoozed until tomorrow morning (the 1.2.8 Later). */
+    private fun tomorrow(item: StackItem) {
+        snoozing = true
+        topNow = item
         when (item) {
             is StackItem.Call -> stackLater(item.a)
             is StackItem.Habit -> habitLater(item.id)
@@ -568,6 +684,12 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         c.addView(Ui.text(ctx, ctx.resources.getQuantityString(R.plurals.clock_sub, streak, streak), 16f, Ui.withAlpha(Ui.TEXT, 0xDD), 600).apply { tag = "stack-streak"; gravity = Gravity.CENTER },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
         c.addView(weekDots(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(18) })
+        // 1.2.9: what got done and what was snoozed today
+        val log = MorningStack.todayLog(ctx)
+        val sum = listOf(MorningStack.LOG_DONE to R.string.clock_sum_done, MorningStack.LOG_TOMORROW to R.string.clock_sum_later, MorningStack.LOG_DISMISSED to R.string.clock_sum_dismissed)
+            .mapNotNull { (k, res) -> log[k]?.takeIf { it.isNotEmpty() }?.let { ctx.getString(res, it.joinToString(", ")) } }
+        if (sum.isNotEmpty()) c.addView(Ui.text(ctx, sum.joinToString("\n"), 14f, Ui.withAlpha(Ui.TEXT, 0xCC), 600).apply { tag = "stack-summary"; gravity = Gravity.CENTER; maxLines = 4; ellipsize = android.text.TextUtils.TruncateAt.END; setLineSpacing(0f, 1.2f) },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
         c.addView(Kit.primary(ctx, ctx.getString(R.string.clock_play), R.drawable.lc_play) { host.playGame() }.apply { tag = "clock-play" },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(60)).apply { topMargin = dp(22) })
         if (host.save.signedToday()) {
@@ -638,6 +760,23 @@ class TodayScreen(host: MainActivity) : Screen(host) {
                 LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })
             addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
+    }
+
+    /** 1.2.9: the stack is clear; one explicit, clearly labeled action clocks in (free, nothing is signed). */
+    private fun readyView(): View = Ui.column(ctx).apply {
+        tag = "stack-ready"
+        gravity = Gravity.CENTER
+        background = Ui.rounded(Kit.S1, dp(34).toFloat(), Kit.HAIR, dp(1))
+        setPadding(dp(24), dp(24), dp(24), dp(24))
+        addView(Ui.image(ctx, R.drawable.buddy_happy), LinearLayout.LayoutParams(dp(140), dp(150)))
+        addView(Ui.display(ctx, ctx.getString(R.string.clock_ready_title), 26f).apply { gravity = Gravity.CENTER },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
+        addView(Ui.text(ctx, ctx.getString(R.string.clock_ready_sub), 16f, Kit.MUTED, 600).apply { gravity = Gravity.CENTER; setLineSpacing(0f, 1.25f) },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
+        addView(Kit.primary(ctx, ctx.getString(R.string.clock_in_btn), R.drawable.lc_check) {
+            MorningStack.settle(ctx)
+            host.renderAll()
+        }.apply { tag = "stack-clock-in" }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(60)).apply { topMargin = dp(20) })
     }
 
     private fun emptyView(): View = Ui.column(ctx).apply {

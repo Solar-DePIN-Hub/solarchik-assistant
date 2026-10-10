@@ -35,14 +35,14 @@ import java.io.File
 /**
  * 1.2.7: the eight redesign screens rendered from the real build at the mockups' size (1080×2340, 411 dp at
  * xxhdpi), English, real defaults (mainnet, no fake balances beyond the seeded test wallet below). Written to
- * /workspace/deliverables/redesign/compare-1.2.8/build/ as 01…08 next to the mockups' names.
+ * /workspace/deliverables/redesign/compare-1.2.9/build/ as 01…08 next to the mockups' names.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "en-w411dp-h891dp-xxhdpi")
 class Redesign127ShotsTest {
     private val app = ApplicationProvider.getApplicationContext<Context>()
-    private val dir = File(System.getProperty("solarchik.compare") ?: "/workspace/deliverables/redesign/compare-1.2.8/build").apply { mkdirs() }
+    private val dir = File(System.getProperty("solarchik.compare") ?: "/workspace/deliverables/redesign/compare-1.2.9/build").apply { mkdirs() }
     private val now = System.currentTimeMillis()
     private val owner = "8J3hQ1JZq8CkQ6CwRNrsdc9UHS1R1JZmE7vUfnTqC7ic"
     private val realCluster = System.getProperty("solarchik.cluster")
@@ -124,6 +124,8 @@ class Redesign127ShotsTest {
         CallActionStore(app).markProcessed(listOf(ira.key, andrii.key))
         Habits.set(app, Habits.WORKOUT, true)
         Habits.set(app, Habits.WALLET, true)
+        // 1.2.9: two official Season partner tasks (the header pill on Today)
+        net.solardepin.solarchik.season.SeasonDropsStore(app).save("en", """{"ok":true,"items":[{"id":"x1","app":"MattleFun","perk":"Turn One Up birthday event: quests and rewards","sourceUrl":"https://x.com/mattlefun/status/2107820234271044066","sourceDate":"2026-10-07","checked":"2026-10-10"},{"id":"x2","app":"Mentioned","perk":"Live on the Seeker dApp Store","sourceUrl":"https://x.com/MentionedMa/status/1","sourceDate":"2026-10-07","checked":"2026-10-10"}]}""", now)
         app.getSharedPreferences("seeker-wallet", Context.MODE_PRIVATE).edit().putString("address", owner).putString("auth", "t").putString("walletPkg", "app.phantom").commit()
     }
 
@@ -149,6 +151,26 @@ class Redesign127ShotsTest {
         a.select(MainActivity.Tab.CIRCLE); idle()
         shot(d, "04-circle")
         aboveNav(d, "circle-add-row", "04-circle")
+        // 1.2.9 (c): scrolled to the end, the Circle explanation paragraph ends above the bar
+        run {
+            var sv: ScrollView? = null; walk(d) { if (sv == null && it is ScrollView && it.isShown) sv = it }
+            // lay out at the shot size first (the Robolectric window is taller), then scroll to the very end
+            d.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(2340, View.MeasureSpec.EXACTLY)); d.layout(0, 0, 1080, 2340)
+            sv?.let { it.scrollTo(0, it.getChildAt(0).height - it.height) }
+            shot(d, "04b-circle-scrolled-end"); sv?.let { it.scrollTo(0, it.getChildAt(0).height - it.height) }; aboveNav(d, "circle-note", "04b-circle-scrolled-end")
+            // the render at the very end: Robolectric's ScrollView.draw ignores scrollY, so draw the column shifted, then the bar on top
+            sv?.let { v ->
+                val bmp = Bitmap.createBitmap(1080, 2340, Bitmap.Config.ARGB_8888)
+                Canvas(bmp).apply {
+                    drawColor(net.solardepin.solarchik.ui.Ui.BG)
+                    val l = IntArray(2); v.getLocationInWindow(l)
+                    save(); translate(l[0].toFloat(), (l[1] - v.scrollY).toFloat()); v.getChildAt(0).draw(this); restore()
+                    find(d, "nav-wrap")?.let { n -> val m = IntArray(2); n.getLocationInWindow(m); save(); translate(m[0].toFloat(), m[1].toFloat()); n.draw(this); restore() }
+                }
+                File(dir, "04b-circle-scrolled-end.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 92, it) }
+            }
+            sv?.scrollTo(0, 0); idle()
+        }
         // 05 Me (wallet tiles on mainnet, habits, secretary)
         a.select(MainActivity.Tab.ME); idle()
         (a.screen(MainActivity.Tab.ME) as MeScreen).setBalanceForTest(0.0096, 0.0, 0.0)
@@ -169,7 +191,14 @@ class Redesign127ShotsTest {
         VoiceSheet.dismissIfOpen(a); idle()
 
         // 03 clocked in: clear the stack with Later/Done (no money needed)
-        repeat(12) { find(a.window.decorView, "stack-later")?.performClick(); idle() }
+        // 1.2.9: Later → the choice; "Tomorrow" moves each card out of today
+        val today = a.screen(MainActivity.Tab.TODAY) as TodayScreen
+        repeat(12) {
+            find(a.window.decorView, "stack-later")?.let { b -> b.performClick(); idle(); today.lastLater?.let { dl -> dl.listView.performItemClick(null, 1, 1L); idle() } }
+        }
+        // 1.2.9: clocking in is the explicit "Clock in" tap
+        shot(d, "03a-stack-clear-clock-in")
+        find(a.window.decorView, "stack-clock-in")!!.performClick(); idle()
         shot(d, "03-clocked-in")
         assertTrue(find(d, "stack-clocked") != null)
 
@@ -189,6 +218,14 @@ class Redesign127ShotsTest {
         }
         val det = Robolectric.buildActivity(CallsActivity::class.java, Intent(app, CallsActivity::class.java).putExtra(CallsActivity.EXTRA_KEY, ira.key)).create().start().resume().visible().get(); idle()
         shot(det.window.decorView, "08-call-detail")
+        // 1.2.9 (b): the payment row's subtitle fits one line
+        run {
+            val want = app.getString(R.string.ca_sub_pay); var tv: TextView? = null
+            walk(det.window.decorView) { if (tv == null && it is TextView && it.isShown && it.text.toString() == want) tv = it }
+            val t = tv
+            if (t == null) problems += "08-call-detail: no '$want' row"
+            else if (t.lineCount > 1 || (t.layout?.getEllipsisCount(0) ?: 0) > 0) problems += "08-call-detail: '$want' wraps or is cut"
+        }
         // the note comes before the facts (mockup 08)
         val dv = det.window.decorView
         val note = find(dv, "call-note"); val facts = find(dv, "call-detail")
@@ -198,5 +235,37 @@ class Redesign127ShotsTest {
         net.solardepin.solarchik.screen.ScreenApi.requestForTest = null
         File(dir, "problems.txt").writeText(problems.joinToString("\n"))
         assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    /** 1.2.9: the five onboarding cards and the Later choice. */
+    @Test fun onboardingAndLaterChoice() {
+        seed()
+        MainActivity.onboardingEnabled = true
+        app.getSharedPreferences(MainActivity.ASSISTANT_PREFS, Context.MODE_PRIVATE).edit().clear().commit()
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get(); idle()
+        val d = a.window.decorView
+        val o = find(d, "onboarding") as net.solardepin.solarchik.ui.Onboarding
+        for (i in 0 until 5) { shot(d, "30-onboarding-${i + 1}"); o.advanceBySwipe(); idle() }
+        find(o, "onb-skip")?.performClick() ?: find(o, "onb-next")?.performClick(); idle()
+        if (a.onboardingShown) problems += "onboarding did not close"
+        a.select(MainActivity.Tab.TODAY); idle()
+        find(d, "stack-later")!!.performClick(); idle()
+        val dlg = (a.screen(MainActivity.Tab.TODAY) as TodayScreen).lastLater!!
+        sheetShot(d, dlg.window!!.decorView, "27-later-choice")
+        dlg.dismiss(); idle()
+        File(dir, "problems-onboarding.txt").writeText(problems.joinToString("\n"))
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    @Test @Config(qualifiers = "uk-w411dp-h891dp-xxhdpi") fun onboardingInUkrainian() {
+        MainActivity.onboardingEnabled = true
+        app.getSharedPreferences(MainActivity.ASSISTANT_PREFS, Context.MODE_PRIVATE).edit().clear().commit()
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get(); idle()
+        val d = a.window.decorView
+        val o = find(d, "onboarding") as net.solardepin.solarchik.ui.Onboarding
+        for (i in 0 until 5) { shot(d, "31-onboarding-uk-${i + 1}"); o.advanceBySwipe(); idle() }
+        // Cyrillic is expected here; English leaking in is not
+        val en = Regex("\\b(the|your|and|Next|Skip|Later)\\b")
+        (0 until 5).forEach { i -> File(dir, "31-onboarding-uk-${i + 1}.txt").readLines().filter { en.containsMatchIn(it) }.forEach { assertTrue("uk page ${i + 1}: English '$it'", false) } }
     }
 }

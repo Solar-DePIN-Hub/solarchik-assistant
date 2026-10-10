@@ -344,7 +344,16 @@ class SolScreen(host: MainActivity) : Screen(host) {
             extras = net.solardepin.solarchik.sol.AssistantExtras.lines(ctx, now),
         )
         val report = currentReport().script.take(250)
-        return if (report.isBlank()) line else "$line Agent desk: $report"
+        // 1.2.9: who owes whom comes only from the app's own Circle ledger (never a guess on the server)
+        val circle = runCatching {
+            val C = net.solardepin.solarchik.circle.Circle
+            val owe = C.debts(net.solardepin.solarchik.screen.CallActionStore(ctx).all(), net.solardepin.solarchik.screen.CallInbox.cached(ctx), net.solardepin.solarchik.circle.CircleStore(ctx).all()).filter { it.open }
+            val owed = C.currentOwed(ctx).filter { it.open }
+            val parts = owe.map { "you owe ${it.who} ${C.amount(it.amount)} ${it.token}" } + owed.map { "${it.who} owes you ${C.amount(it.amount)} ${it.token}" }
+            "Circle: " + if (parts.isEmpty()) "nothing owed either way." else parts.take(6).joinToString("; ") + "."
+        }.getOrDefault("")
+        val withCircle = listOf(line, circle).filter { it.isNotBlank() }.joinToString(" ")
+        return if (report.isBlank()) withCircle else "$withCircle Agent desk: $report"
     }
 
     /* ---------------- one brain (0.21.8) ---------------- */

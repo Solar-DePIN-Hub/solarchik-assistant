@@ -49,7 +49,7 @@ class SolanaPayTest {
     private val owner = "8J3hQ1JZq8CkQ6CwRNrsdc9UHS1R1JZmE7vUfnTqC7ic"
     private val payer = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
     private val mv = "mvines9iiHiQTysrwkJjGf2gb9Ex9jXJX8ns3qwf2kN"
-    private val dir = File("/workspace/deliverables/redesign/compare-1.2.8/build").apply { mkdirs() }
+    private val dir = File("/workspace/deliverables/redesign/compare-1.2.9/build").apply { mkdirs() }
 
     private val realCluster = System.getProperty("solarchik.cluster")
     private val realOnboarding = MainActivity.onboardingEnabled
@@ -202,8 +202,8 @@ class SolanaPayTest {
         val chooser = generateSequence { shadowOf(a).nextStartedActivity }.first { it.action == Intent.ACTION_CHOOSER }
         val inner = chooser.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)!!
         val text = inner.getStringExtra(Intent.EXTRA_TEXT)!!
-        assertTrue(text, text.startsWith("Hi Andrii! Here's the Solana Pay link for the 0.01 SOL (Deposit)."))
-        assertTrue(text.endsWith(r.url))
+        assertEquals("Hi Andrii, here's my payment link for 0.01 SOL: " + r.url, text)
+        assertEquals("SMS prefilled", text, inner.getStringExtra("sms_body"))
 
         // the solana: link as a wallet sees it: a VIEW intent with the solana scheme (Phantom handles it); our own app never claims it
         val uri = Uri.parse(r.url)
@@ -236,6 +236,49 @@ class SolanaPayTest {
         assertTrue(texts(a.window.decorView).toString(), texts(a.window.decorView).contains("Andrii paid you 0.01 SOL"))
         assertNull(find(a.window.decorView, "circle-request"))
         shot(a.window.decorView, "23-circle-got-paid")
+    }
+
+    /** 1.2.9: Me → Receive (address QR) → Request amount → Solana Pay link, share sheet with the SMS text; Circle person: Send | Request. */
+    @Test fun receiveFromMeAndRequestFromAPerson() {
+        MainActivity.tickerEnabled = false
+        MainActivity.onboardingEnabled = false
+        PayRequestSheet.pollEnabled = false
+        app.getSharedPreferences("seeker-wallet", Context.MODE_PRIVATE).edit().putString("address", owner).putString("auth", "t").putString("walletPkg", "app.phantom").commit()
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get(); idle()
+        a.select(MainActivity.Tab.ME); idle()
+        find(a.window.decorView, "me-receive")!!.performClick(); idle()
+        val rs = PayRequestSheet.lastReceive!!.window!!.decorView
+        assertEquals(owner, (find(rs, "receive-address") as TextView).text.toString())
+        assertNotNull((find(rs, "receive-qr") as ImageView).drawable)
+        sheetShot(find(rs, "receive-sheet")!!, "24-me-receive")
+        find(rs, "receive-request")!!.performClick(); idle()
+        val form = PayRequestSheet.lastOwedForm!!
+        (form.findViewById<View>(android.R.id.content).findViewWithTag<android.widget.EditText>("owed-f-who")).setText("Ira")
+        (form.findViewById<View>(android.R.id.content).findViewWithTag<android.widget.EditText>("owed-f-amount")).setText("0.01")
+        form.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick(); idle()
+        val r = PayRequestSheet.lastRequest!!
+        assertEquals("Ira", r.who)
+        assertTrue(r.url, Regex("^solana:$owner\\?amount=0\\.01&reference=[1-9A-HJ-NP-Za-km-z]{32,44}&label=Sol&message=[^&]+$").matches(r.url))
+        val chooser = generateSequence { shadowOf(a).nextStartedActivity }.first { it.action == Intent.ACTION_CHOOSER }
+        val inner = chooser.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)!!
+        assertEquals("Hi Ira, here's my payment link for 0.01 SOL: " + r.url, inner.getStringExtra("sms_body"))
+        sheetShot(PayRequestSheet.last!!.window!!.decorView.findViewWithTag("payreq-sheet"), "25-me-request-link")
+        File(dir, "solana-pay-url-receive.txt").writeText(r.url + "\n")
+        // detection still works for this request
+        val fake = FakeRpc("""[{"signature":"7sig"}]""", Json.parseToJsonElement(solTx().toString().replace(REF, r.reference)))
+        PayWatch.rpcForTest = fake
+        assertEquals("7sig", runBlocking { PayWatch.checkAll(app, notify = false) }.single().signature)
+        PayRequestSheet.last?.dismiss(); idle()
+
+        // Circle: tapping a person shows Send and Request side by side, equal width
+        net.solardepin.solarchik.circle.CircleStore(app).put(net.solardepin.solarchik.circle.Contact("", "Andrii", "+380501112233", "HpEVVYWx2LiFANXAzfMy3yPTf61X1ZVDheYDYNmDJBwT"))
+        a.select(MainActivity.Tab.CIRCLE); a.screen(MainActivity.Tab.CIRCLE)?.render(); idle()
+        find(a.window.decorView, "circle-contact")!!.performClick(); idle()
+        val ps = (a.screen(MainActivity.Tab.CIRCLE) as net.solardepin.solarchik.ui.CircleScreen).lastPerson!!.window!!.decorView
+        val send = find(ps, "person-send")!!; val req = find(ps, "person-request")!!
+        ps.findViewWithTag<View>("person-sheet").let { it.measure(View.MeasureSpec.makeMeasureSpec(1233, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)); it.layout(0, 0, 1233, it.measuredHeight) }
+        assertTrue("equal buttons ${send.width} vs ${req.width}", kotlin.math.abs(send.width - req.width) <= 2)
+        sheetShot(ps.findViewWithTag("person-sheet"), "26-circle-person-send-request")
     }
 
     @Test fun requestNeedsAMainnetWallet() {

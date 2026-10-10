@@ -52,6 +52,8 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
 
     override fun build(): View = page {
         addView(Ui.display(ctx, ctx.getString(R.string.settings_title), 26f))
+        // 1.2.9: the first-launch tour, again
+        addView(Kit.list(ctx).also { l -> Kit.addRow(l, Kit.row(ctx, R.drawable.lc_spark, Ui.GOLD, ctx.getString(R.string.settings_how), ctx.getString(R.string.settings_how_sub)) { host.showOnboarding() }.apply { tag = "settings-how" }) })
 
         walletBox = Ui.card(ctx, accent = Ui.GOLD)
         addView(walletBox)

@@ -38,8 +38,8 @@ class Release124Test {
     private val vadim2 = item("rtc_u2_EXEyYp3o", "Vadim", "Wanted to just say hi to the owner.", "+380638500117", 600)
 
     @Test fun version() {
-        assertEquals("1.2.8", BuildConfig.VERSION_NAME)
-        assertEquals(129, BuildConfig.VERSION_CODE)
+        assertEquals("1.2.9", BuildConfig.VERSION_NAME)
+        assertEquals(130, BuildConfig.VERSION_CODE)
     }
 
     @Test fun theExactSummaryMakesAPayCardEvenOffline() {
@@ -153,8 +153,8 @@ class Release124Test {
         assertEquals("Ira", d.who)
         assertEquals(c.id, d.contact?.id)
         assertEquals(mapOf("ira" to mapOf("SOL" to 0.01)), net.solardepin.solarchik.circle.Circle.owedTo(listOf(d)))
-        assertEquals(listOf("You owe Ira 0.01 SOL from today's call."), net.solardepin.solarchik.circle.Circle.briefLines(app, listOf(d), now, zone))
-        assertEquals(listOf("You owe Ira 0.01 SOL from yesterday's call."), net.solardepin.solarchik.circle.Circle.briefLines(app, listOf(d), now + 86_400_000L, zone))
+        assertEquals(listOf("You owe Ira 0.01 SOL from today's call."), net.solardepin.solarchik.circle.Circle.briefLines(app, listOf(d), ira.at + 60_000L, zone))
+        assertEquals(listOf("You owe Ira 0.01 SOL from yesterday's call."), net.solardepin.solarchik.circle.Circle.briefLines(app, listOf(d), ira.at + 86_400_000L, zone))
         CallActionStore(app).update(iraPay().id) { it.copy(status = CallAction.DONE, signature = "5".repeat(88)) }
         d = net.solardepin.solarchik.circle.Circle.current(app).single()
         assertTrue(d.settled)

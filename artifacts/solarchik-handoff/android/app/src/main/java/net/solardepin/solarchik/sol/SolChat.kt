@@ -66,6 +66,8 @@ class SolChat(
                 put("message", message.take(2000))
                 put("language", lang)
                 put("scene", scene)
+                // 1.2.9: the assistant persona (no game wording) for every chat from this app, not only SolBrain
+                if (scene != "run") put("app", net.solardepin.solarchik.core.SolarchikConfig.SOL_APP)
                 if (context.isNotBlank()) put("context", context.take(400))
                 put("history", turns)
                 if (friend) {

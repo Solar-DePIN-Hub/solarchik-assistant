@@ -99,9 +99,10 @@ object MwaDirect {
         legacyCluster: String,
         authToken: String?,
         onTokenRejected: () -> Unit = {},
+        onAuthorized: (MobileWalletAdapterClient.AuthorizationResult) -> Unit = {},
     ): Result<MobileWalletAdapterClient.AuthorizationResult> {
         override?.let { return it(pkg) }
-        return transact(ctx, launcher, pkg, chain, legacyCluster, authToken, onTokenRejected = onTokenRejected) { _, _ -> Unit }.map { it.first }
+        return transact(ctx, launcher, pkg, chain, legacyCluster, authToken, onTokenRejected = onTokenRejected, onAuthorized = onAuthorized) { _, _ -> Unit }.map { it.first }
     }
 
     /** Test seam for [transact]: the authorize result (the block then runs against [FAKE_CLIENT]). */
@@ -125,9 +126,10 @@ object MwaDirect {
         authToken: String?,
         signIn: com.solana.mobilewalletadapter.common.signin.SignInWithSolana.Payload? = null,
         onTokenRejected: () -> Unit = {},
+        onAuthorized: (MobileWalletAdapterClient.AuthorizationResult) -> Unit = {},
         block: (MobileWalletAdapterClient, MobileWalletAdapterClient.AuthorizationResult) -> T,
     ): Result<Pair<MobileWalletAdapterClient.AuthorizationResult, T>> {
-        transactOverride?.let { o -> return o(pkg).map { a -> a to block(FAKE_CLIENT ?: error("no fake client"), a) } }
+        transactOverride?.let { o -> return o(pkg).map { a -> onAuthorized(a); a to block(FAKE_CLIENT ?: error("no fake client"), a) } }
         WalletDiag.log("connect", WalletDiag.header(ctx))
         val scenario = try {
             LocalAssociationScenario(Scenario.DEFAULT_CLIENT_TIMEOUT_MS)
@@ -253,6 +255,10 @@ object MwaDirect {
                 }
                 val acct = auth.accounts?.firstOrNull()?.publicKey ?: auth.publicKey
                 WalletDiag.log("auth token", tokenNote(authToken, auth.authToken))
+                // 1.2.9 (tablet: Connect again on the next payment): the wallet may hand back a NEW token on every
+                // authorize; it is saved right here, before the sign request, so a declined / failed sign (or the
+                // memo) can never leave the old, now-stale token behind.
+                runCatching { onAuthorized(auth) }
                 WalletDiag.log("authorized", "account " + (acct?.let { WalletDiag.shortAddr(Base58.encode(it)) } ?: "none") + ", accounts=" + (auth.accounts?.size ?: 0) + ", " + (System.currentTimeMillis() - sentAt) + " ms after the intent")
                 val out = try {
                     block(client, auth)

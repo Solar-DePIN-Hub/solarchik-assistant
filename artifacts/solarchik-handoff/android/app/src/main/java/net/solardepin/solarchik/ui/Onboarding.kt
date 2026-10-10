@@ -15,7 +15,7 @@ import net.solardepin.solarchik.R
 import net.solardepin.solarchik.ui.Ui.dp
 
 /**
- * 1.0.0 first launch: three pages (Sol, the phone secretary, the agent wallet), Skip on every page,
+ * First launch: four cards (1.2.9), Skip on every page,
  * dots, Next / Get started. Shown once over the app; [onDone] persists it.
  */
 @SuppressLint("ViewConstructor")
@@ -26,10 +26,17 @@ class Onboarding(ctx: Context, private val onDone: () -> Unit, private val onAct
      * 1.2.5: a first run in 30 s. 1) call the secretary now (tap to dial the demo line), 2) the note and the
      * action cards land on Today, 3) optionally connect Phantom. Skip on every page.
      */
+    /**
+     * 1.2.9 (Vadym: "I didn't understand where anything is or what it does"): 5 swipeable cards, the Sol robot on
+     * each with one visual badge and one short line: calls, the morning stack, Circle, your agents, the wallet. Reopenable from
+     * Settings → How Sol works.
+     */
     private val pages = listOf(
-        Page(R.string.onb5_1_title, R.string.onb5_1_body, R.drawable.ic_call, Ui.PURPLE, robot = false, action = ACTION_CALL, actionLabel = R.string.onb5_1_action),
-        Page(R.string.onb5_2_title, R.string.onb5_2_body, R.drawable.ic_mic, Ui.CYAN, robot = true),
-        Page(R.string.onb5_3_title, R.string.onb5_3_body, R.drawable.ic_wallet, Ui.GOLD, robot = false, action = ACTION_WALLET, actionLabel = R.string.onb5_3_action),
+        Page(R.string.onb9_1_title, R.string.onb9_1_body, R.drawable.lc_phone, Ui.PURPLE, robot = true),
+        Page(R.string.onb9_2_title, R.string.onb9_2_body, R.drawable.lc_check, Ui.GREEN, robot = true),
+        Page(R.string.onb9_3_title, R.string.onb9_3_body, R.drawable.lc_users, Ui.GOLD, robot = true),
+        Page(R.string.onb9_a_title, R.string.onb9_a_body, R.drawable.lc_spark, Ui.PURPLE, robot = true),
+        Page(R.string.onb9_4_title, R.string.onb9_4_body, R.drawable.lc_wallet, Ui.CYAN, robot = true, action = ACTION_WALLET, actionLabel = R.string.onb9_4_action),
     )
     private lateinit var action: TextView
     var index = 0
@@ -72,7 +79,23 @@ class Onboarding(ctx: Context, private val onDone: () -> Unit, private val onAct
         addView(column, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         applyInsets(0, 0)
         show(0, animate = false)
+        // swipe left / right between the cards
+        var x0 = 0f
+        column.setOnTouchListener { _, e ->
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> { x0 = e.x; true }
+                android.view.MotionEvent.ACTION_UP -> {
+                    val dx = e.x - x0
+                    if (dx < -dp(60)) advanceBySwipe() else if (dx > dp(60)) back()
+                    true
+                }
+                else -> true
+            }
+        }
     }
+
+    /** A swipe never finishes the tour on the last card (the wallet choice is a tap). */
+    fun advanceBySwipe() { if (index < pages.size - 1) show(index + 1, animate = true) }
 
     fun applyInsets(top: Int, bottom: Int) {
         val side = dp(28)
@@ -101,6 +124,12 @@ class Onboarding(ctx: Context, private val onDone: () -> Unit, private val onAct
         art.addView(halo, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         if (p.robot) {
             art.addView(Ui.image(context, R.drawable.buddy_happy), LayoutParams(dp(140), dp(186), Gravity.CENTER))
+            // the page's visual: a badge in the page colour (phone / stack check / people / wallet)
+            art.addView(FrameLayout(context).apply {
+                tag = "onb-badge"
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Ui.BG); setStroke(dp(3), p.color) }
+                addView(ImageView(context).apply { setImageResource(p.icon); setColorFilter(p.color) }, LayoutParams(dp(30), dp(30), Gravity.CENTER))
+            }, LayoutParams(dp(64), dp(64), Gravity.BOTTOM or Gravity.END).apply { rightMargin = dp(10); bottomMargin = dp(10) })
         } else {
             val core = FrameLayout(context).apply {
                 background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Ui.withAlpha(p.color, 0x33)); setStroke(dp(2), Ui.withAlpha(p.color, 0x99)) }
@@ -110,7 +139,7 @@ class Onboarding(ctx: Context, private val onDone: () -> Unit, private val onAct
         }
         title.text = context.getString(p.title)
         body.text = context.getString(p.body)
-        next.text = context.getString(if (i == pages.size - 1) (if (p.action != null) R.string.onb5_later else R.string.onb_start) else R.string.onb_next)
+        next.text = context.getString(if (i == pages.size - 1) (if (p.action != null) R.string.onb9_later else R.string.onb_start) else R.string.onb_next)
         // the page's own action is the main button; Next / Not now becomes the quiet one
         action.visibility = if (p.action != null) View.VISIBLE else View.GONE
         if (p.action != null) action.text = context.getString(p.actionLabel)

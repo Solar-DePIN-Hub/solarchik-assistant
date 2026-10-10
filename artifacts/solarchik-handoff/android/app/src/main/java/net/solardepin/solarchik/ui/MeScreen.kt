@@ -118,7 +118,9 @@ class MeScreen(host: MainActivity) : Screen(host) {
         walletBox.addView(Ui.top(tiles, 16))
         val btns = Ui.row(ctx, gap = 10)
         btns.addView(Kit.ghost(ctx, ctx.getString(R.string.me_send), R.drawable.lc_send) { send() }.apply { tag = "me-send" }, LinearLayout.LayoutParams(0, dp(52), 1f))
-        btns.addView(Kit.ghost(ctx, ctx.getString(R.string.me_explorer), R.drawable.lc_ext) { host.openUrl(host.explorerAddress(w.address, w.clusterName)) }.apply { tag = "today-wallet-explorer" }, LinearLayout.LayoutParams(0, dp(52), 1f))
+        // 1.2.9 (Vadym couldn't find how to receive): Send | Receive, equal; Explorer becomes a small icon button
+        btns.addView(Kit.ghost(ctx, ctx.getString(R.string.me_receive), R.drawable.lc_coins) { PayRequestSheet.receive(host) }.apply { tag = "me-receive" }, LinearLayout.LayoutParams(0, dp(52), 1f))
+        btns.addView(Kit.ghost(ctx, "", R.drawable.lc_ext) { host.openUrl(host.explorerAddress(w.address, w.clusterName)) }.apply { tag = "today-wallet-explorer"; contentDescription = ctx.getString(R.string.me_explorer) }, LinearLayout.LayoutParams(dp(56), dp(52)))
         walletBox.addView(Ui.top(btns, 14))
         if (net.solardepin.solarchik.season.SeekerStore(ctx).state().verified) walletBox.addView(Ui.top(Kit.chip(ctx, ctx.getString(R.string.sk_badge) + " Seeker", Ui.GREEN).apply { tag = "today-seeker-badge" }, 10))
     }
@@ -205,6 +207,7 @@ class MeScreen(host: MainActivity) : Screen(host) {
 
         listBox.addView(Ui.top(Kit.section(ctx, ctx.getString(R.string.me_more_title)), 8))
         val more = Kit.list(ctx)
+        Kit.addRow(more, Kit.row(ctx, R.drawable.lc_spark, Ui.GOLD, ctx.getString(R.string.settings_how), null) { host.showOnboarding() }.apply { tag = "me-how" })
         // 1.2.8: the briefing row moved here, so the first list matches the mockup (secretary, stack time, settings)
         val t = host.screen(MainActivity.Tab.TODAY) as? TodayScreen
         val pol = net.solardepin.solarchik.sol.BriefingStore(ctx).policy()

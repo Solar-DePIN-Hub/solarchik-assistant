@@ -102,9 +102,14 @@ object SolanaPay {
     fun newReference(rnd: SecureRandom = SecureRandom()): String = Base58.encode(ByteArray(32).also { rnd.nextBytes(it) })
 
     /** The share-sheet text: one short English line plus the link. */
-    fun shareText(r: PayRequest): String =
-        "Hi ${r.who}! Here's the Solana Pay link for the ${Circle.amount(r.amount)} ${r.token}" +
-            (if (r.message.isNotBlank()) " (${r.message})" else "") + ". It opens in Phantom or any Solana wallet: ${r.url}"
+    /** 1.2.9: the SMS / share text: "Hi Ira, here's my payment link for 0.01 SOL: solana:…". */
+    fun shareText(r: PayRequest): String {
+        val who = r.who.trim().takeIf { it.isNotBlank() && !it.equals(SOMEONE, true) }
+        return (if (who != null) "Hi $who, " else "Hi, ") + "here's my payment link for ${Circle.amount(r.amount)} ${r.token}: ${r.url}"
+    }
+
+    /** The name used when a request is made without a person (Me → Receive). */
+    const val SOMEONE = "Someone"
 
     // ------------------------------------------------------------------ detection
 

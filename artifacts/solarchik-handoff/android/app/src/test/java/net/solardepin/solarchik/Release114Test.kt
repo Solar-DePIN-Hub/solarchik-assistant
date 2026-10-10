@@ -108,7 +108,7 @@ class Release114Test {
         net.solardepin.solarchik.stack.Habits.set(app, net.solardepin.solarchik.stack.Habits.WORKOUT, true) // one card to clear
         val a = launch()
         // 1.2.7: the check-in is the optional "Sign on Solana" chip once the stack is clear
-        repeat(10) { find(a.window.decorView, "stack-later")?.performClick(); idle() }
+        StackKit.clear(a); idle()
         assertNotNull(find(a.window.decorView, "stack-clocked"))
         find(a.window.decorView, "stack-sign")!!.performClick(); idle()
         assertEquals(MainActivity.Tab.SHIFT, a.current)
@@ -135,7 +135,7 @@ class Release114Test {
     }
 
     @Test fun versionIs114() {
-        assertEquals("1.2.8", BuildConfig.VERSION_NAME) // 1.1.5 keeps every 1.1.4 rule
-        assertEquals(129, BuildConfig.VERSION_CODE)
+        assertEquals("1.2.9", BuildConfig.VERSION_NAME) // 1.1.5 keeps every 1.1.4 rule
+        assertEquals(130, BuildConfig.VERSION_CODE)
     }
 }

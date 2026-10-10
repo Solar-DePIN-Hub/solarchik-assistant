@@ -20,6 +20,39 @@ object MorningStack {
     private fun p(ctx: Context) = ctx.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     fun day(at: Long, zone: ZoneId = ZoneId.systemDefault()): LocalDate = Instant.ofEpochMilli(at).atZone(zone).toLocalDate()
 
+    /** 1.2.9: today's log for the Clocked-in summary ("d|label" done, "l|label" snoozed), this phone only. */
+    const val LOG_DONE = 'd'
+    const val LOG_TOMORROW = 't'
+    const val LOG_DISMISSED = 'x'
+
+    fun log(ctx: Context, done: Boolean, label: String, now: Long = System.currentTimeMillis()) = log(ctx, if (done) LOG_DONE else LOG_TOMORROW, label, now)
+
+    fun log(ctx: Context, kind: Char, label: String, now: Long = System.currentTimeMillis()) {
+        if (label.isBlank()) return
+        val d = day(now).toString()
+        val cur = if (p(ctx).getString("logday", "") == d) p(ctx).getString("log", "").orEmpty() else ""
+        val line = "$kind|" + label.replace('\n', ' ').take(60)
+        val lines = cur.split('\n').filter { it.isNotBlank() && it.substring(2) != line.substring(2) } + line
+        p(ctx).edit().putString("logday", d).putString("log", lines.takeLast(20).joinToString("\n")).apply()
+    }
+
+    /** Labels logged today by kind ([LOG_DONE], [LOG_TOMORROW], [LOG_DISMISSED]). */
+    fun todayLog(ctx: Context, now: Long = System.currentTimeMillis()): Map<Char, List<String>> {
+        if (p(ctx).getString("logday", "") != day(now).toString()) return emptyMap()
+        val lines = p(ctx).getString("log", "").orEmpty().split('\n').filter { it.length > 2 }
+        return lines.groupBy({ it[0] }, { it.substring(2) })
+    }
+
+    /** 1.2.9 "Later today": the card goes to the end of today's stack (it comes back after the others). */
+    fun laterToday(ctx: Context, key: String, now: Long = System.currentTimeMillis()) {
+        val d = day(now).toString()
+        val cur = if (p(ctx).getString("backday", "") == d) p(ctx).getString("back", "").orEmpty().split(',').filter { it.isNotBlank() } else emptyList()
+        p(ctx).edit().putString("backday", d).putString("back", (cur - key + key).joinToString(",")).apply()
+    }
+
+    private fun backOrder(ctx: Context, now: Long): List<String> =
+        if (p(ctx).getString("backday", "") == day(now).toString()) p(ctx).getString("back", "").orEmpty().split(',').filter { it.isNotBlank() } else emptyList()
+
     fun snoozedUntil(ctx: Context, id: String): Long = p(ctx).getLong("snooze:$id", 0L)
 
     /**
@@ -36,7 +69,8 @@ object MorningStack {
 
     /** 1.2.7: the whole deck in order: call-backs and reminders, payments, habits, then the Season task. */
     fun deck(ctx: Context, now: Long = System.currentTimeMillis()): List<StackItem> =
-        items(ctx, now).map { StackItem.Call(it) } + Habits.pending(ctx, now).map { StackItem.Habit(it) } + seasonItems(ctx, now).map { StackItem.Season(it) }
+        (items(ctx, now).map { StackItem.Call(it) } + Habits.pending(ctx, now).map { StackItem.Habit(it) } + seasonItems(ctx, now).map { StackItem.Season(it) })
+            .let { all -> val back = backOrder(ctx, now); all.sortedBy { back.indexOf(it.key) } } // "Later today" cards last
 
     /**
      * 1.2.6: after the call cards, today's Season tasks (official partner drops from the Season agent). Opening one
@@ -83,9 +117,14 @@ object MorningStack {
 
     /** Something in the stack was handled today (counts toward clocking in once the stack is empty). */
     fun touched(ctx: Context, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()) {
+        // 1.2.9 (tablet: "Clocked in!" appeared by itself after a payment card left the stack): touching the
+        // stack no longer clocks in; the user taps "Clock in" (see [readyToClock] / [settle]).
         p(ctx).edit().putString("touched", day(now, zone).toString()).apply()
-        settle(ctx, now, zone)
     }
+
+    /** The stack is clear today and something was handled: Today shows the explicit "Clock in" button. */
+    fun readyToClock(ctx: Context, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): Boolean =
+        !clockedIn(ctx, now, zone) && p(ctx).getString("touched", "") == day(now, zone).toString() && pendingCount(ctx, now) == 0
 
     /** Stack empty and worked today: clock in for today (once). Returns true when clocked in today. */
     fun settle(ctx: Context, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): Boolean {

@@ -150,7 +150,7 @@ class TodayTest {
 
     @Test fun installsNextToTheGameAndStaysOnDevnet() {
         assertEquals("net.solardepin.solarchik.assistant", BuildConfig.APPLICATION_ID)
-        assertEquals("1.2.8", BuildConfig.VERSION_NAME)
+        assertEquals("1.2.9", BuildConfig.VERSION_NAME)
         // 1.1.0: the release defaults to mainnet; this suite runs in dev devnet mode (solarchik.cluster=devnet)
         assertFalse(BuildConfig.DEVNET_ONLY)
         assertEquals("Solarchik Assistant", app.getString(R.string.app_name))
@@ -171,7 +171,7 @@ class TodayTest {
         assertEquals(listOf("Today", "Circle", "Me"), listOf("nav-today", "nav-circle", "nav-me").map { find(d, it)!!.contentDescription.toString() })
         assertNotNull(find(d, "nav-mic"))
         assertNull("the game has no nav slot", find(d, "nav-run"))
-        assertNull("calls are one level down", find(d, "nav-calls"))
+        assertNotNull("1.2.9: Calls is a bar tab", find(d, "nav-calls"))
         listOf("today-header", "today-greeting", "today-streak", "today-play").forEach { assertNotNull("$it missing", find(d, it)) }
         assertTrue("the stack or its empty state", find(d, "today-deck") != null || find(d, "stack-empty") != null)
         // unread dot on the Me tab (the calls live under Me)
@@ -287,18 +287,18 @@ class TodayTest {
         assertTrue(a.onboardingShown)
         val d = a.window.decorView
         val o = find(d, "onboarding") as Onboarding
-        assertEquals("Call your secretary", (find(o, "onb-title") as TextView).text.toString())
-        assertTrue((find(o, "onb-body") as TextView).text.contains("+380 91 481 0885"))
-        assertEquals("Call the secretary now", (find(o, "onb-action") as TextView).text.toString())
+        // 1.2.9: five cards (calls, stack, Circle, agents, wallet)
+        assertEquals("Sol answers calls you miss", (find(o, "onb-title") as TextView).text.toString())
+        assertEquals(View.GONE, find(o, "onb-action")!!.visibility)
         shot(d, "00-onboarding-en")
         find(o, "onb-next")!!.performClick(); idle()
-        assertTrue((find(o, "onb-title") as TextView).text.contains("lands on Today"))
-        assertEquals(View.GONE, find(o, "onb-action")!!.visibility)
+        assertEquals("Every morning, swipe your stack", (find(o, "onb-title") as TextView).text.toString())
         a.onBackPressedDispatcher.onBackPressed(); idle()
         assertEquals("Back goes to the previous page", 0, o.index)
-        find(o, "onb-next")!!.performClick(); find(o, "onb-next")!!.performClick(); idle()
-        assertEquals("Not now", (find(o, "onb-next") as TextView).text.toString())
-        assertEquals("Connect Phantom", (find(o, "onb-action") as TextView).text.toString())
+        repeat(4) { find(o, "onb-next")!!.performClick() }; idle()
+        assertEquals("Connect your wallet", (find(o, "onb-title") as TextView).text.toString())
+        assertEquals("Later", (find(o, "onb-next") as TextView).text.toString())
+        assertEquals("Connect Phantom / Solflare", (find(o, "onb-action") as TextView).text.toString())
         find(o, "onb-next")!!.performClick(); idle()
         assertFalse(a.onboardingShown)
         assertEquals(MainActivity.Tab.TODAY, a.current)
@@ -307,15 +307,15 @@ class TodayTest {
         assertFalse(b.onboardingShown)
     }
 
-    @Test fun onboardingCallButtonDialsTheDemoLineAndMovesOn() {
+    @Test fun onboardingSwipesAndHasFiveCardsAtMost() {
         MainActivity.onboardingEnabled = true
         val a = launch()
         val o = find(a.window.decorView, "onboarding") as Onboarding
-        find(o, "onb-action")!!.performClick(); idle()
-        val next = shadowOf(a).nextStartedActivity
-        assertEquals(CallsActivity::class.java.name, next.component!!.className)
-        assertTrue(next.getBooleanExtra(CallsActivity.EXTRA_TRY, false))
+        o.advanceBySwipe(); idle()
         assertEquals(1, o.index)
+        repeat(10) { o.advanceBySwipe() }; idle()
+        assertEquals("five cards max", 4, o.index)
+        assertEquals("Connect your wallet", (find(o, "onb-title") as TextView).text.toString())
     }
 
     @Test fun onboardingSkip() {

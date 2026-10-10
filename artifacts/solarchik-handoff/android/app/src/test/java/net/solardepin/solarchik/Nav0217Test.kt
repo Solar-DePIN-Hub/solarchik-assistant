@@ -76,7 +76,7 @@ class Nav0217Test {
         // 1.2.7: Today · Circle · [mic] · Me, a dot under the active tab
         assertEquals(listOf("Today", "Circle", "Me"), listOf("nav-today", "nav-circle", "nav-me").map { find(d, it)!!.contentDescription.toString() })
         assertNotNull(find(d, "nav-mic"))
-        assertNull("Calls is one level down", find(d, "nav-calls"))
+        assertNotNull("1.2.9: Calls is a bar tab", find(d, "nav-calls"))
         assertEquals(View.VISIBLE, find(d, "nav-dot-today")!!.visibility)
         shot(a, "en-1-home")
         a.select(MainActivity.Tab.ME, animate = false)

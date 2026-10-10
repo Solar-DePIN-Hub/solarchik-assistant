@@ -199,9 +199,10 @@ class Release126Test {
         audit(a.window.decorView, "11-today-stack-callback")
         assertTrue(texts(a.window.decorView).toString(), texts(a.window.decorView).any { Regex("^1 of \\d+$").matches(it) })
         find(a.window.decorView, "stack-later")!!.performClick(); idle()
+        (a.screen(MainActivity.Tab.TODAY) as net.solardepin.solarchik.ui.TodayScreen).lastLater!!.listView.performItemClick(null, 1, 1L); idle() // Tomorrow
         audit(a.window.decorView, "12-today-stack-season-task")
         assertTrue(find(a.window.decorView, "stack-season") != null)
-        assertEquals("MattleFun", (find(a.window.decorView, "stack-season-app") as TextView).text.toString())
+        assertTrue((find(a.window.decorView, "stack-season-app") as TextView).text.toString().endsWith("MattleFun"))
         // swipe right / Open: only opens the official link; back in the app, "Done with MattleFun?"
         find(a.window.decorView, "stack-season-open")!!.performClick(); idle()
         val opened = org.robolectric.Shadows.shadowOf(a).nextStartedActivity
@@ -210,7 +211,8 @@ class Release126Test {
         val ask = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog() as android.app.AlertDialog
         audit(ask.window!!.decorView, "13-season-done-ask")
         ask.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick(); idle()
-        // 1.2.7: one Season card a day, so the stack is clear after it
+        // 1.2.7: one Season card a day, so the stack is clear after it; 1.2.9: the explicit Clock in tap
+        StackKit.clear(a); idle()
         audit(a.window.decorView, "14-today-clocked-in")
         assertTrue(find(a.window.decorView, "stack-clocked") != null)
 

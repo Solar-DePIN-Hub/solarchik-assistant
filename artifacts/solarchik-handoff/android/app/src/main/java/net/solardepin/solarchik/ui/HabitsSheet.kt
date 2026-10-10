@@ -106,7 +106,7 @@ object HabitsSheet {
     }
 
     /** Re-reads the stack after a change of habits (nothing is marked done). */
-    private fun MorningStack_touchless(ctx: android.content.Context) { net.solardepin.solarchik.stack.MorningStack.settle(ctx) }
+    private fun MorningStack_touchless(ctx: android.content.Context) { /* 1.2.9: never clocks in (only the "Clock in" tap does) */ }
 
     private fun addCustom(host: MainActivity, then: () -> Unit) {
         val ctx = host

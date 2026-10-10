@@ -51,11 +51,12 @@ class MainActivity : ComponentActivity() {
     enum class Tab(val label: Int, val icon: Int, val inNav: Boolean = true) {
         // 1.2.7 nav (redesign): Today · Circle · [Sol mic] · Me. The mic opens the voice sheet; everything that used to
         // be a tab (Calls, Sol chat, Agents, Settings, Season) is one level down from Me. The game is the Play tile.
+        // 1.2.9 (tablet: calls were hard to find): Today · Calls · [Sol mic] · Circle · Me. Calls opens the call history.
         TODAY(R.string.nav_today, R.drawable.lc_sun),
-        CIRCLE(R.string.nav_circle, R.drawable.lc_users),
+        CALLS(R.string.nav_calls, R.drawable.lc_phone),
         SOL(R.string.nav_talk, R.drawable.lc_mic),
+        CIRCLE(R.string.nav_circle, R.drawable.lc_users),
         ME(R.string.nav_me, R.drawable.lc_user),
-        CALLS(R.string.nav_calls, R.drawable.ic_call, inNav = false),
         AGENTS(R.string.nav_agents, R.drawable.ic_nav_agents, inNav = false),
         SETTINGS(R.string.nav_settings, R.drawable.ic_nav_settings, inNav = false),
         YARD(R.string.nav_yard, R.drawable.ic_nav_yard, inNav = false),
@@ -356,6 +357,16 @@ class MainActivity : ComponentActivity() {
 
     fun openCalls() = net.solardepin.solarchik.ui.CallsActivity.open(this)
 
+    /**
+     * 1.2.9 (tablet: the last rows of Me and Settings sat under the floating bar): the bottom padding every scrolling
+     * screen needs so its last item ends above the bar: the bar's real height (it includes the system inset) plus a
+     * margin; before the first layout, the bar's nominal height (24 + 70 + 12 dp) plus the inset.
+     */
+    fun navClearance(): Int {
+        val measured = if (this::navWrap.isInitialized && navWrap.height > 0 && navWrap.visibility == View.VISIBLE) navWrap.height else 0
+        return maxOf(measured, dp(106) + bottomInset) + dp(20)
+    }
+
     private fun renderCallsDot() {
         val dot = callsDot ?: return
         dot.visibility = if (runCatching { net.solardepin.solarchik.screen.CallInbox.unreadCount(this) }.getOrDefault(0) > 0) View.VISIBLE else View.GONE
@@ -538,7 +549,7 @@ class MainActivity : ComponentActivity() {
         }
         // 1.2.7: Today + Circle share the left half, Me sits in the middle of the right half; the mic keeps the exact centre.
         for (tab in Tab.entries.filter { it.inNav }) nav.addView(if (tab == CENTER) playItem() else navItem(tab),
-            if (tab == CENTER) LinearLayout.LayoutParams(dp(84), dp(70)) else LinearLayout.LayoutParams(0, dp(70), if (tab == Tab.ME) 2f else 1f))
+            if (tab == CENTER) LinearLayout.LayoutParams(dp(84), dp(70)) else LinearLayout.LayoutParams(0, dp(70), 1f))
         bar.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(70)))
         val navWrap = FrameLayout(this).apply {
             tag = "nav-wrap"
@@ -549,6 +560,7 @@ class MainActivity : ComponentActivity() {
             })
         }
         this.navWrap = navWrap
+        navWrap.addOnLayoutChangeListener { _, _, t, _, b, _, ot, _, ob -> if (b - t != ob - ot) screens.values.forEach { it.applyInsets() } }
         // 1.2.4: an opaque strip under the status bar so the tabs don't scroll under the clock (not on the full-bleed run)
         statusScrim = View(this).apply { setBackgroundColor(Ui.BG); tag = "status-scrim" }
         root.addView(statusScrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.TOP))
@@ -605,8 +617,8 @@ class MainActivity : ComponentActivity() {
             gravity = Gravity.CENTER
             maxLines = 1
         }
-        if (tab == Tab.ME) {
-            // unread secretary notes: a small gold dot on the Me icon (the calls are one level down, 1.2.7)
+        if (tab == Tab.CALLS) {
+            // unread secretary notes: a small gold dot on the Calls icon (1.2.9: Calls is a bar tab again)
             val box = FrameLayout(this)
             box.addView(icon, FrameLayout.LayoutParams(dp(26), dp(26)))
             val dot = View(this).apply {

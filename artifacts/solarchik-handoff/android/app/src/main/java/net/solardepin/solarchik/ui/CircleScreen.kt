@@ -212,12 +212,8 @@ class CircleScreen(host: MainActivity) : Screen(host) {
         mine.firstOrNull()?.let { d ->
             if (c != null && c.address.isNotBlank()) opts += ctx.getString(R.string.card_settle, Circle.amount(d.amount), d.token) to { CallActionCards.payContact(host, d.action, c) { host.renderAll() } }
         }
-        theirs.firstOrNull()?.let { d ->
-            opts += ctx.getString(R.string.payreq_btn, Circle.amount(d.amount), d.token) to { PayRequestSheet.show(host, d) { host.renderAll() } }
-            opts += ctx.getString(R.string.circle_owed_yes) to { received(d) }
-        }
+        theirs.firstOrNull()?.let { d -> opts += ctx.getString(R.string.circle_owed_yes) to { received(d) } }
         opts += ctx.getString(R.string.owed_add, name) to { PayRequestSheet.addOwed(host, c?.name ?: name) { host.renderAll() } }
-        if (c != null && c.address.isNotBlank()) opts += ctx.getString(R.string.circle_send) to { CirclePanel.sendTo(host, c) { host.renderAll() } }
         if (c == null || c.address.isBlank()) {
             opts += ctx.getString(R.string.circle_add_wallet, name) to { CirclePanel.edit(host, c ?: Contact("", name, mine.firstOrNull()?.call?.dialNumber.orEmpty()), ctx.getString(R.string.circle_add_wallet, name)) { render() } }
             opts += ctx.getString(R.string.circle_ask, name) to { CirclePanel.ask(host, name, mine.firstOrNull()) }
@@ -230,13 +226,41 @@ class CircleScreen(host: MainActivity) : Screen(host) {
                     .setNegativeButton(android.R.string.cancel, null).show()
             }
         }
-        val dlg = android.app.AlertDialog.Builder(ctx).setTitle(name)
-            .setItems(opts.map { it.first }.toTypedArray()) { _, i -> opts[i].second() }
-            .setNegativeButton(android.R.string.cancel, null).create()
-        dlg.show()
-        lastPerson = dlg
+        // 1.2.9 (Vadym couldn't find how to receive): two equal buttons first, Send and Request, then the rest
+        val box = Ui.column(ctx).apply {
+            tag = "person-sheet"
+            background = GradientDrawable().apply { setColor(Kit.S2); val r = dp(32).toFloat(); cornerRadii = floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f) }
+            setPadding(dp(20), dp(20), dp(20), dp(20) + host.bottomInset)
+        }
+        val head = Ui.row(ctx, gap = 14).apply { gravity = Gravity.CENTER_VERTICAL }
+        head.addView(Kit.avatar(ctx, name, 52))
+        head.addView(Ui.weight(Ui.display(ctx, name, 24f).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }))
+        box.addView(head)
+        var dlg: android.app.Dialog? = null
+        val two = Ui.row(ctx, gap = 10)
+        two.addView(Kit.primary(ctx, ctx.getString(R.string.circle_p_send), R.drawable.lc_send) {
+            dlg?.dismiss()
+            val owe = mine.firstOrNull()
+            when {
+                c != null && c.address.isNotBlank() && owe != null -> CallActionCards.payContact(host, owe.action, c) { host.renderAll() }
+                c != null && c.address.isNotBlank() -> CirclePanel.sendTo(host, c) { host.renderAll() }
+                else -> CirclePanel.edit(host, c ?: Contact("", name, owe?.call?.dialNumber.orEmpty()), ctx.getString(R.string.circle_add_wallet, name)) { saved ->
+                    host.renderAll(); if (saved.address.isNotBlank()) CirclePanel.sendTo(host, saved) { host.renderAll() }
+                }
+            }
+        }.apply { tag = "person-send" }, LinearLayout.LayoutParams(0, dp(56), 1f))
+        two.addView(Kit.primary(ctx, ctx.getString(R.string.circle_p_request), R.drawable.lc_coins) {
+            dlg?.dismiss()
+            val d = theirs.firstOrNull()
+            if (d != null) PayRequestSheet.show(host, d) { host.renderAll() } else PayRequestSheet.addOwed(host, c?.name ?: name, request = true) { host.renderAll() }
+        }.apply { tag = "person-request"; background = Ui.ripple(Ui.rounded(Ui.GREEN, dp(28).toFloat()), dp(28).toFloat()) }, LinearLayout.LayoutParams(0, dp(56), 1f))
+        box.addView(Ui.top(two, 16))
+        val list = Kit.list(ctx)
+        opts.forEach { (label, act) -> Kit.addRow(list, Kit.row(ctx, null, Ui.TEXT, label, null) { dlg?.dismiss(); act() }) }
+        box.addView(Ui.top(list, 14))
+        dlg = HabitsSheet.sheet(host, box).also { it.show(); lastPerson = it }
     }
 
     @androidx.annotation.VisibleForTesting
-    var lastPerson: android.app.AlertDialog? = null
+    var lastPerson: android.app.Dialog? = null
 }
