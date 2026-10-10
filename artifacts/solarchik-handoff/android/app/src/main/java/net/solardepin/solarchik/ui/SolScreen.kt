@@ -235,12 +235,13 @@ class SolScreen(host: MainActivity) : Screen(host) {
             speak(told ?: rep.script)
         }, 12))
 
-        val turns = store.turns()
+        // 1.2.6.1 (tablet, EN UI: old Ukrainian turns with '10 жовт.'): the English chat shows no Cyrillic history
+        val turns = visibleTurns(store.turns(), host.lang)
         chatList.removeAllViews()
         if (turns.isEmpty()) chatList.addView(Ui.muted(ctx, ctx.getString(R.string.chat_empty), 12f))
         turns.takeLast(8).forEach { chatList.addView(bubbleView(it)) }
         pending?.let { chatList.addView(actionCard(it)) }
-        bubble.text = turns.lastOrNull { it.role == "assistant" && !it.fallback }?.text ?: ctx.getString(R.string.today_line_idle)
+        bubble.text = turns.lastOrNull { it.role == "assistant" && !it.fallback }?.text?.let { stageLine(it) } ?: ctx.getString(R.string.today_line_idle)
         micBtn.alpha = if (listening) 1f else 0.9f
         micBtn.background = Ui.rounded(if (listening) Ui.withAlpha(Ui.RED, 0x55) else Ui.withAlpha(Ui.CYAN, 0x22), dp(16).toFloat(), Ui.withAlpha(if (listening) Ui.RED else Ui.CYAN, 0x88), dp(1))
     }
@@ -621,6 +622,31 @@ class SolScreen(host: MainActivity) : Screen(host) {
     }
 
     companion object {
+        private val CYR = Regex("[\\u0400-\\u04FF]")
+
+        /** The chat in an English UI hides turns written in Cyrillic (kept on the phone; Clear chat wipes them). */
+        fun visibleTurns(turns: List<ChatTurn>, lang: String): List<ChatTurn> =
+            if (lang == "en") turns.filter { !CYR.containsMatchIn(it.text) } else turns
+
+        /**
+         * 1.2.6.1 (tablet: "meeting on Mon…"): the speech bubble over Sol is small, so it gets whole sentences that
+         * fit, never a word cut by an ellipsis. The full reply is in the chat below.
+         */
+        fun stageLine(text: String, max: Int = 150): String {
+            val t = text.trim().replace(Regex("\\s+"), " ")
+            if (t.length <= max) return t
+            val parts = Regex("(?<=[.!?])\\s+").split(t)
+            val sb = StringBuilder()
+            for (p in parts) {
+                if (sb.isNotEmpty() && sb.length + 1 + p.length > max) break
+                if (sb.isNotEmpty()) sb.append(' ')
+                sb.append(p)
+            }
+            if (sb.length <= max) return sb.toString()
+            val cut = t.take(max).substringBeforeLast(' ').trimEnd(',', ';', ':', ' ')
+            return "$cut…"
+        }
+    
         private val TIPS = intArrayOf(R.string.sol_tip_1, R.string.sol_tip_2, R.string.sol_tip_3, R.string.sol_tip_4, R.string.sol_tip_5)
 
         /** One stable tip per UTC day. */

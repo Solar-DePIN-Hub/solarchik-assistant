@@ -212,11 +212,22 @@ object CallActionCards {
 
     private fun send(host: MainActivity, a: CallAction, recipient: String, onChange: () -> Unit, contact: net.solardepin.solarchik.circle.Contact? = null) {
         val what = host.getString(R.string.pay_what, net.solardepin.solarchik.circle.Circle.amount(a.amount), a.token, contact?.name ?: Fmt.short(recipient))
-        status(host, host.getString(R.string.pay_waiting_title), host.getString(R.string.pay_waiting, what))
+        val waiting = status(host, host.getString(R.string.pay_waiting_title), host.getString(R.string.pay_waiting, what))
+        waiting.setCanceledOnTouchOutside(false)
+        // 1.2.6.1: a live line, so a wallet that never answers is visible; then "Not sent" with the reason
+        val started = System.currentTimeMillis()
+        val ticker = host.scope.launch {
+            for (i in 1..180) {
+                kotlinx.coroutines.delay(1000)
+                val sec = ((System.currentTimeMillis() - started) / 1000).toInt()
+                if (lastStatus === waiting) waiting.setMessage(host.getString(R.string.pay_waiting, what) + "\n\n" + host.getString(R.string.pay_waiting_for, sec))
+            }
+        }
         host.scope.launch {
             val raw = CallActionRules.amountRaw(a.token, a.amount)
             val r = runCatching { host.wallet.signAndSend(host.sender) { payer, blockhash -> CallActionRules.paymentTx(payer, PublicKey(recipient), a.token, raw, blockhash) } }
                 .getOrElse { e -> if (e is kotlinx.coroutines.CancellationException) throw e else Result.failure(e) }
+            ticker.cancel()
             r.onSuccess { sent ->
                 val store = CallActionStore(host)
                 if (store.all().none { it.id == a.id }) store.add(listOf(a.copy(status = CallAction.DONE, signature = sent.signature))) // sent from Circle

@@ -6,7 +6,9 @@ I'm Vadym, and I build Solarchik on my own under Solar DePIN. Solarchik Assistan
 
 I built this repo for the Colosseum Crypto World's Fair (Solana track, AI / agents). Submissions close 12 Oct 2026, 11:59pm PT (13 Oct, 09:59 Kyiv). My older game build, CLOCK IN, lives in [Solar-DePIN-Hub/Solarchik](https://github.com/Solar-DePIN-Hub/Solarchik), and I didn't change it for this. In this app the game is only a small "Play" tile.
 
-**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.6/solarchik-assistant.apk) (v1.2.6, Android 8+, sha256 `593feaa078d2ada494412ed4914079cfb6fa3c9161592c8dffa367e175641b7a`)
+**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.6.1/solarchik-assistant.apk) (v1.2.6.1, Android 8+, sha256 `355d3340e423b430166b1679438367a0e3f6a6f9464820c110260d063c3c0556`)
+
+**Fixed in 1.2.6.1 (payments, root cause):** Phantom silently drops a `sign_and_send_transactions` request that has no `min_context_slot` (its request schema requires it, so it shows no sheet and sends no answer; known issue solana-mobile/mobile-wallet-adapter#1146). Our request passed none, which matches the tablet exactly: Connect, then Phantom's home screen, then a timeout. Now the request carries the slot of the blockhash it was built with. Before the wallet opens, the app also simulates the transfer on mainnet, so a payment Solana would refuse (not enough SOL, a brand-new recipient below the rent minimum, no USDC) stops with a clear reason instead of opening Phantom. If the wallet still doesn't answer sign-and-send, the app asks it to sign only in the same session and broadcasts through its own RPC. The status sheet now counts the seconds while it waits. Also: one row per call in Recent calls and one "Call back" per number, the English Sol chat hides old Ukrainian turns, the speech bubble no longer cuts a word, the briefing writes "Vadym", and the Circle copy is shorter.
 
 **Fixed in 1.2.6 (payments):** on a real tablet, Circle "Send" showed Phantom's Connect prompt and then Phantom went to its home screen with nothing to sign and no message in the app. Now the transfer is built with a fresh blockhash before the wallet opens, so the wallet session only has to authorize and sign (one session), and a status sheet stays on screen: "Approve in your wallet", then "Not sent" with the reason, or "Sent" and "Settled ✓" with a Solscan link once Solana confirms it. The app's identity is now https://app.solardepin.net, which serves a Digital Asset Links file for this package and signing certificate, so Phantom can verify the app instead of warning that its identity could not be verified (the main Framer site can't serve /.well-known files).
 
@@ -133,7 +135,7 @@ These are from the devnet builds before 1.1.0. I checked every signature below w
 
 ## Install
 
-1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.6/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.6).
+1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.6.1/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.6.1).
 2. Allow installs from your browser or file manager when Android asks.
 3. Open the app. It installs as **Solarchik Assistant** (`net.solardepin.solarchik.assistant`), next to the CLOCK IN game if you have it.
 4. To connect a wallet, tap "Set up wallet" on Today. You need Phantom, Solflare or Seed Vault; it's a mainnet wallet with real funds. Without a wallet app you can still use Sol, the secretary, the briefing and the Watcher's prices.
@@ -187,7 +189,7 @@ What I couldn't verify myself, because it needs a real wallet with real money: t
 | Item | URL |
 | --- | --- |
 | This repo | https://github.com/Solar-DePIN-Hub/solarchik-assistant |
-| Release v1.2.6 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.6 |
+| Release v1.2.6.1 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.6.1 |
 | Game repo (CLOCK IN, unchanged) | https://github.com/Solar-DePIN-Hub/Solarchik |
 | API / market (devnet) | https://solarchik-market.vercel.app |
 | Demo video (CLOCK IN cut, an Assistant cut is coming) | https://youtu.be/oAxoliLwUXo |

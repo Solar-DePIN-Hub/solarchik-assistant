@@ -125,4 +125,9 @@
     <string name="pay_failed">Нічого не надіслано. %1$s</string>
     <string name="pay_solscan">Відкрити в Solscan</string>
     <string name="agents_balance_refresh">Оновлюю баланс…</string>
+    <string name="sim_rent">Ця адреса нова у Solana, тож перший переказ на нього має бути щонайменше ~0.001 SOL. Надішли трохи більше або попроси іншу адресу.</string>
+    <string name="sim_funds">У гаманці замало SOL на цю суму й комісію мережі (близько 0.000005 SOL).</string>
+    <string name="sim_token">У гаманці немає цього токена (або замало).</string>
+    <string name="sim_other">Solana відхилила б цей переказ (%1$s).</string>
+    <string name="pay_waiting_for">Чекаю на гаманець: %1$d с. Якщо нічого не відбувається, повернись сюди й побачиш чому.</string>
 </resources>

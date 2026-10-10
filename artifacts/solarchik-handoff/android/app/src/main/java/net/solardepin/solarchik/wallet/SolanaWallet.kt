@@ -33,14 +33,14 @@ data class SentTx(val address: String, val signature: String, val cluster: Strin
  * Typed wallet failure so the UI can show a localized line. [signOnlyMayHelp]: the wallet refused
  * sign-and-send itself (not the player, not a timeout), so the sign-only fallback is worth a try.
  */
-class WalletError(val kind: Kind, detail: String = "", val signOnlyMayHelp: Boolean = false, val authRejected: Boolean = false) :
+class WalletError(val kind: Kind, detail: String = "", val signOnlyMayHelp: Boolean = false, val authRejected: Boolean = false, val userText: String? = null) :
     Exception(detail.ifBlank { kind.name }) {
     enum class Kind { NO_WALLET, DECLINED, NETWORK, FAILED }
 
     companion object {
         /** User-facing text for a wallet / network failure (shared by the tabs and the run). */
         fun text(ctx: android.content.Context, t: Throwable?): String = when (t) {
-            is WalletError -> when (t.kind) {
+            is WalletError -> if (t.userText != null) t.userText else when (t.kind) {
                 Kind.NO_WALLET -> ctx.getString(net.solardepin.solarchik.R.string.err_no_wallet)
                 Kind.DECLINED -> ctx.getString(net.solardepin.solarchik.R.string.err_declined)
                 Kind.NETWORK -> ctx.getString(net.solardepin.solarchik.R.string.err_network)
@@ -443,8 +443,23 @@ class SolanaWallet(context: Context) {
         return e
     }
 
-    /** Tests: sign requests made inside a wallet session. */
+    /** The chain's refusal in words a user can act on. */
+    internal fun simulationText(err: String): String {
+        val r = app.resources
+        return when {
+            err.contains("InsufficientFundsForRent") -> r.getString(net.solardepin.solarchik.R.string.sim_rent)
+            err.contains("insufficient lamports", true) || err.contains("InsufficientFunds") || err.contains("\"Custom\":1") -> r.getString(net.solardepin.solarchik.R.string.sim_funds)
+            err.contains("InvalidAccountData") || err.contains("AccountNotFound") || err.contains("insufficient funds", true) -> r.getString(net.solardepin.solarchik.R.string.sim_token)
+            else -> r.getString(net.solardepin.solarchik.R.string.sim_other, err.take(80))
+        }
+    }
+
+    /** Tests: sign requests made inside a wallet session, and the min_context_slot the last one carried. */
     @Volatile internal var signRequests = 0
+    @Volatile internal var lastMinSlot: Int? = null
+
+    /** The blockhash's context slot as the MWA min_context_slot (an Integer in the clientlib API). */
+    internal fun minContextSlot(rpc: Rpc): Int? = rpc.lastBlockhashSlot.takeIf { it in 1..Int.MAX_VALUE.toLong() }?.toInt()
     /** Tests: the wallet's answer to signAndSendTransactions (the signature for these bytes). */
     @Volatile internal var signSeam: ((ByteArray) -> ByteArray)? = null
 
@@ -456,6 +471,7 @@ class SolanaWallet(context: Context) {
     ): Result<SentTx> {
         adapter.rpcCluster = rpcCluster()
         val cluster = clusterName
+        val client0 = client
         var buildError: Throwable? = null
         // 1.2.6 (tablet: Phantom showed Connect, then went home, nothing to sign): the transaction is built with a
         // fresh blockhash BEFORE the wallet opens, for the connected account, so the session only has to
@@ -471,6 +487,13 @@ class SolanaWallet(context: Context) {
             return Result.failure(buildFailure(t))
         }
         if (pre != null) WalletDiag.log("tx ready", "built for " + WalletDiag.shortAddr(saved) + " before opening the wallet")
+        // 1.2.6.1: simulate first (as Phantom does before its sheet). A transfer the chain would refuse (not enough
+        // SOL, a new recipient below rent, no USDC) never opens the wallet; the user reads why right away.
+        if (pre != null) {
+            val problem = runCatching { client.simulate(pre.second) }.getOrNull()
+            WalletDiag.log("simulate", problem?.let { "refused: " + it.take(160) } ?: "ok (or the node didn't answer)")
+            if (problem != null) return Result.failure(WalletError(WalletError.Kind.FAILED, "simulation: " + problem, userText = simulationText(problem)))
+        }
         // 1.2.0: the logged direct session (same wait and wallet pick as connect) when the app is in front
         direct { client, auth ->
             val acct = accountKey(auth)?.let { Base58.encode(it) } ?: error("No account")
@@ -481,10 +504,28 @@ class SolanaWallet(context: Context) {
                 buildError = t
                 throw t
             }
-            WalletDiag.log("sign request", "signAndSendTransactions sent in the same session")
+            // 1.2.6.1 root cause of "Connect, then Phantom home, no sign sheet": Phantom rejects sign_and_send_transactions
+            // without min_context_slot (its schema requires it; it answers nothing and shows nothing; MWA issue #1146).
+            val minSlot = minContextSlot(client0)
+            WalletDiag.log("sign request", "signAndSendTransactions in the same session, min_context_slot=" + (minSlot ?: "none"))
             signRequests++
+            lastMinSlot = minSlot
             signSeam?.let { f -> return@direct MobileWalletAdapterClient.SignAndSendTransactionsResult(arrayOf(f(bytes))) }
-            client.signAndSendTransactions(arrayOf(bytes), null).get(MwaDirect.AUTHORIZE_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            try {
+                client.signAndSendTransactions(arrayOf(bytes), minSlot).get(MwaDirect.AUTHORIZE_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            } catch (e: Exception) {
+                // 1.2.6.1 fallback in the SAME session: the wallet didn't take sign-and-send (no answer, or refused for
+                // a reason other than the user's "no"): ask it to sign only, and broadcast through our own RPC.
+                val cause = (e as? java.util.concurrent.ExecutionException)?.cause ?: e
+                val code = (cause as? com.solana.mobilewalletadapter.clientlib.protocol.JsonRpc20Client.JsonRpc20RemoteException)?.code
+                if (code == -3 || code == -4) throw e // declined / not submitted: final
+                WalletDiag.error("sign-and-send got no result, trying sign-only in this session", cause)
+                val signed = client.signTransactions(arrayOf(bytes)).get(MwaDirect.AUTHORIZE_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .signedPayloads?.firstOrNull() ?: throw e
+                val sig = kotlinx.coroutines.runBlocking { client0.sendTransaction(signed) }
+                WalletDiag.log("sign-only", "signed by the wallet, sent by the app: " + WalletDiag.shortAddr(sig))
+                MobileWalletAdapterClient.SignAndSendTransactionsResult(arrayOf(Base58.decode(sig)))
+            }
         }?.let { r ->
             return r.fold(
                 onSuccess = { (auth, res) ->

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="circle_title">Circle</string>
-    <string name="circle_body">People you pay. When a caller asks you to send money, it shows up here as what you owe them. Addresses are only ones you save yourself, never one heard on a call. Everything stays on this phone, and nothing is sent until you approve it in your wallet.</string>
+    <string name="circle_body">People you pay. When a caller asks you to send money, it shows up here as what you owe them. Only addresses you save yourself. Never one heard on a call. Everything stays on this phone, and nothing is sent until you approve it in your wallet.</string>
     <string name="circle_owe_label">You owe</string>
     <string name="circle_owe_none">Nothing right now.</string>
     <string name="circle_settled_label">Settled</string>
@@ -125,4 +125,9 @@
     <string name="pay_failed">Nothing was sent. %1$s</string>
     <string name="pay_solscan">View on Solscan</string>
     <string name="agents_balance_refresh">Updating your balance…</string>
+    <string name="sim_rent">This address is new on Solana, so the first transfer to it must be at least about 0.001 SOL. Send a bit more, or ask them for another address.</string>
+    <string name="sim_funds">Not enough SOL in your wallet for this amount plus the network fee (about 0.000005 SOL).</string>
+    <string name="sim_token">Your wallet has none (or not enough) of this token.</string>
+    <string name="sim_other">Solana would refuse this transfer (%1$s).</string>
+    <string name="pay_waiting_for">Waiting for your wallet: %1$d s. If nothing happens, come back here and you will see why.</string>
 </resources>

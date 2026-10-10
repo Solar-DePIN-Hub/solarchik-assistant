@@ -976,7 +976,7 @@ function noteFields(it) {
 
 export function translateSystem(lang) {
   const target = lang === "uk" ? "Ukrainian" : "English";
-  return `You translate short phone-call notes for the app owner. Translate every string value into ${target}${lang === "uk" ? " (never Russian)" : ""}. Keep names, numbers, amounts, token symbols (SOL, USDC), phone numbers and times exactly. Do not add or drop facts. Pronouns: replace every he/she/him/her/his (він/вона/його/її) that refers to the caller with the caller's name or "they" (${lang === "uk" ? "neutral Ukrainian forms" : "they/them/their"}), even when the input already uses one; the input may have guessed the gender wrong. Write caller_name in the target script (e.g. Вадим → Vadym in English). JSON only, same keys: {"items":[{"id":"","caller_name":"","intent":"","notes":"","text":""}]} (keep only the keys you were given).`;
+  return `You translate short phone-call notes for the app owner. Translate every string value into ${target}${lang === "uk" ? " (never Russian)" : ""}. Keep names, numbers, amounts, token symbols (SOL, USDC), phone numbers and times exactly. Do not add or drop facts. Pronouns: replace every he/she/him/her/his (він/вона/його/її) that refers to the caller with the caller's name or "they" (${lang === "uk" ? "neutral Ukrainian forms" : "they/them/their"}), even when the input already uses one; the input may have guessed the gender wrong. Write caller_name in the target script (e.g. Вадим → Vadym in English; 'Vadim' is always written Vadym). JSON only, same keys: {"items":[{"id":"","caller_name":"","intent":"","notes":"","text":""}]} (keep only the keys you were given).`;
 }
 
 /** Applies a translated field set to an inbox item (text rebuilt from the summary when there is one). */

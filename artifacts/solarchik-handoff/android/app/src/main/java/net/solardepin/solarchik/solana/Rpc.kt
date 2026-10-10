@@ -89,8 +89,29 @@ open class Rpc(val url: String) {
 
     suspend fun latestBlockhash(): ByteArray {
         val r = call("getLatestBlockhash", buildJsonArray { add(buildJsonObject { put("commitment", "confirmed") }) })
+        // 1.2.6.1: the context slot rides along as min_context_slot (Phantom drops sign_and_send without it, MWA #1146)
+        lastBlockhashSlot = runCatching { (((r as? JsonObject)?.get("context") as? JsonObject)?.get("slot") as? JsonPrimitive)?.longOrNull }.getOrNull() ?: 0L
         return parseBlockhash(r)
     }
+
+    /**
+     * 1.2.6.1: simulateTransaction (sigVerify off, the blockhash as built). Null when the chain would accept it;
+     * the error (with the last log lines) when it would not. Throws when the node can't be asked.
+     */
+    open suspend fun simulate(tx: ByteArray): String? {
+        val r = call("simulateTransaction", buildJsonArray {
+            add(JsonPrimitive(java.util.Base64.getEncoder().encodeToString(tx)))
+            add(buildJsonObject { put("encoding", "base64"); put("sigVerify", false); put("replaceRecentBlockhash", true); put("commitment", "confirmed") })
+        })
+        val v = (r as? JsonObject)?.get("value") as? JsonObject ?: throw RpcException("no simulation")
+        val err = v["err"]
+        if (err == null || err is kotlinx.serialization.json.JsonNull) return null
+        val logs = (v["logs"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.orEmpty()
+        return err.toString() + " | " + logs.takeLast(3).joinToString(" / ")
+    }
+
+    /** The context slot of the last [latestBlockhash] answer (0 if the node didn't say). */
+    @Volatile var lastBlockhashSlot: Long = 0L
 
     suspend fun balanceLamports(address: String): Long {
         val r = call("getBalance", buildJsonArray { add(JsonPrimitive(address)); add(buildJsonObject { put("commitment", "confirmed") }) })

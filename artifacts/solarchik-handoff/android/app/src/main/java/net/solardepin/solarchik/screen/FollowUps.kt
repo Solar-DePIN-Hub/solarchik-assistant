@@ -29,7 +29,9 @@ object FollowUps {
             }
         }
         val rem = out.filter { it.kind == FollowUp.Kind.REMINDER }.sortedBy { it.at }
+        // 1.2.6.1: one "Call back" per number (two calls from Ira = one follow-up, the newest)
         val cb = out.filter { it.kind == FollowUp.Kind.CALLBACK }.sortedByDescending { it.at }
+            .distinctBy { it.item.callback.filter { ch -> ch.isDigit() }.takeLast(9).ifBlank { it.item.key } }
         return rem + cb
     }
 

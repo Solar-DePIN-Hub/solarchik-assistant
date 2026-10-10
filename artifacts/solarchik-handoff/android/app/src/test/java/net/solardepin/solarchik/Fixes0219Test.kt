@@ -64,7 +64,7 @@ class Fixes0219Test {
         val a = CallInbox.parse("a", 200, inbox)!!
         val b = CallInbox.parse("b", 200, inbox)!!
         val m = CallInbox.merge(listOf(a, a, b))
-        assertEquals(4, m.size)
+        assertEquals(2, m.size) // 1.2.6.1: one row per call even when two ids list it (tablet showed Ira twice)
         assertTrue(m.zipWithNext().all { (x, y) -> x.at >= y.at })
     }
 

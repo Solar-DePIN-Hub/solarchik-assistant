@@ -24,8 +24,8 @@ android {
         applicationId = "net.solardepin.solarchik.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 126
-        versionName = "1.2.6"
+        versionCode = 127
+        versionName = "1.2.6.1"
         buildConfigField("boolean", "MAINNET_PAID_MINT", "false")
         // The assistant build never talks to mainnet, Seeker included.
         buildConfigField("boolean", "DEVNET_ONLY", "false")
@@ -44,6 +44,9 @@ android {
             it.maxHeapSize = "1536m"
             // First-launch onboarding stays off in older screen tests; TodayTest switches it on.
             it.systemProperty("solarchik.onboarding", "0")
+            // 1.2.6.1: dump the exact transfer bytes for an independent decoder (TxBytesDumpTest)
+            (project.findProperty("txdump") as String?)?.let { v -> it.systemProperty("solarchik.txdump", v) }
+            (project.findProperty("blockhash") as String?)?.let { v -> it.systemProperty("solarchik.blockhash", v) }
             // 1.1.0: the app defaults to English; the existing uk-qualifier tests run as "follow the phone"
             it.systemProperty("solarchik.langDefault", (project.findProperty("langDefault") as String?) ?: "phone")
             // 1.1.0: the app defaults to mainnet; the unit suite runs in dev devnet mode unless a test flips it.

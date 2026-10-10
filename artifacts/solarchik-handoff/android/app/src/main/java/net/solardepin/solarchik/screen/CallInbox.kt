@@ -95,8 +95,21 @@ object CallInbox {
 
     fun dedupe(items: List<CallItem>): List<CallItem> {
         val good = items.filter { it.callId.isNotBlank() && it.status != FAILED }.map { it.owner + "|" + canon(it.callId) }.toSet()
-        return items.filter { !(it.callId.isNotBlank() && it.status == FAILED && (it.owner + "|" + canon(it.callId)) in good) }
+        val kept = items.filter { !(it.callId.isNotBlank() && it.status == FAILED && (it.owner + "|" + canon(it.callId)) in good) }
             .distinctBy { it.key }
+        // 1.2.6.1 (tablet: two identical Ira rows): the same call can come back under two ids this phone reads
+        // (the user's own and the line owner's), or twice with the same note. One row per call.
+        val seen = HashSet<String>()
+        val out = ArrayList<CallItem>()
+        for (c in kept.sortedByDescending { if (it.status == DONE) 1 else 0 }) {
+            val byId = if (c.callId.isNotBlank()) "id:" + canon(c.callId) else null
+            val byText = if (c.text.isNotBlank()) "tx:" + c.caller + "|" + c.text.trim() + "|" + (c.at / 300_000L) else null
+            if ((byId != null && byId in seen) || (byText != null && byText in seen)) continue
+            byId?.let { seen += it }; byText?.let { seen += it }
+            out += c
+        }
+        val order = kept.withIndex().associate { it.value to it.index }
+        return out.sortedBy { order[it] ?: 0 }
     }
 
     /** Merges the lists of several ids, newest first. */
@@ -152,7 +165,7 @@ object CallInbox {
         val raw = prefs(ctx).getString("cache", null) ?: return emptyList()
         return runCatching {
             val a = JSONArray(raw)
-            (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { o -> item(o.optString("owner"), o) } }
+            dedupe((0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { o -> item(o.optString("owner"), o) } })
         }.getOrDefault(emptyList())
     }
 
