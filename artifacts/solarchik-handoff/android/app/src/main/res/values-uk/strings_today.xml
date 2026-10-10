@@ -39,12 +39,12 @@
     <string name="today_sec_title">Телефонний секретар</string>
     <string name="today_sec_on">Увімкнено</string>
     <string name="today_sec_off">Вимкнено</string>
-    <string name="today_sec_handled">Відповів</string>
+    <string name="today_sec_handled">Прийняті</string>
     <string name="today_sec_missed">Пропущені</string>
     <string name="today_sec_blocked">Заблоковані</string>
     <string name="today_sec_latest_today">Сьогодні</string>
     <string name="today_sec_latest">Останні</string>
-    <string name="today_sec_empty">Дзвінків ще не було. Подзвони на лінію секретаря сам і подивись, як він відповідає, записує нотатку й транскрипт.</string>
+    <string name="today_sec_empty">Дзвінків ще не було. Подзвони на лінію секретаря сам і подивись, як він відповідає та записує нотатку й транскрипт.</string>
     <string name="today_sec_inbox">Усі дзвінки</string>
     <string name="today_sec_try">Спробувати</string>
 
@@ -64,9 +64,9 @@
     <string name="today_wallet_builtin">Вбудований гаманець</string>
     <string name="today_wallet_app">Застосунок гаманця</string>
     <string name="today_wallet_did">Остання дія</string>
-    <string name="today_wallet_did_none">Поки нічого. Жоден агент не працює.</string>
+    <string name="today_wallet_did_none">Поки нічого: жоден агент не ввімкнений.</string>
     <string name="today_wallet_next">Чекає на тебе</string>
-    <string name="today_wallet_next_none">Нічого. Сол питає перед кожним кроком у блокчейні.</string>
+    <string name="today_wallet_next_none">Нічого. Сол питає тебе перед кожною дією в блокчейні.</string>
     <string name="today_wallet_next_pending">%s · підтверди в чаті</string>
     <string name="today_wallet_agents">Агенти</string>
     <string name="today_wallet_explorer">Explorer</string>
@@ -95,7 +95,7 @@
     <string name="onb_1_body">Утримуй мікрофон і просто говори. Сол знає про твої дзвінки, нагадування й гаманець, українською чи англійською.</string>
     <string name="onb_2_title">Він відповідає на дзвінки за тебе</string>
     <string name="onb_2_body">AI-секретар бере слухавку на справжній лінії, записує нотатку й транскрипт і може блокувати спам-номери. Ти потім читаєш коротке резюме.</string>
-    <string name="onb_3_title">Гаманець агента в Solana</string>
+    <string name="onb_3_title">Твій гаманець у Solana</string>
     <string name="onb_3_body">Сол може готувати справжні дії в Solana mainnet: щоденну відмітку і, якщо ти ввімкнеш, невеликі обміни в межах твоїх лімітів. Кожна транзакція відкривається в гаманці; без твого підтвердження нічого не рухається.</string>
     <string name="as_skills">Я відповідаю на дзвінки, коли ти не можеш: секретар бере слухавку, записує нотатку й транскрипт, а я кажу тобі, що важливо. Я тримаю справи й нагадування з цих дзвінків. Ще я дивлюсь за твоїм гаманцем у Solana mainnet: показую SOL і SKR, готую щоденну відмітку і, якщо ти ввімкнеш, невеликі обміни в межах твоїх лімітів. Кожна транзакція чекає твого підтвердження в гаманці. Питай про дзвінки, гаманець чи свій день.</string>
     <plurals name="as_calls_today">

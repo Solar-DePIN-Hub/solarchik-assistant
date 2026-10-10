@@ -563,7 +563,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         tag = "today-wallet"
         val head = Ui.row(ctx, gap = 12).apply { gravity = Gravity.CENTER_VERTICAL }
         head.addView(Ui.iconBadge(ctx, R.drawable.ic_wallet, Ui.GOLD, 40))
-        head.addView(Ui.weight(Ui.h2(ctx, ctx.getString(R.string.today_wallet_title))))
+        head.addView(Ui.weight(Ui.h2(ctx, ctx.getString(if (host.wallet.mainnet) R.string.mn_today_wallet_title else R.string.today_wallet_title))))
         head.addView(Ui.pill(ctx, ctx.getString(if (host.wallet.mainnet) R.string.network_mainnet else R.string.today_devnet), if (host.wallet.mainnet) Ui.GREEN else Ui.CYAN).apply { tag = "today-cluster" })
         addView(head)
         walletBody = Ui.column(ctx)
@@ -575,7 +575,8 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         val w = host.wallet
         if (!w.connected) {
             walletBody.addView(Ui.muted(ctx, ctx.getString(if (w.mainnet) R.string.mn_today_wallet_none else R.string.today_wallet_none), 13.5f).apply { setLineSpacing(0f, 1.25f) })
-            walletBody.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.today_wallet_setup), Ui.Btn.PRIMARY, R.drawable.ic_wallet) { setupWallet() }.apply { tag = "today-wallet-setup" }, 14))
+            // 1.1.5: on mainnet this is the user's own wallet app (MWA connect), never "create a wallet"
+            walletBody.addView(Ui.top(Ui.button(ctx, ctx.getString(if (w.mainnet) R.string.mn_today_wallet_connect else R.string.today_wallet_setup), Ui.Btn.PRIMARY, R.drawable.ic_wallet) { setupWallet() }.apply { tag = "today-wallet-setup" }, 14))
             return
         }
         val bal = balance
@@ -621,7 +622,9 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         val w = host.wallet
         host.scope.launch {
             if (w.hasWalletApp()) {
-                w.connect(host.sender).onFailure { host.toast(host.errorText(it)) }
+                w.connect(host.sender)
+                    .onSuccess { if (w.connected) host.toast(ctx.getString(R.string.mn_wallet_connected, Fmt.short(w.address))) }
+                    .onFailure { host.toast(host.errorText(it)) }
             } else {
                 host.setupBuiltInWallet()
             }

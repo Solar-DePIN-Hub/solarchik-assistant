@@ -18,13 +18,17 @@ const MAX_USD = 100;
 const MAX_AGE_SEC = 30 * 24 * 3600;
 const B58 = /^[1-9A-HJ-NP-Za-km-z]+$/;
 
-const VOICE = `You are Solarchik, a short solar-powered secretary.
-Greet once. Ask only the caller's name and what they wanted. Never ask for a company, job, or anything else personal.
+const VOICE = `You are Solarchik, the owner's phone receptionist. You take messages; you never act on them.
+Greet once, briefly. Ask the caller's name and what they want to pass on. Never ask for a company, job, or anything else personal.
 Use the caller's number as the callback; ask for another number only if they offer one.
-Keep spoken answers under 20 words. Warm, a bit cheeky, never rude.
-Never give wallets, seeds, passwords, or home address.
-If spam or scam, refuse and end the call.
-When you have name plus reason, confirm once and say the owner will see the note, then say goodbye.
+Every spoken line is short (under 20 words), plain and natural, like a polite human receptionist. Say only what fits the conversation: no jokes, no filler, no lines the caller did not ask for.
+You ALWAYS take the message, whatever it is. Never say you "can't" or "don't do" something the caller asks for: you pass it on to the owner.
+Money: when the caller asks the owner to send, pay, lend or return money, say you will pass the request on, then ask only what is missing: how much, what it is for, and when to call back. Never send, promise, confirm or refuse a payment, and never discuss wallets, cards or crypto.
+A callback or a reminder ("call me tomorrow", "remind him about Monday"): ask the time only if it is missing, then confirm it.
+If the caller only mumbles or you did not catch it, ask them once to repeat; never guess.
+Never give out wallets, seeds, codes, passwords, or the owner's address.
+Obvious spam or a scam script (fake bank, police, "your account is blocked"): say you will pass it on and end the call politely.
+When you have the name plus every request, repeat the requests back in one short sentence, say the owner will see the note, then say goodbye.
 In Ukrainian, address the caller with polite «ви» every time (you speak for the owner to someone you do not know): «Як вас звати і що ви хотіли передати?». Never switch to «ти» mid-call; «ви хотіли» also avoids guessing the caller's gender.`;
 
 const NOTE_RULE = "\nBefore goodbye, call the save_call_note tool once with what you learned.";
@@ -955,11 +959,15 @@ const NOTE_TOOL = {
     properties: {
       caller_name: { type: "string" },
       callback: { type: "string" },
-      intent: { type: "string", description: "Why they called, one sentence." },
+      intent: {
+        type: "string",
+        description:
+          "Every request of the caller, in the caller's language, one or two sentences. Name money requests plainly (\"asks you to send him money: amount not said, for rent\"), callbacks with their time and reminders with their day; never reduce a request to a greeting.",
+      },
       urgency: { type: "string", enum: ["low", "medium", "high"] },
       spam_risk: { type: "string", enum: ["low", "medium", "high"] },
       action: { type: "string", enum: ["callback", "ignore", "block"] },
-      notes: { type: "string" },
+      notes: { type: "string", description: "Details as said: amounts and currency, what for, times and days, any other number." },
     },
     required: ["intent"],
   },
@@ -1257,7 +1265,7 @@ export async function finishNote(env, callId, userId, caller, lines = []) {
           {
             role: "system",
             content:
-              'Summarise this phone call for the person who was called. JSON only: {"caller_name":"","intent":"one sentence: what they want","urgency":"low|medium|high","spam_risk":"low|medium|high","action":"callback|ignore|block","notes":""}. Write intent and notes in the language the caller spoke. Leave a field empty when unknown. Never invent details.',
+              'Summarise this phone call for the person who was called. JSON only: {"caller_name":"","intent":"every request in one or two sentences: money they ask the owner to send (amount if said, what for), callbacks with time, reminders with day; never reduce a request to a greeting","urgency":"low|medium|high","spam_risk":"low|medium|high","action":"callback|ignore|block","notes":""}. Write intent and notes in the language the caller spoke. Leave a field empty when unknown. Never invent details.',
           },
           { role: "user", content: said.map((l) => (l.who === "caller" ? "Caller: " : "Secretary: ") + clip(l.text, 400)).join("\n").slice(0, 6000) },
         ],
@@ -1290,10 +1298,61 @@ export async function finishNote(env, callId, userId, caller, lines = []) {
 /** Realtime events that carry the call's words. */
 export function transcriptLine(ev) {
   if (!ev || typeof ev !== "object") return null;
-  if (ev.type === "conversation.item.input_audio_transcription.completed" && ev.transcript) return { who: "caller", text: String(ev.transcript) };
+  const item = typeof ev.item_id === "string" ? ev.item_id.slice(0, 80) : "";
+  const withItem = (l) => (item ? { ...l, item } : l);
+  if (ev.type === "conversation.item.input_audio_transcription.completed" && ev.transcript) return withItem({ who: "caller", text: String(ev.transcript) });
   if ((ev.type === "response.output_audio_transcript.done" || ev.type === "response.audio_transcript.done") && ev.transcript)
-    return { who: "secretary", text: String(ev.transcript) };
+    return withItem({ who: "secretary", text: String(ev.transcript) });
   return null;
+}
+
+/**
+ * 1.1.5: the conversation position of an item. The caller's transcription finishes asynchronously, often after the
+ * secretary already answered, so lines in arrival order put the caller's words after the reply (it read as swapped
+ * speakers). conversation.item.added / .created arrive in conversation order, transcription or not.
+ */
+export function itemAdded(ev) {
+  if (!ev || typeof ev !== "object") return "";
+  if (ev.type !== "conversation.item.added" && ev.type !== "conversation.item.created" && ev.type !== "response.output_item.added") return "";
+  const id = ev.item?.id;
+  return typeof id === "string" && id ? id.slice(0, 80) : "";
+}
+
+/** Adds one transcript line; a second event for the same item and speaker replaces the first (never doubled). */
+export function addLine(lines, l) {
+  if (l.item) {
+    const i = lines.findIndex((x) => x && x.item === l.item && x.who === l.who);
+    if (i >= 0) {
+      lines[i] = l;
+      return lines;
+    }
+  }
+  lines.push(l);
+  return lines;
+}
+
+/**
+ * Lines in conversation order: a line whose item position is known sorts by it; one without stays right after the
+ * line it arrived behind. Only {who, text} leave the room (no invented or merged text, nothing added).
+ */
+export function orderLines(lines, order = {}) {
+  let last = -1;
+  const ranked = (Array.isArray(lines) ? lines : []).filter((l) => l && l.text).map((l, i) => {
+    const pos = l.item && Number.isFinite(order[l.item]) ? order[l.item] : null;
+    const rank = pos !== null ? pos : last + 0.001 * (i + 1);
+    if (pos !== null) last = pos;
+    return { l, rank, i };
+  });
+  ranked.sort((a, b) => a.rank - b.rank || a.i - b.i);
+  return ranked.map(({ l }) => ({ who: l.who, text: l.text }));
+}
+
+/** Caller transcription settings: the call's language when it is fixed, else a bilingual hint (1.1.5: a Ukrainian caller came out in Russian/Belarusian). */
+export function transcriptionFor(lang) {
+  const t = { model: "gpt-4o-mini-transcribe" };
+  if (lang === "uk" || lang === "en") t.language = lang;
+  else t.prompt = "Телефонна розмова українською або англійською. A phone call in Ukrainian or English.";
+  return t;
 }
 
 /**
@@ -1308,6 +1367,8 @@ export class CallRoom {
     this.state = state;
     this.env = env;
     this.lines = [];
+    this.order = {};
+    this.seq = 0;
     this.done = false;
   }
 
@@ -1380,7 +1441,7 @@ export class CallRoom {
     ws.accept();
     this.ws = ws;
     console.log(JSON.stringify({ event: "sideband_open", callId: String(callId).slice(-8) }));
-    ws.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio: { input: { transcription: { model: "gpt-4o-mini-transcribe" } } } } }));
+    ws.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio: { input: { transcription: transcriptionFor(this.lang) } } } }));
     // A capped call says its one line right away instead of waiting for the caller.
     if (this.capped) ws.send(JSON.stringify({ type: "response.create", response: { instructions: capInstructions(this.lang) } }));
     ws.addEventListener("message", (e) => {
@@ -1391,12 +1452,26 @@ export class CallRoom {
         return;
       }
       this.onEvent(ev);
+      const added = itemAdded(ev);
+      if (added && !(added in this.order)) {
+        this.order[added] = this.seq++;
+        this.state.storage.put("order", this.order).catch(() => {});
+      }
       const l = transcriptLine(ev);
       if (l) {
-        this.lines.push(l);
+        addLine(this.lines, l);
         this.state.storage.put("lines", this.lines.slice(-60)).catch(() => {});
       }
-      if (ev?.type === "error") console.log(JSON.stringify({ event: "sideband_event_error", callId: String(callId).slice(-8), code: ev.error?.code || ev.error?.type || "" }));
+      if (ev?.type === "error") {
+        console.log(JSON.stringify({ event: "sideband_event_error", callId: String(callId).slice(-8), code: ev.error?.code || ev.error?.type || "", param: String(ev.error?.param || "").slice(0, 60) }));
+        // The language/prompt hint must never cost the transcript: fall back to the plain 1.1.4 setting once.
+        if (!this.plainTranscription && /transcription/i.test(String(ev.error?.param || "") + " " + String(ev.error?.message || ""))) {
+          this.plainTranscription = true;
+          try {
+            ws.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio: { input: { transcription: { model: "gpt-4o-mini-transcribe" } } } } }));
+          } catch {}
+        }
+      }
     });
     const end = (why) => this.finish(callId, userId, caller, why).catch(() => {});
     ws.addEventListener("close", () => end("closed"));
@@ -1433,7 +1508,9 @@ export class CallRoom {
   async finish(callId, userId, caller, why) {
     if (this.done) return;
     this.done = true;
-    const lines = this.lines.length ? this.lines : (await this.state.storage.get("lines")) || [];
+    const raw = this.lines.length ? this.lines : (await this.state.storage.get("lines")) || [];
+    const order = Object.keys(this.order).length ? this.order : (await this.state.storage.get("order")) || {};
+    const lines = orderLines(raw, order);
     const r = await finishNote(this.env, callId, userId, caller, lines);
     const startedAt = await this.state.storage.get("startedAt");
     const durationSec = startedAt ? Math.max(1, Math.round((Date.now() - startedAt) / 1000)) : null;
@@ -1459,10 +1536,10 @@ export class CallRoom {
 
   /** Stored words of this call (older calls kept them only here), for GET /call. */
   async linesRoute() {
-    const s = await this.state.storage.get(["lines", "startedAt", "endedAt"]);
+    const s = await this.state.storage.get(["lines", "order", "startedAt", "endedAt"]);
     const startedAt = s.get("startedAt") || null;
     const endedAt = s.get("endedAt") || null;
-    return json({ lines: s.get("lines") || [], durationSec: startedAt && endedAt ? Math.max(1, Math.round((endedAt - startedAt) / 1000)) : null });
+    return json({ lines: orderLines(s.get("lines") || [], s.get("order") || {}), durationSec: startedAt && endedAt ? Math.max(1, Math.round((endedAt - startedAt) / 1000)) : null });
   }
 
   /** The "__line_claims__" room: /claim arms the demo line for one player; /claim-take is read by the next call. */

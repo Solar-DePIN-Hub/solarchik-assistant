@@ -149,7 +149,7 @@ class TodayTest {
 
     @Test fun installsNextToTheGameAndStaysOnDevnet() {
         assertEquals("net.solardepin.solarchik.assistant", BuildConfig.APPLICATION_ID)
-        assertEquals("1.1.4", BuildConfig.VERSION_NAME)
+        assertEquals("1.1.5", BuildConfig.VERSION_NAME)
         // 1.1.0: the release defaults to mainnet; this suite runs in dev devnet mode (solarchik.cluster=devnet)
         assertFalse(BuildConfig.DEVNET_ONLY)
         assertEquals("Solarchik Assistant", app.getString(R.string.app_name))
@@ -193,7 +193,7 @@ class TodayTest {
         assertEquals(listOf("Сьогодні", "Дзвінки", "Сол", "Агенти", "Ще"),
             listOf("nav-today", "nav-calls", "nav-sol", "nav-agents", "nav-settings").map { find(d, it)!!.contentDescription.toString() })
         assertTrue(texts(d).any { it.contains("Телефонний секретар") })
-        assertTrue(texts(find(d, "today-sec-stats")!!).contains("Відповів"))
+        assertTrue(texts(find(d, "today-sec-stats")!!).contains("Прийняті"))
         shot(d, "01-today-uk")
     }
 
@@ -271,7 +271,7 @@ class TodayTest {
         shot(a.window.decorView, "03-sol-calls-en", null)
         a.select(MainActivity.Tab.TODAY); idle()
         find(a.window.decorView, "today-chip-ask")!!.performClick(); idle()
-        assertTrue(texts(a.window.decorView).any { it.startsWith("I answer your phone when you can't") })
+        assertTrue(texts(a.window.decorView).any { it.startsWith("Three things: I answer your calls") })
     }
 
     @Test fun micListensOnTodayAndStops() {

@@ -14,6 +14,7 @@ import net.solardepin.solarchik.ui.Ui.dp
 import java.text.DateFormat
 import java.time.ZoneId
 import java.util.Date
+import kotlinx.coroutines.launch
 
 /**
  * 1.1.0 Agents › Saver (OFF by default). Proposes small saves of SOL into USDC or SKR: on a schedule and as a
@@ -34,6 +35,11 @@ class SaverPanel(private val host: MainActivity, private val onChange: () -> Uni
             return@apply
         }
         val swaps = SwapStore(host).policy()
+        // 1.1.5: Saver on but no wallet yet: say so and offer the connect right here (a save is a real swap).
+        if (host.wallet.mainnet && !host.wallet.connected) {
+            addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.sv_connect_first), 12.5f, Ui.AMBER, 600).apply { tag = "sv-connect-first"; setLineSpacing(0f, 1.2f) }, 8))
+            addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.sv_connect), Ui.Btn.PRIMARY, R.drawable.ic_wallet) { connect() }.apply { tag = "sv-connect" }, 8))
+        }
         if (!host.wallet.mainnet) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.swp_devnet_mode), 12f, Ui.CYAN, 600), 8))
         else if (!swaps.live) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.sv_needs_swaps), 12f, Ui.AMBER, 600).apply { tag = "sv-needs-swaps"; setLineSpacing(0f, 1.2f) }, 8))
 
@@ -119,6 +125,14 @@ class SaverPanel(private val host: MainActivity, private val onChange: () -> Uni
             .setPositiveButton(R.string.sv_turn_on) { _, _ -> turnOn() }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    private fun connect() {
+        host.scope.launch {
+            if (host.wallet.hasWalletApp()) host.wallet.connect(host.sender).onFailure { host.toast(host.errorText(it)) }
+            else host.showInstallWallet()
+            onChange()
+        }
     }
 
     internal fun turnOn() {

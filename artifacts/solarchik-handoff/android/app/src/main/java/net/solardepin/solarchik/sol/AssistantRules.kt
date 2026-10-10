@@ -37,9 +37,20 @@ object AssistantRules {
         season: (() -> net.solardepin.solarchik.season.SeasonPlan)? = null,
     ): String? = when (kind(message)) {
         Kind.SEASON -> season?.invoke()?.spoken(ctx)
-        Kind.SKILLS -> ctx.getString(R.string.as_skills)
+        Kind.SKILLS -> skills(ctx)
         Kind.CALLS -> callsLine(ctx, calls, now)
         null -> null
+    }
+
+    /**
+     * 1.1.5: "what can you do" gets a short answer (the long as_skills read like the welcome text), and asking
+     * again gets the other short line instead of the same words twice.
+     */
+    fun skills(ctx: Context): String {
+        val p = ctx.getSharedPreferences("solarchik-assistant-rules", Context.MODE_PRIVATE)
+        val n = p.getInt("skills", 0)
+        p.edit().putInt("skills", n + 1).apply()
+        return ctx.getString(if (n % 2 == 0) R.string.as_skills_short else R.string.as_skills_alt)
     }
 
     /** Calls that started on the phone's current local day. */

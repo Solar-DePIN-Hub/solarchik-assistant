@@ -110,6 +110,16 @@ class StickyBlockhash(private val fetch: suspend () -> ByteArray) {
     suspend fun get(): ByteArray = hash ?: fetch().also { hash = it }
 }
 
+/**
+ * 1.1.5: the dApp identity sent with every MWA authorize. The clientlib (2.0.7) REQUIRES the icon to be a
+ * RELATIVE uri (resolved against identityUri) and throws "If non-null, iconRelativeUri must be a relative Uri"
+ * for an absolute one, right after the wallet app was opened: 1.1.4 passed "https://solardepin.net/favicon.ico",
+ * so Phantom opened, got no authorize request and every connect failed with "something went wrong".
+ */
+internal const val IDENTITY_URI = "https://solardepin.net"
+internal const val ICON_RELATIVE_URI = "favicon.ico"
+internal const val IDENTITY_NAME = "Solarchik"
+
 class SolanaWallet(context: Context) {
     private val app = context.applicationContext
     private val prefs = context.applicationContext.getSharedPreferences("seeker-wallet", Context.MODE_PRIVATE)
@@ -257,9 +267,9 @@ class SolanaWallet(context: Context) {
 
     private val adapter = MobileWalletAdapter(
         connectionIdentity = ConnectionIdentity(
-            identityUri = Uri.parse("https://solardepin.net"),
-            iconUri = Uri.parse("https://solardepin.net/favicon.ico"),
-            identityName = "Solarchik",
+            identityUri = Uri.parse(IDENTITY_URI),
+            iconUri = Uri.parse(ICON_RELATIVE_URI),
+            identityName = IDENTITY_NAME,
         )
     ).apply {
         rpcCluster = if (!devnetOnly && !prefs.getBoolean("forceDevnet", false)) RpcCluster.MainnetBeta else RpcCluster.Devnet

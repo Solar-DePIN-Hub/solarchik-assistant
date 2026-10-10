@@ -47,6 +47,11 @@
 # Rollback: npx wrangler rollback 75c667e3-57eb-4529-b923-d8e6479ae999 --name solarchik-screen (pre-0.21.9; the
 # 0.21.9 app then loses /call, /block and /call-claim and shows its offline/empty states). Intermediate 0.21.9
 # deploy without the «ви» change: 41870b78-5c07-4bde-8352-48177bb6fdda.
+# Live 51ca66aa-1ace-48a3-ab27-544e010ab42d (10 Oct 2026, ~04:30 Kyiv, app 1.1.5): call transcript in conversation order
+# (item ids; a late caller transcription no longer lands after the reply), caller transcription language/prompt hint,
+# receptionist script that always takes the message (money: amount, purpose, callback time; never promises a payment),
+# /call/actions reads the call's own transcript and turns a money request without an amount into a follow-up.
+# Rollback: npx wrangler rollback f4dab653-a848-4c92-97f4-dcba47d724bf --name solarchik-screen (1.1.4 code + secrets).
 name = "solarchik-screen"
 main = "solarchik-screen.js"
 compatibility_date = "2026-09-19"

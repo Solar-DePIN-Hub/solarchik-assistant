@@ -61,8 +61,20 @@ class WatcherPanel(private val host: MainActivity, private val onChange: () -> U
         btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.wt_check_now), Ui.Btn.SECONDARY) { checkNow() }.apply { tag = "wt-check" }))
         btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.sv_turn_off), Ui.Btn.GHOST) { set(pol.copy(enabled = false)); AutoRunner.sync(host) }.apply { tag = "wt-off" }))
         addView(Ui.top(btns, 12))
+        // 1.1.5: "Check now" answers on the card itself (the toast alone was easy to miss)
+        val result = when {
+            checking -> ctx.getString(R.string.wt_checking)
+            lastResultAt > 0L -> ctx.getString(R.string.wt_last_check, DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(lastResultAt)),
+                ctx.getString(if (lastAlert) R.string.wt_alert_short else R.string.wt_quiet_short))
+            else -> ""
+        }
+        if (result.isNotEmpty()) addView(Ui.top(Ui.text(ctx, result, 12.5f, if (lastAlert && !checking) Ui.GOLD else Ui.GREEN, 700).apply { tag = "wt-result" }, 8))
         addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.wt_never_trades), 11.5f).apply { setLineSpacing(0f, 1.2f) }, 10))
     }
+
+    private var checking = false
+    private var lastResultAt = 0L
+    private var lastAlert = false
 
     private fun load() {
         loading = true
@@ -74,11 +86,20 @@ class WatcherPanel(private val host: MainActivity, private val onChange: () -> U
     }
 
     internal fun checkNow() {
+        if (checking) return
+        checking = true
+        onChange()
         host.scope.launch {
-            store.lastCheckAt = 0L
-            val r = AgentTicks.watcher(host, System.currentTimeMillis(), { id, t, b, i -> AutoRunner.notify(host, id, t, b, i) }, prices = fetchPrices)
-            host.toast(ctx.getString(if (r.any { it.startsWith("watcher:price") || it.startsWith("watcher:wallet") }) R.string.wt_checked_alert else R.string.wt_checked_quiet))
-            onChange()
+            try {
+                store.lastCheckAt = 0L
+                val r = AgentTicks.watcher(host, System.currentTimeMillis(), { id, t, b, i -> AutoRunner.notify(host, id, t, b, i) }, prices = fetchPrices)
+                lastAlert = r.any { it.startsWith("watcher:price") || it.startsWith("watcher:wallet") }
+                lastResultAt = System.currentTimeMillis()
+                host.toast(ctx.getString(if (lastAlert) R.string.wt_checked_alert else R.string.wt_checked_quiet))
+            } finally {
+                checking = false
+                onChange()
+            }
         }
     }
 

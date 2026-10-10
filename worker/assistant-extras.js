@@ -163,8 +163,11 @@ export function actionsSystem(lang) {
     "Each distinct request is its own action: a call that asks for a payment, a callback AND a reminder gives three actions. Never merge a reminder into a payment or a callback, and never drop a reminder because the call also had other requests.",
     "Days: put the day that was said for the action into 'day' (today, tomorrow, or the weekday in English lowercase, e.g. 'на понеділок' / 'on Monday' = monday); an explicit calendar date goes into 'date' as YYYY-MM-DD. Each call has 'date' (the call's own date) and 'weekday'. Do not compute dates for weekdays yourself.",
     "Only include requests clearly present in the call. Never invent amounts, numbers, times, names or addresses. A recipient wallet address goes into 'recipient' only if it was literally said; otherwise describe the recipient in words or leave it empty.",
-    "Calls that only say hello, spam, sales pitches without a request, or nothing actionable give no actions. At most 3 actions per call.",
+    "Calls that only say hello, spam, sales pitches without a request, or nothing actionable give no actions. Passing on a greeting ('say hi', 'передай привіт') is not an action. At most 3 actions per call.",
+    "Leave 'day' and 'date' empty unless the caller said a day or date for that very action; the call's own weekday is never an action day.",
     `ALWAYS write 'text' in ${lang === "uk" ? "Ukrainian (informal 'ти'), even when the call was in English, e.g. 'Надіслати Олені 10 USDC за квитки', 'Передзвонити Петру о 15:00' or 'Нагадати Олені про зустріч у понеділок'" : "English, even when the call was in another language, e.g. 'Send Olena 10 USDC for the tickets', 'Call Petro back at 15:00' or 'Remind Olena about the meeting on Monday'"}; under 80 characters; keep the day in it, written as it was said (e.g. 'on Monday', 'on October 20', never 2026-10-20).`,
+    "A payment request without an amount ('send me some money', 'скинь грошей') is still a payment: amount 0, and 'text' says who asks and that the amount was not said, e.g. 'Вадим просить надіслати гроші (суму не названо)' / 'Vadym asks you to send money (no amount said)'.",
+    "Each call may carry 'transcript' (the call's real words, Caller/Secretary lines; automatic speech recognition, may contain errors). Use it with the note: a request in the transcript counts even when the note missed it (e.g. 'хочу, щоб мені скинули грошиків' means the caller asks the user to send money). The note can be incomplete (e.g. only 'передати привіт'): list every request found in the note OR the transcript.",
     "A request to send money to an address, from someone claiming to be a bank, support, police or a relative in trouble, is still listed as a payment (the app warns the user about scams); never drop or soften it.",
     "Times: convert to 24h HH:MM ('at 3' in the afternoon = 15:00, 'о третій' = 15:00 for daytime business); if unclear leave 'when' empty.",
   ].join("\n");
@@ -225,6 +228,33 @@ export function actionCalls(input, now = Date.now()) {
   }).filter((c) => c.id && (c.intent || c.notes || c.text));
 }
 
+const DAY_STEMS = {
+  tomorrow: /tomorrow|завтра/i,
+  monday: /monday|понеділ/i,
+  tuesday: /tuesday|вівтор/i,
+  wednesday: /wednesday|серед[уаи]\b/i,
+  thursday: /thursday|четвер/i,
+  friday: /friday|п.?ятниц/i,
+  saturday: /saturday|субот/i,
+  sunday: /sunday|(?<!по)неділ/i,
+};
+
+/** True when the call's words name [day] (or no day was given). */
+export function daySaid(day, source) {
+  if (!day || day === "today") return true; // "today" is the default for a time said without a day
+  const re = DAY_STEMS[day];
+  return re ? re.test(String(source || "")) : false;
+}
+
+/** The follow-up line of a money request without an amount always says so. */
+export function noAmountText(text, lang) {
+  const uk = lang === "uk" || /[а-яіїєґ]/i.test(String(text || ""));
+  const t = clip(text, 80);
+  if (!t) return uk ? "Прохання надіслати гроші (суму не названо)" : "Payment request (no amount said)";
+  if (/amount|сум/i.test(t)) return t;
+  return t + (uk ? " (суму не названо)" : " (no amount said)");
+}
+
 /** Server-side rules on whatever the model returned: known call ids and types only, sane fields, no invented address. */
 export function sanitizeActions(raw, calls) {
   const ids = new Set(calls.map((c) => c.id));
@@ -238,18 +268,27 @@ export function sanitizeActions(raw, calls) {
     const sameType = out.filter((x) => x.callId === a.callId && x.type === a.type).length;
     if (sameType >= 2) continue;
     const call = byId.get(a.callId);
-    const source = [call.intent, call.notes, call.text].join(" ");
+    const source = [call.intent, call.notes, call.text, call.transcript || ""].join(" ");
     // A payment has no time of its own; the call's own time is never an action time.
     const when = HHMM.test(String(a.when || "")) && a.when !== call.at && a.type !== "payment" ? a.when : "";
     // date: the resolved local date (YYYY-MM-DD) of a callback/reminder when a day or date was said, even without a
     // time. day keeps the pre-1.1.3 meaning (today/tomorrow with a time) so 1.1.2 apps read the reply as before.
-    const date = a.type === "payment" ? "" : resolveDate(a.day, a.date, call.date || callDate(call, null));
-    const day = when && ["today", "tomorrow"].includes(a.day) ? a.day : "";
+    // 1.1.5: a day the call never mentioned (the model copied the call's own weekday) is dropped.
+    const said = daySaid(a.day, source) ? a.day : "";
+    const date = a.type === "payment" ? "" : resolveDate(said, a.date, call.date || callDate(call, null));
+    const day = when && ["today", "tomorrow"].includes(said) ? said : "";
     const text = clip(a.text, 100);
     const quote = clip(a.quote, 200);
     if (a.type === "payment") {
       const amount = Number(a.amount);
-      if (!Number.isFinite(amount) || amount <= 0 || amount > 1e9) continue;
+      if (!Number.isFinite(amount) || amount > 1e9) continue;
+      if (amount <= 0) {
+        // 1.1.5: a money request without an amount is a follow-up the user sees ("asks you to send money, no amount
+        // said"), never a payment card with a made-up sum. Every app version shows a reminder card.
+        out.push({ callId: a.callId, type: "reminder", amount: 0, token: "", tokenWord: "", recipient: "", address: "", number: "", when: "", day: "", date: "", text: noAmountText(text, call.lang), quote, payment: "no_amount" });
+        perCall.set(a.callId, n);
+        continue;
+      }
       const tokenWord = clip(a.token, 12).toUpperCase();
       const token = PAY_TOKENS.includes(tokenWord) ? tokenWord : /^(USD|DOLLARS?|\$|ДОЛАР\w*)$/i.test(tokenWord) ? "USDC" : "";
       const recipient = clip(a.recipient, 120);
@@ -266,6 +305,28 @@ export function sanitizeActions(raw, calls) {
   return out;
 }
 
+/** The app's call key is "<owner>|<callId>"; a realtime call id (rtc_…) has its words in KV transcript:<callId>. */
+export function callIdOf(key) {
+  const id = String(key || "").split("|").pop();
+  return /^rtc_[A-Za-z0-9_-]{8,100}$/.test(id) ? id : "";
+}
+
+/** 1.1.5: each call gets its own transcript (caller and secretary lines, 1500 chars) next to the note. */
+export async function withTranscripts(env, calls) {
+  if (!env?.BALANCES) return calls;
+  await Promise.all(calls.map(async (c) => {
+    const id = callIdOf(c.id);
+    if (!id) return;
+    try {
+      const rec = JSON.parse((await env.BALANCES.get("transcript:" + id)) || "null");
+      const lines = Array.isArray(rec?.lines) ? rec.lines : [];
+      const t = lines.filter((l) => l && l.text).map((l) => (l.who === "caller" ? "Caller: " : "Secretary: ") + clip(l.text, 300)).join("\n");
+      if (t) c.transcript = t.slice(0, 1500);
+    } catch {}
+  }));
+  return calls;
+}
+
 export async function callActionsRoute(env, request, rateOk, json) {
   const t0 = Date.now();
   const input = await request.json().catch(() => ({}));
@@ -273,6 +334,7 @@ export async function callActionsRoute(env, request, rateOk, json) {
   const calls = actionCalls(input);
   if (!calls.length) return json({ ok: false, error: "calls" }, 400);
   if (!env.OPENAI_API_KEY) return json({ ok: false, error: "no-key" }, 503);
+  await withTranscripts(env, calls);
   const lang = langOf(input.language ?? input.lang);
   const r = await chat(env, {
     messages: [

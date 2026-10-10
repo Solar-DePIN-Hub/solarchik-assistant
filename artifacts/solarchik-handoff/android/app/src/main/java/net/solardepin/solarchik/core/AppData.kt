@@ -22,6 +22,7 @@ object AppData {
         "solarchik-desk",
         "solarchik-notes",
         "solarchik-sol",
+        "solarchik-assistant-rules",
         "solarchik-voice",
         "solarchik.desk",
         "solarchik.player",

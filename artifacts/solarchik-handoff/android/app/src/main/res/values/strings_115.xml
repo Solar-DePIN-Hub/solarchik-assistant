@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 1.1.5: the user's own wallet app (MWA), not an agent key -->
+    <string name="mn_today_wallet_title">Your wallet</string>
+    <string name="mn_today_wallet_connect">Connect wallet · Phantom, Solflare, Seed Vault</string>
+    <string name="mn_wallet_connected">Wallet connected: %1$s</string>
+    <string name="sv_connect_first">Connect your wallet first: every save is a real swap that your wallet app approves.</string>
+    <string name="sv_connect">Connect wallet</string>
+    <string name="wt_checking">Checking prices and your wallet…</string>
+    <string name="wt_last_check">Last check %1$s: %2$s</string>
+    <string name="wt_quiet_short">nothing changed noticeably</string>
+    <string name="wt_alert_short">new alert below</string>
+    <string name="as_skills_short">Three things: I answer your calls and write the notes, I keep your follow-ups and reminders, and I watch your Solana wallet. Payments always wait for your approval.</string>
+    <string name="as_skills_alt">Try: “Who called today?”, “What’s my balance?” or “Remind me to call back.” Every payment waits for your approval in the wallet.</string>
+</resources>
