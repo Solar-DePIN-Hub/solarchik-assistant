@@ -1,0 +1,168 @@
+package net.solardepin.solarchik
+
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ScrollView
+import android.widget.TextView
+import androidx.test.core.app.ApplicationProvider
+import net.solardepin.solarchik.screen.CallAction
+import net.solardepin.solarchik.screen.CallActionStore
+import net.solardepin.solarchik.screen.CallActionSync
+import net.solardepin.solarchik.screen.CallInbox
+import net.solardepin.solarchik.screen.CallItem
+import net.solardepin.solarchik.stack.Habits
+import net.solardepin.solarchik.ui.CallsActivity
+import net.solardepin.solarchik.ui.HabitsSheet
+import net.solardepin.solarchik.ui.MeScreen
+import net.solardepin.solarchik.ui.TodayScreen
+import net.solardepin.solarchik.ui.VoiceSheet
+import org.junit.After
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.Robolectric
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowLooper
+import java.io.File
+
+/**
+ * 1.2.7: the eight redesign screens rendered from the real build at the mockups' size (1080×2340, 411 dp at
+ * xxhdpi), English, real defaults (mainnet, no fake balances beyond the seeded test wallet below). Written to
+ * /workspace/deliverables/redesign/compare-1.2.7/build/ as 01…08 next to the mockups' names.
+ */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], qualifiers = "en-w411dp-h891dp-xxhdpi")
+class Redesign127ShotsTest {
+    private val app = ApplicationProvider.getApplicationContext<Context>()
+    private val dir = File(System.getProperty("solarchik.compare") ?: "/workspace/deliverables/redesign/compare-1.2.7/build").apply { mkdirs() }
+    private val now = System.currentTimeMillis()
+    private val owner = "8J3hQ1JZq8CkQ6CwRNrsdc9UHS1R1JZmE7vUfnTqC7ic"
+    private val realCluster = System.getProperty("solarchik.cluster")
+    private val realOnboarding = MainActivity.onboardingEnabled
+    private val realTicker = MainActivity.tickerEnabled
+    private val cyr = Regex("[\\u0400-\\u04FF]")
+    private val problems = mutableListOf<String>()
+
+    private fun item(id: String, who: String, intent: String, number: String, minsAgo: Long) =
+        CallItem("me", id, number, "$who: $intent. Callback $number.", now - minsAgo * 60_000L, CallInbox.DONE, "screen", who, intent, "", "call back at 3", number, "en", 65, 0.0, false)
+    private val ira = item("rtc_u2_EXOf3p3o", "Ira", "Ira says they paid for lunch yesterday, asks Vadym to send them 0.01 SOL and to call back at 15:00", "+380637443792", 60)
+    private val andrii = item("rtc_u3_EXAndr3o", "Andrii", "Andrii will send the 0.5 SOL deposit tomorrow", "+380501112233", 90)
+
+    @Before fun setUp() {
+        System.setProperty("solarchik.cluster", "mainnet")
+        MainActivity.tickerEnabled = false
+        MainActivity.onboardingEnabled = false
+    }
+    @After fun tearDown() {
+        if (realCluster == null) System.clearProperty("solarchik.cluster") else System.setProperty("solarchik.cluster", realCluster)
+        MainActivity.tickerEnabled = realTicker; MainActivity.onboardingEnabled = realOnboarding
+    }
+
+    private fun idle() = repeat(10) { ShadowLooper.idleMainLooper(); Thread.sleep(5) }
+    private fun walk(v: View, f: (View) -> Unit) { f(v); if (v is ViewGroup) for (i in 0 until v.childCount) walk(v.getChildAt(i), f) }
+    private fun find(root: View, tag: String): View? { var r: View? = null; walk(root) { if (r == null && it.tag == tag && it.visibility == View.VISIBLE) r = it }; return r }
+    private fun texts(root: View): List<String> { val o = mutableListOf<String>(); walk(root) { if (it is TextView && it.visibility == View.VISIBLE) o += it.text.toString() }; return o }
+
+    private fun shot(root: View, name: String, w: Int = 1080, h: Int = 2340) {
+        idle()
+        root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+        root.layout(0, 0, w, h)
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        Canvas(bmp).apply { root.draw(this) }
+        File(dir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 92, it) }
+        texts(root).filter { cyr.containsMatchIn(it) }.forEach { problems += "$name: Cyrillic '$it'" }
+        File(dir, "$name.txt").writeText(texts(root).filter { it.isNotBlank() }.joinToString("\n"))
+    }
+
+    /** A dialog / overlay on top of the app: the app window first, then the sheet's content at the bottom. */
+    private fun sheetShot(app0: View, content: View, name: String, dim: Boolean = true) {
+        idle()
+        val w = 1080; val h = 2340
+        app0.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY)); app0.layout(0, 0, w, h)
+        content.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.AT_MOST))
+        content.layout(0, 0, w, content.measuredHeight)
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        Canvas(bmp).apply {
+            app0.draw(this)
+            if (dim) drawColor(0x99000000.toInt())
+            save(); translate(0f, (h - content.measuredHeight).toFloat()); content.draw(this); restore()
+        }
+        File(dir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 92, it) }
+        texts(content).filter { cyr.containsMatchIn(it) }.forEach { problems += "$name: Cyrillic '$it'" }
+        File(dir, "$name.txt").writeText(texts(content).filter { it.isNotBlank() }.joinToString("\n"))
+    }
+
+    private fun seed() {
+        CallActionStore(app).upgradeRules(CallActionSync.RULES)
+        CallInbox.store(app, listOf(ira, andrii))
+        CallInbox.markSeen(app, 0)
+        CallActionStore(app).add(listOf(
+            CallAction(ira.key + "#0", ira.key, CallAction.CALLBACK, number = ira.caller, time = "15:00", text = "Call Ira back at 15:00", quote = "call me back at three"),
+            CallAction(ira.key + "#1", ira.key, CallAction.PAYMENT, amount = 0.01, token = "SOL", recipient = "Ira", quote = "send me 0.01 SOL for lunch"),
+            CallAction(andrii.key + "#0", andrii.key, CallAction.OWED, amount = 0.5, token = "SOL", recipient = "Andrii", quote = "I'll send you the 0.5 SOL deposit tomorrow"),
+        ))
+        CallActionStore(app).markProcessed(listOf(ira.key, andrii.key))
+        Habits.set(app, Habits.WORKOUT, true)
+        Habits.set(app, Habits.WALLET, true)
+        app.getSharedPreferences("seeker-wallet", Context.MODE_PRIVATE).edit().putString("address", owner).putString("auth", "t").putString("wallet_pkg", "app.phantom").commit()
+    }
+
+    @Test fun theEightScreens() {
+        seed()
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get(); idle()
+        val d = a.window.decorView
+        (a.screen(MainActivity.Tab.TODAY) as TodayScreen).setBalanceForTest(0.0096, 0.0)
+        a.screen(MainActivity.Tab.TODAY)?.render(); idle()
+
+        // 01 Today: the stack (call-back on top)
+        shot(d, "01-today-stack")
+        // 02 mid-swipe right: the top card tilted with its stamp showing (what the finger does, frozen)
+        val deck = (find(d, "today-deck") as ViewGroup).getChildAt(0) as ViewGroup
+        val top = deck.getChildAt(deck.childCount - 1)
+        top.translationX = 300f; top.rotation = 9f
+        walk(top) { if (it.tag == "stamp-right") it.alpha = 1f }
+        shot(d, "02-today-swipe")
+        top.translationX = 0f; top.rotation = 0f
+        walk(top) { if (it.tag == "stamp-right") it.alpha = 0f }
+
+        // 04 Circle (owe Ira, Andrii owes you)
+        a.select(MainActivity.Tab.CIRCLE); idle()
+        shot(d, "04-circle")
+        // 05 Me (wallet tiles on mainnet, habits, secretary)
+        a.select(MainActivity.Tab.ME); idle()
+        (a.screen(MainActivity.Tab.ME) as MeScreen).setBalanceForTest(0.0096, 0.0, 0.0)
+        a.screen(MainActivity.Tab.ME)?.render(); idle()
+        shot(d, "05-me")
+        // 06 habits picker
+        HabitsSheet.show(a) {}; idle()
+        val hs = HabitsSheet.last!!
+        sheetShot(d, hs.window!!.decorView.findViewWithTag("habits-sheet"), "06-habits-picker")
+        hs.dismiss(); idle()
+        // 07 Sol voice overlay with a heard phrase and its intent preview
+        a.select(MainActivity.Tab.TODAY); idle()
+        VoiceSheet.show(a, startListening = false); idle()
+        VoiceSheet.fakeHeard("Who do I owe?"); idle()
+        shot(d, "07-sol-voice")
+        VoiceSheet.dismissIfOpen(a); idle()
+
+        // 03 clocked in: clear the stack with Later/Done (no money needed)
+        repeat(12) { find(a.window.decorView, "stack-later")?.performClick(); idle() }
+        shot(d, "03-clocked-in")
+        assertTrue(find(d, "stack-clocked") != null)
+
+        // 08 call detail (Ira), transcript collapsed, sticky Call Ira back
+        val det = Robolectric.buildActivity(CallsActivity::class.java, Intent(app, CallsActivity::class.java).putExtra(CallsActivity.EXTRA_KEY, ira.key)).create().start().resume().visible().get(); idle()
+        shot(det.window.decorView, "08-call-detail")
+
+        File(dir, "problems.txt").writeText(problems.joinToString("\n"))
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+}
