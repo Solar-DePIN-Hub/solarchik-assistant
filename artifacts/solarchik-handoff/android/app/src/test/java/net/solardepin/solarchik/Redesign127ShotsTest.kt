@@ -35,14 +35,14 @@ import java.io.File
 /**
  * 1.2.7: the eight redesign screens rendered from the real build at the mockups' size (1080×2340, 411 dp at
  * xxhdpi), English, real defaults (mainnet, no fake balances beyond the seeded test wallet below). Written to
- * /workspace/deliverables/redesign/compare-1.2.9/build/ as 01…08 next to the mockups' names.
+ * /workspace/deliverables/redesign/compare-1.2.10/build/ as 01…08 next to the mockups' names.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "en-w411dp-h891dp-xxhdpi")
 class Redesign127ShotsTest {
     private val app = ApplicationProvider.getApplicationContext<Context>()
-    private val dir = File(System.getProperty("solarchik.compare") ?: "/workspace/deliverables/redesign/compare-1.2.9/build").apply { mkdirs() }
+    private val dir = File(System.getProperty("solarchik.compare") ?: "/workspace/deliverables/redesign/compare-1.2.10/build").apply { mkdirs() }
     private val now = System.currentTimeMillis()
     private val owner = "8J3hQ1JZq8CkQ6CwRNrsdc9UHS1R1JZmE7vUfnTqC7ic"
     private val realCluster = System.getProperty("solarchik.cluster")

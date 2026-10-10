@@ -94,8 +94,17 @@ object CallInbox {
         }
     }
 
-    fun item(owner: String, o: JSONObject): CallItem? {
-        val s = o.optJSONObject("summary") ?: JSONObject()
+    /**
+     * 1.2.10 (morning briefing said "Vadim"): the speech model hears the owner's name as "Vadim"; the profile
+     * spelling is "Vadym". Applied to every note field the app shows or reads out (briefing facts come from here).
+     */
+    private val NAME_FIXES = listOf(Regex("\\bVadim\\b") to "Vadym", Regex("\\bVadim's\\b") to "Vadym's")
+    fun fixNames(t: String): String = NAME_FIXES.fold(t) { acc, (r, v) -> r.replace(acc, v) }
+
+    fun item(owner: String, o0: JSONObject): CallItem? {
+        val o = JSONObject(o0.toString())
+        o.optString("text").takeIf { it.isNotBlank() }?.let { o.put("text", fixNames(it)) }
+        val s = (o.optJSONObject("summary") ?: JSONObject()).also { sm -> for (k in listOf("caller_name", "intent", "notes")) sm.optString(k).takeIf { it.isNotBlank() }?.let { sm.put(k, fixNames(it)) } }
         val text = fixThey(o.optString("text").trim(), s.optString("caller_name"))
         if (text.isEmpty()) return null
         return CallItem(

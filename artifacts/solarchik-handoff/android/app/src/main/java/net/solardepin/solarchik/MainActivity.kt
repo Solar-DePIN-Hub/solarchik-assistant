@@ -788,6 +788,15 @@ class MainActivity : ComponentActivity() {
         startRun()
     }
 
+    /** 1.2.10: a Custom Tab (the browser's in-app tab) via the plain intent protocol; falls back to a normal view. */
+    fun openCustomTab(url: String) {
+        val i = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        i.putExtras(Bundle().apply { putBinder("android.support.customtabs.extra.SESSION", null) })
+        i.putExtra("android.support.customtabs.extra.TOOLBAR_COLOR", android.graphics.Color.parseColor("#0B1220"))
+        i.putExtra("androidx.browser.customtabs.extra.SHARE_STATE", 1)
+        runCatching { startActivity(i) }.onFailure { openUrl(url) }
+    }
+
     fun openUrl(url: String) {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
     }

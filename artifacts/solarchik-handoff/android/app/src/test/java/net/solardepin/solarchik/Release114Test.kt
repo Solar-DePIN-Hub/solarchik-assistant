@@ -135,7 +135,7 @@ class Release114Test {
     }
 
     @Test fun versionIs114() {
-        assertEquals("1.2.9", BuildConfig.VERSION_NAME) // 1.1.5 keeps every 1.1.4 rule
-        assertEquals(130, BuildConfig.VERSION_CODE)
+        assertEquals("1.2.10", BuildConfig.VERSION_NAME) // 1.1.5 keeps every 1.1.4 rule
+        assertEquals(131, BuildConfig.VERSION_CODE)
     }
 }

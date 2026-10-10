@@ -182,13 +182,18 @@ class CallsActivity : ComponentActivity() {
 
     private fun header(title: String, back: Boolean) {
         val row = Ui.row(this, gap = 8).apply { gravity = Gravity.CENTER_VERTICAL }
-        row.addView(Ui.text(this, "‹", 30f, Ui.TEXT, 800).apply {
-            gravity = Gravity.CENTER
-            minWidth = dp(48); minHeight = dp(48)
+        // 1.2.10: a visible Back pill (icon + word), not a thin "‹" glyph
+        row.addView(Ui.text(this, getString(R.string.calls_back_btn), 15f, Ui.TEXT, 800).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            minHeight = dp(44)
+            setPadding(dp(12), 0, dp(16), 0)
+            background = Ui.ripple(Ui.rounded(Ui.withAlpha(android.graphics.Color.WHITE, 0x14), dp(22).toFloat()), dp(22).toFloat())
+            getDrawable(R.drawable.lc_back)?.mutate()?.let { d -> d.setTint(Ui.TEXT); val z = dp(18); d.setBounds(0, 0, z, z); setCompoundDrawables(d, null, null, null); compoundDrawablePadding = dp(6) }
             contentDescription = getString(R.string.calls_back)
             tag = "calls-back"
+            isClickable = true
             setOnClickListener { onBackPressedDispatcher.onBackPressed() }
-        })
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)).apply { marginEnd = dp(4) })
         titleView = Ui.display(this, title, 26f).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }
         row.addView(Ui.weight(titleView))
         if (!back) {
@@ -318,7 +323,16 @@ class CallsActivity : ComponentActivity() {
         if (it.callId.isBlank()) return
         detailLoading = true
         scope.launch {
-            val d = withContext(Dispatchers.IO) { ScreenApi.call(it.owner, it.callId) }
+            // 1.2.10 (tablet: "Could not load the conversation (offline)" while online): one failed request (a cold
+            // radio, a slow first TLS handshake) was final. Now up to 3 tries with a short backoff, a Retry
+            // button, and a refetch whenever the list refreshes fine.
+            var d: CallDetail? = null
+            for (wait in longArrayOf(0L, 1500L, 4000L)) {
+                if (wait > 0) kotlinx.coroutines.delay(wait)
+                if (open?.key != it.key) break
+                d = withContext(Dispatchers.IO) { ScreenApi.call(it.owner, it.callId) }
+                if (d != null) break
+            }
             detailLoading = false
             if (open?.key == it.key) { detail = d; render() }
         }
@@ -369,7 +383,13 @@ class CallsActivity : ComponentActivity() {
                 lines.isNotEmpty() && !transcriptOpen -> addView(Ui.top(Ui.muted(this@CallsActivity, getString(R.string.calls_transcript_collapsed), 12f), 4))
                 it.callId.isBlank() -> addView(Ui.top(Ui.muted(this@CallsActivity, getString(R.string.calls_transcript_none), 12f), 8))
                 detailLoading && d == null -> addView(Ui.top(Ui.muted(this@CallsActivity, getString(R.string.calls_loading), 12f), 8))
-                d == null -> addView(Ui.top(Ui.text(this@CallsActivity, getString(R.string.calls_transcript_offline), 12f, Ui.AMBER, 700), 8))
+                d == null -> {
+                    addView(Ui.top(Ui.text(this@CallsActivity, getString(R.string.calls_transcript_failed), 12.5f, Ui.AMBER, 700), 8))
+                    addView(Ui.top(Ui.text(this@CallsActivity, getString(R.string.calls_retry), 14f, Ui.CYAN, 800).apply {
+                        tag = "call-transcript-retry"; minHeight = dp(44); gravity = Gravity.CENTER_VERTICAL
+                        setOnClickListener { _ -> open?.let { o -> openCall(o) } }
+                    }, 2))
+                }
                 lines.isEmpty() -> addView(Ui.top(Ui.muted(this@CallsActivity, getString(R.string.calls_transcript_none), 12f), 8))
                 else -> {
                     addView(Ui.top(Ui.muted(this@CallsActivity, getString(R.string.calls_transcript_hint), 11f), 4))
@@ -472,6 +492,8 @@ class CallsActivity : ComponentActivity() {
             pendingKey?.let { k -> items.firstOrNull { it.key == k }?.let { pendingKey = null; openCall(it); return@launch } }
             // keep an open call in sync (its note may have arrived)
             open?.let { o -> items.firstOrNull { it.key == o.key }?.let { n -> if (n != o) { open = n; if (n.status != o.status) openCall(n) } } }
+            // 1.2.10: online again (the list loaded) and the conversation is still missing: fetch it now
+            if (fresh != null) open?.let { o -> if (detail == null && !detailLoading && o.callId.isNotBlank()) openCall(o) }
             if (!quiet || open == null) render()
         }
     }

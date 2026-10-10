@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="run_result_kicker">RUN RESULT</string>
+    <string name="run_play_again">Play again</string>
+    <string name="run_back_today">Back to Today</string>
+    <string name="run_result_score">%d points</string>
+    <string name="calls_back_btn">Back</string>
+    <string name="calls_transcript_failed">Couldn\'t load the conversation right now.</string>
+    <string name="calls_retry">Try again</string>
+    <string name="pd_kicker_out">Payment sent</string>
+    <string name="pd_kicker_in">Payment received</string>
+    <string name="pd_to">To</string>
+    <string name="pd_from">From</string>
+    <string name="pd_time">Time</string>
+    <string name="pd_status">Status</string>
+    <string name="pd_confirmed">Confirmed on Solana ✓</string>
+    <string name="pd_sig">Signature</string>
+    <string name="pd_solscan">View on Solscan</string>
+    <string name="pd_copy">Copy signature</string>
+    <string name="pd_details">Details</string>
+</resources>

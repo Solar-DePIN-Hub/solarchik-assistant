@@ -105,11 +105,11 @@ class CircleScreen(host: MainActivity) : Screen(host) {
             val l = Kit.list(ctx)
             settled.forEach { d ->
                 Kit.addRow(l, Kit.row(ctx, R.drawable.lc_check, Ui.GREEN, ctx.getString(R.string.circle_settled_line, d.who, Circle.amount(d.amount), d.token),
-                    (if (d.at > 0) CallText.time(d.at) + " · " else "") + "Solscan ↗") { host.openUrl(Circle.solscan(d.action.signature)) }.apply { tag = "circle-settled" })
+                    (if (d.at > 0) CallText.time(d.at) + " · " else "") + ctx.getString(R.string.pd_details)) { PaymentDetailSheet.show(host, d, incoming = false) }.apply { tag = "circle-settled" })
             }
             gotPaid.forEach { d ->
                 Kit.addRow(l, Kit.row(ctx, R.drawable.lc_check, Ui.GREEN, ctx.getString(R.string.payreq_settled_line, d.who, Circle.amount(d.amount), d.token),
-                    (if (d.at > 0) CallText.time(d.at) + " · " else "") + "Solscan ↗") { host.openUrl(Circle.solscan(d.action.signature)) }.apply { tag = "circle-got-paid" })
+                    (if (d.at > 0) CallText.time(d.at) + " · " else "") + ctx.getString(R.string.pd_details)) { PaymentDetailSheet.show(host, d, incoming = true) }.apply { tag = "circle-got-paid" })
             }
             body.addView(l)
         }

@@ -105,13 +105,18 @@ export async function chat(env, body, timeoutMs) {
   return { text: "", model: "", tried };
 }
 
+/** 1.2.10: "Vadim" (as the speech model hears it) is always written "Vadym", the owner's profile name. */
+export function fixOwnerName(t) {
+  return String(t || "").replace(/\bVadim\b/g, "Vadym");
+}
+
 export async function briefingRoute(env, request, rateOk, json) {
   const t0 = Date.now();
   const input = await request.json().catch(() => ({}));
   if (!rateOk(request.headers.get("cf-connecting-ip"))) return json({ ok: false, error: "rate" }, 429);
   if (!env.OPENAI_API_KEY) return json({ ok: false, error: "no-key" }, 503);
   const lang = langOf(input.language ?? input.lang);
-  const facts = briefingFacts(input);
+  const facts = JSON.parse(fixOwnerName(JSON.stringify(briefingFacts(input))));
   const r = await chat(env, {
     messages: [
       { role: "system", content: briefingSystem(lang) },
@@ -121,7 +126,8 @@ export async function briefingRoute(env, request, rateOk, json) {
     max_tokens: 380,
   }, 12000);
   if (!r.text) return json({ ok: false, error: "unavailable", tried: r.tried, ms: Date.now() - t0 }, 503);
-  const text = clip(r.text.replace(/[*#_`>]/g, ""), 1200);
+  // 1.2.10: the owner's profile spelling is "Vadym"; call notes heard it as "Vadim"
+  const text = fixOwnerName(clip(r.text.replace(/[*#_`>]/g, ""), 1200));
   console.log(JSON.stringify({ event: "sol_briefing", lang, calls: facts.calls.length, model: r.model, ms: Date.now() - t0 }));
   return json({ ok: true, text, language: lang, persona: "assistant", model: r.model, ms: Date.now() - t0 });
 }

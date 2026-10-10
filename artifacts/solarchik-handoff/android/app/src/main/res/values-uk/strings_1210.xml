@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="run_result_kicker">РЕЗУЛЬТАТ ЗАБІГУ</string>
+    <string name="run_play_again">Грати ще</string>
+    <string name="run_back_today">До «Сьогодні»</string>
+    <string name="run_result_score">%d очок</string>
+    <string name="calls_back_btn">Назад</string>
+    <string name="calls_transcript_failed">Зараз не вдалося завантажити розмову.</string>
+    <string name="calls_retry">Спробувати ще</string>
+    <string name="pd_kicker_out">Платіж надіслано</string>
+    <string name="pd_kicker_in">Платіж отримано</string>
+    <string name="pd_to">Кому</string>
+    <string name="pd_from">Від кого</string>
+    <string name="pd_time">Час</string>
+    <string name="pd_status">Статус</string>
+    <string name="pd_confirmed">Підтверджено в Solana ✓</string>
+    <string name="pd_sig">Підпис</string>
+    <string name="pd_solscan">Відкрити в Solscan</string>
+    <string name="pd_copy">Копіювати підпис</string>
+    <string name="pd_details">Деталі</string>
+</resources>
