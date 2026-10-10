@@ -81,6 +81,10 @@ object CallActionRules {
     /** Amounts above these get an extra "large amount" warning on the card. */
     const val LARGE_SOL = 0.5
     const val LARGE_USDC = 50.0
+    /** 1.2.0: tokens a call payment card can send (SKR added: Pay 50 SKR to Ira). */
+    val PAY_TOKENS = setOf("SOL", "USDC", "SKR")
+    /** 1.2.0: SKR above this asks for the extra "large payment" confirmation. */
+    const val LARGE_SKR = 500.0
     private val BASE58 = Regex("^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 
     /** Pure: answered calls with a note, last 7 days, not yet looked at. */
@@ -117,7 +121,7 @@ object CallActionRules {
             out += CallAction(
                 id = "$key#${out.count { it.callKey == key }}", callKey = key, type = type,
                 amount = a.optDouble("amount", 0.0).takeIf { it.isFinite() && it > 0 } ?: 0.0,
-                token = a.optString("token").uppercase().takeIf { it == "SOL" || it == "USDC" }.orEmpty(),
+                token = a.optString("token").uppercase().takeIf { it == "SOL" || it == "USDC" || it == "SKR" }.orEmpty(),
                 recipient = a.optString("recipient").take(80), saidAddress = addr,
                 number = a.optString("number").filter { it.isDigit() || it == '+' }.take(16),
                 time = a.optString("when").takeIf { Regex("^([01]\\d|2[0-3]):[0-5]\\d$").matches(it) }.orEmpty(),
@@ -131,8 +135,8 @@ object CallActionRules {
         out to processed
     }.getOrNull()
 
-    private val PAY_EN = Regex("(?i)\\b(?:send|pay|transfer|wire)\\b[^.?!]{0,40}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|usd|dollars?|\\$)")
-    private val PAY_UK = Regex("(?iu)(?:надішли|надіслати|скинь|скинути|переказати|перекажи|заплати|оплати)[^.?!]{0,40}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|usd|долар\\w*|\\$)")
+    private val PAY_EN = Regex("(?i)\\b(?:send|pay|transfer|wire)\\b[^.?!]{0,40}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|skr|usd|dollars?|\\$)")
+    private val PAY_UK = Regex("(?iu)(?:надішли|надіслати|скинь|скинути|переказати|перекажи|заплати|оплати)[^.?!]{0,40}?(\\d+(?:[.,]\\d+)?)\\s*(sol|usdc|skr|usd|долар\\w*|\\$)")
     private val CALL_EN = Regex("(?i)\\bcall (?:me |her |him |them |us )?back\\b(?:[^.?!]{0,30}?\\bat (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?)?")
     private val CALL_UK = Regex("(?iu)\\b(?:передзвони|передзвоніть|перетелефонуй)\\w*(?:[^.?!]{0,30}?\\bо (\\d{1,2})(?::(\\d{2}))?)?")
     private val REMIND_EN = Regex("(?i)\\b(?:remind (?:me|yourself|you|her|him|them)|don'?t forget)\\b[^.?!]{0,60}?(?:\\bat (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?)?")
@@ -162,7 +166,7 @@ object CallActionRules {
         (PAY_EN.find(src) ?: PAY_UK.find(src))?.let { m ->
             val amount = m.groupValues[1].replace(',', '.').toDoubleOrNull() ?: 0.0
             val word = m.groupValues[2].lowercase()
-            val token = if (word == "sol") "SOL" else "USDC"
+            val token = when (word) { "sol" -> "SOL"; "skr" -> "SKR"; else -> "USDC" }
             val said = Regex("[1-9A-HJ-NP-Za-km-z]{32,44}").find(src)?.value?.takeIf { validAddress(it) }.orEmpty()
             if (amount > 0) out += CallAction("${c.key}#0", c.key, CallAction.PAYMENT, amount = amount, token = token, recipient = c.who, saidAddress = said, quote = m.value.take(120), source = CallAction.SOURCE_LOCAL)
         }
@@ -216,14 +220,14 @@ object CallActionRules {
 
     fun validAddress(s: String): Boolean = BASE58.matches(s.trim()) && runCatching { PublicKey(s.trim()); true }.getOrDefault(false)
 
-    /** Raw units for a payment (SOL 9 decimals, USDC 6); 0 when not a positive amount. */
+    /** Raw units for a payment (SOL 9 decimals, USDC 6, SKR 6 — checked on mainnet 2026-10-10); 0 when not a positive amount. */
     fun amountRaw(token: String, amount: Double): Long {
         val dec = if (token == "SOL") 9 else 6
         if (!amount.isFinite() || amount <= 0) return 0L
         return BigDecimal.valueOf(amount).movePointRight(dec).setScale(0, RoundingMode.DOWN).toLong()
     }
 
-    fun large(token: String, amount: Double): Boolean = if (token == "SOL") amount > LARGE_SOL else amount > LARGE_USDC
+    fun large(token: String, amount: Double): Boolean = when (token) { "SOL" -> amount > LARGE_SOL; "SKR" -> amount > LARGE_SKR; else -> amount > LARGE_USDC }
 
     /**
      * The transfer the USER signs in the wallet: SOL System transfer, or USDC TransferChecked from the user's
@@ -234,11 +238,13 @@ object CallActionRules {
         require(owner != recipient) { "recipient is your own wallet" }
         return when (token) {
             "SOL" -> LegacyTx.compile(owner, blockhash, listOf(SystemIx.transfer(owner, recipient, raw)))
-            "USDC" -> {
-                val mint = PublicKey(SwapTokens.USDC.mint)
+            "USDC", "SKR" -> {
+                // 1.2.0: SKR is a classic SPL Token (Tokenkeg) mint with 6 decimals, the same path as USDC
+                val t = if (token == "SKR") SwapTokens.SKR else SwapTokens.USDC
+                val mint = PublicKey(t.mint)
                 LegacyTx.compile(owner, blockhash, listOf(
                     SplIx.createAtaIdempotent(owner, recipient, mint),
-                    SplIx.transferChecked(SplIx.ata(owner, mint), mint, SplIx.ata(recipient, mint), owner, raw, SwapTokens.USDC.decimals),
+                    SplIx.transferChecked(SplIx.ata(owner, mint), mint, SplIx.ata(recipient, mint), owner, raw, t.decimals),
                 ))
             }
             else -> throw IllegalArgumentException("token")

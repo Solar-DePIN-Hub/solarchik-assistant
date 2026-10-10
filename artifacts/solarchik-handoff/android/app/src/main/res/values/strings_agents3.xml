@@ -124,11 +124,12 @@
     <string name="ca_sheet_check">I checked the recipient address myself</string>
     <string name="ca_sheet_note">Your wallet app shows the transfer and asks you to approve it. Solarchik never signs payments.</string>
     <string name="ca_sheet_confirm">Confirm in wallet</string>
-    <string name="ca_err_token">Only SOL and USDC transfers are supported.</string>
+    <string name="ca_err_token">Only SOL, USDC and SKR transfers are supported.</string>
     <string name="ca_err_amount">The amount is not valid.</string>
     <string name="ca_err_address">Enter a valid Solana address.</string>
     <string name="ca_err_self">That is your own wallet.</string>
     <string name="ca_err_check">Tick the box after checking the address.</string>
     <string name="ca_sent">Transfer sent: %1$s</string>
     <string name="ca_open_today">Act on Today</string>
+    <string name="ca_token_mainnet">%1$s payments work on Solana mainnet only.</string>
 </resources>

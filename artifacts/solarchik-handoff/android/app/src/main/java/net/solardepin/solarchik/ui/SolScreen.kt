@@ -11,7 +11,9 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.solardepin.solarchik.MainActivity
 import net.solardepin.solarchik.R
 import net.solardepin.solarchik.sol.ChatTurn
@@ -266,9 +268,25 @@ class SolScreen(host: MainActivity) : Screen(host) {
         val history = store.turns()
         store.add(ChatTurn("user", msg, System.currentTimeMillis()))
         input.setText("")
+        // 1.2.0: "what is my SKR balance": read it now when the Today card has not yet (read-only mainnet RPC)
+        val w = host.wallet
+        if (net.solardepin.solarchik.sol.AssistantRules.kind(msg) == net.solardepin.solarchik.sol.AssistantRules.Kind.SKR && w.connected && w.mainnet && host.walletSkr == null && MainActivity.tickerEnabled) {
+            sending = true
+            render()
+            host.scope.launch {
+                withContext(Dispatchers.IO) { net.solardepin.solarchik.season.Skr.fetch(w.address) }.onSuccess { host.walletSkr = it }
+                sending = false
+                val rule = net.solardepin.solarchik.sol.AssistantRules.skrLine(ctx, net.solardepin.solarchik.sol.AssistantRules.SkrState(true, true, host.walletSkr))
+                store.add(ChatTurn("assistant", rule, System.currentTimeMillis(), local = true))
+                render()
+                speak(rule, auto = true)
+            }
+            return
+        }
         // 1.0.0: calls / "what can you do" are answered from this phone (call archive), instantly and offline
         (net.solardepin.solarchik.sol.AssistantRules.answer(ctx, msg, net.solardepin.solarchik.screen.CallInbox.cached(ctx),
-                season = { net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, host.wallet.mainnet) })
+                season = { net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, host.wallet.mainnet) },
+                skr = { net.solardepin.solarchik.sol.AssistantRules.SkrState(w.connected, w.mainnet, host.walletSkr.takeIf { w.connected && w.mainnet }) })
             ?: net.solardepin.solarchik.sol.SolRules.answer(ctx, msg, net.solardepin.solarchik.sol.SolState.of(host.save)))?.let { rule ->
             store.add(ChatTurn("assistant", rule, System.currentTimeMillis(), local = true))
             render()

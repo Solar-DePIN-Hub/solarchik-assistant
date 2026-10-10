@@ -5,4 +5,10 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <!-- 1.2.0: Mobile Wallet Adapter talks to the wallet over ws://127.0.0.1:<port>/solana-wallet on this device.
+         Raw sockets are not bound by this policy, but allowing loopback cleartext rules it out for any stack that is. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
 </network-security-config>

@@ -468,7 +468,8 @@ class AgentsBriefingActionsTest {
         assertEquals("only I sign", 1, usdc.keys.count { it.signer })
         assertEquals(10_000_000L, CallActionRules.amountRaw("USDC", 10.0))
         assertTrue(runCatching { CallActionRules.paymentTx(me, me, "SOL", 1, hash) }.isFailure)
-        assertTrue(runCatching { CallActionRules.paymentTx(me, to, "SKR", 1, hash) }.isFailure)
+        assertTrue("1.2.0: SKR is a payment token", runCatching { CallActionRules.paymentTx(me, to, "SKR", 1, hash) }.isSuccess)
+        assertTrue(runCatching { CallActionRules.paymentTx(me, to, "BONK", 1, hash) }.isFailure)
         assertTrue(CallActionRules.validAddress(friend)); assertFalse(CallActionRules.validAddress("Olena")); assertFalse(CallActionRules.validAddress("0x12ab"))
         assertTrue(CallActionRules.large("SOL", 2.0)); assertFalse(CallActionRules.large("USDC", 10.0))
     }

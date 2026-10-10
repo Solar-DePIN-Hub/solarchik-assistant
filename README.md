@@ -6,7 +6,13 @@ I'm Vadym, and I build Solarchik on my own under Solar DePIN. Solarchik Assistan
 
 I built this repo for the Colosseum Crypto World's Fair (Solana track, AI / agents). Submissions close 12 Oct 2026, 11:59pm PT (13 Oct, 09:59 Kyiv). My older game build, CLOCK IN, lives in [Solar-DePIN-Hub/Solarchik](https://github.com/Solar-DePIN-Hub/Solarchik), and I didn't change it for this. In this app the game is only a small "Play" tile.
 
-**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.7/solarchik-assistant.apk) (v1.1.7, Android 8+, sha256 `d509644e346a9299d1bf50a4b3b899a126856bb5f6c5e982cdb7edc538d55232`)
+**Download:** [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.0/solarchik-assistant.apk) (v1.2.0, Android 8+, sha256 `c48100e696dd18186d4eedd52b7276d24501af96daa9a5739aaf9ca8e45508c2`)
+
+**New in 1.2.0** (the server side is live; the app parts still need a check on a device):
+- **Wallet:** Settings → Wallet diagnostics logs every Mobile Wallet Adapter step (wallet found, intent, session, authorize) and copies/shares the log; pick Phantom or Solflare explicitly; longer wait for a slow wallet; cleartext allowed only to 127.0.0.1/localhost (MWA's local WebSocket). Phantom connect on my tablet is **not yet confirmed**.
+- **SKR:** a call like "send me 50 SKR" becomes a "Pay 50 SKR" card; you type or paste the recipient (never taken from the call), the app builds an SPL transfer (creates the recipient's SKR account if missing, 6 decimals checked on mainnet) and your wallet signs it. SKR balance on Today and in the briefing, a Stake SKR link to stake.solanamobile.com (no yield numbers), Watcher SKR price alerts, and Sol answers "what is my SKR balance".
+- **Season tasks:** today's Seeker Season partner drops with the perk as announced and its source link. Reads the official Solana Mobile blog and docs. X support is built in and turns on with the paid API. Drops announced on X are a hand-checked, dated list (curated 2026-10-10). No points promises.
+- **Verified Seeker:** Sign In With Solana + Seeker Genesis Token check on the server (Token-2022, non-zero balance, SGT metadata + group; one token = one account) gives a Verified badge and +10 secretary minutes a day. Without a Seeker everything works the same. Not tested on a real Seeker (I don't have one); the server check is tested against a real holder's on-chain data.
 
 > **Mainnet, real funds.** Since 1.1.0 the app talks to Solana mainnet. Anything you approve in your wallet moves real SOL or tokens and can't be undone. The app never signs for your wallet by itself. Real swaps, the Saver and the experimental delegated limit are all off until you turn them on, and they have small caps. Read [What's real on mainnet](#whats-real-on-mainnet-and-what-isnt) first.
 
@@ -117,7 +123,7 @@ These are from the devnet builds before 1.1.0. I checked every signature below w
 
 ## Install
 
-1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.1.7/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.7).
+1. On an Android phone (8.0 or newer), download [solarchik-assistant.apk](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.0/solarchik-assistant.apk) from the [latest release](https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.0).
 2. Allow installs from your browser or file manager when Android asks.
 3. Open the app. It installs as **Solarchik Assistant** (`net.solardepin.solarchik.assistant`), next to the CLOCK IN game if you have it.
 4. To connect a wallet, tap "Set up wallet" on Today. You need Phantom, Solflare or Seed Vault; it's a mainnet wallet with real funds. Without a wallet app you can still use Sol, the secretary, the briefing and the Watcher's prices.
@@ -171,7 +177,7 @@ What I couldn't verify myself, because it needs a real wallet with real money: t
 | Item | URL |
 | --- | --- |
 | This repo | https://github.com/Solar-DePIN-Hub/solarchik-assistant |
-| Release v1.1.7 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.1.7 |
+| Release v1.2.0 | https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/tag/v1.2.0 |
 | Game repo (CLOCK IN, unchanged) | https://github.com/Solar-DePIN-Hub/Solarchik |
 | API / market (devnet) | https://solarchik-market.vercel.app |
 | Demo video (CLOCK IN cut, an Assistant cut is coming) | https://youtu.be/oAxoliLwUXo |

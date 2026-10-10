@@ -144,6 +144,8 @@ object Skr {
     const val RPC = "https://api.mainnet-beta.solana.com"
     /** 1.1.0: second public mainnet node when the first is rate limited. */
     const val RPC_FALLBACK = "https://solana-rpc.publicnode.com"
+    /** 1.2.0: PublicNode now refuses getTokenAccountsByOwner without a key ("Indexed requests require a personal token"); this one answers it. */
+    const val RPC_FALLBACK2 = "https://public.rpc.solanavibestation.com"
     const val STAKE_URL = "https://stake.solanamobile.com"
 
     class RpcError(message: String) : Exception(message)
@@ -171,7 +173,9 @@ object Skr {
     private val client by lazy { OkHttpClient.Builder().callTimeout(12, TimeUnit.SECONDS).build() }
 
     /** Blocking; call from IO. 1.1.0: the public node first, PublicNode when it fails (429 / 5xx / network). */
-    fun fetch(owner: String): Result<Double> = fetch(owner, RPC).recoverCatching { fetch(owner, RPC_FALLBACK).getOrThrow() }
+    fun fetch(owner: String): Result<Double> = fetch(owner, RPC)
+        .recoverCatching { fetch(owner, RPC_FALLBACK2).getOrThrow() }
+        .recoverCatching { fetch(owner, RPC_FALLBACK).getOrThrow() }
 
     fun fetch(owner: String, rpc: String): Result<Double> = runCatching {
         val req = Request.Builder().url(rpc).post(body(owner).toRequestBody("application/json".toMediaType())).build()

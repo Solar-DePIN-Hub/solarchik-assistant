@@ -12,6 +12,16 @@
         <intent>
             <action android:name="solana.mobile.intent.action.WALLET_ASSOCIATE" />
         </intent>
+        <!-- 1.2.0: the real association intent (solana-wallet: VIEW) and the known wallets, for Wallet diagnostics -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="solana-wallet" />
+        </intent>
+        <package android:name="app.phantom" />
+        <package android:name="com.solflare.mobile" />
+        <package android:name="com.solanamobile.seedvaultimpl" />
+        <package android:name="com.backpack.android" />
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>

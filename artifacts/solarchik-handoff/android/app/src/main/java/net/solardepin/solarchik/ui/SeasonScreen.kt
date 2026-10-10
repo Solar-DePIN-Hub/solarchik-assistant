@@ -39,6 +39,8 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
     private var skrLoading = false
     internal val autopilot by lazy { AutopilotPanel(host) { render() } }
     private lateinit var autoBox: LinearLayout
+    internal val drops by lazy { SeasonDropsPanel(host) { render() } }
+    private lateinit var dropsBox: LinearLayout
 
     override fun build(): View = page {
         val top = Ui.row(ctx, gap = 12).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -67,6 +69,9 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
             addView(Ui.top(planBox, 14))
         })
 
+        dropsBox = Ui.column(ctx)
+        addView(dropsBox)
+
         autoBox = Ui.column(ctx)
         addView(autoBox)
 
@@ -93,6 +98,7 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
     override fun onShow() {
         render()
         refreshSkr()
+        drops.refresh()
     }
 
     override fun render() {
@@ -103,6 +109,8 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
         planBox.addView(useItem(p))
         planBox.addView(exploreItem(p))
         planBox.addView(chainItem(p))
+        dropsBox.removeAllViews()
+        dropsBox.addView(drops.card())
         autoBox.removeAllViews()
         autoBox.addView(autopilot.card())
         renderSkr()

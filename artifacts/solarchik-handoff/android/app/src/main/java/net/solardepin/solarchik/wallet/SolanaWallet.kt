@@ -299,9 +299,40 @@ class SolanaWallet(context: Context) {
         adapter.rpcCluster = rpcCluster()
     }
 
+    /** 1.2.0: the wallet app to open ("" = let Android pick / show the chooser). Set in Settings → Wallet diagnostics. */
+    var walletPackage: String
+        get() = prefs.getString("walletPkg", "").orEmpty()
+        set(v) { prefs.edit().putString("walletPkg", v).apply() }
+
+    /** Installed MWA wallets (package → name), in [WalletDiag.WALLETS] order. */
+    fun installedWallets(): Map<String, String> = WalletDiag.WALLETS.filterKeys { pkg ->
+        runCatching { app.packageManager.getPackageInfo(pkg, 0); true }.getOrDefault(false)
+    }
+
     suspend fun connect(sender: ActivityResultSender): Result<WalletSession> {
         if (useLocal()) return Result.success(WalletSession(address, ""))
         adapter.rpcCluster = rpcCluster()
+        // 1.2.0: our own logged connect (longer wait, optional wallet package); ktx only when no launcher is live
+        val launcher = directLauncher()
+        if (launcher != null) {
+            val pkg = walletPackage.takeIf { it.isNotBlank() && it in installedWallets() }
+            val r = MwaDirect.authorize(app, launcher, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", prefs.getString("auth", null))
+            return r.fold(
+                onSuccess = { auth ->
+                    val key = accountKey(auth) ?: return Result.failure(WalletError(WalletError.Kind.FAILED, "Wallet connected without account"))
+                    val addr = Base58.encode(key)
+                    remember(auth.authToken, addr)
+                    prefs.edit().remove("kind").apply()
+                    Result.success(WalletSession(addr, auth.authToken ?: ""))
+                },
+                onFailure = { e ->
+                    val err = e as? WalletError ?: WalletError.classify(e.message, e)
+                    if (err.authRejected) { adapter.authToken = null; prefs.edit().remove("auth").apply() }
+                    if (err.kind == WalletError.Kind.NO_WALLET && offerAfterNoWallet()) Result.success(WalletSession(address, "")) else Result.failure(err)
+                },
+            )
+        }
+        WalletDiag.log("connect (clientlib-ktx)", "no live launcher")
         return when (val result = adapter.connect(sender)) {
             is TransactionResult.Success -> {
                 val auth = result.authResult
@@ -313,7 +344,7 @@ class SolanaWallet(context: Context) {
             }
             is TransactionResult.NoWalletFound ->
                 if (offerAfterNoWallet()) Result.success(WalletSession(address, "")) else Result.failure(WalletError(WalletError.Kind.NO_WALLET))
-            is TransactionResult.Failure -> Result.failure(fail(result))
+            is TransactionResult.Failure -> { WalletDiag.log("ktx connect failed", result.message + " | " + WalletDiag.chain(result.e)); Result.failure(fail(result)) }
         }
     }
 
@@ -344,7 +375,24 @@ class SolanaWallet(context: Context) {
         err is WalletError && err.kind == WalletError.Kind.FAILED && err.signOnlyMayHelp
 
     /** Classifies a failure; a rejected authorization drops the saved token so the next tap asks afresh. */
+    /** The live direct-session launcher, when this app is in front (null in background work and the run screen). */
+    private fun directLauncher(): WalletLauncher? = if (directEnabled) WalletLauncher.current?.takeIf { it.resumed } else null
+
+    private suspend fun <T> direct(block: (MobileWalletAdapterClient, MobileWalletAdapterClient.AuthorizationResult) -> T): Result<Pair<MobileWalletAdapterClient.AuthorizationResult, T>>? {
+        val l = directLauncher() ?: return null
+        adapter.rpcCluster = rpcCluster()
+        val pkg = walletPackage.takeIf { it.isNotBlank() && it in installedWallets() }
+        return MwaDirect.transact(app, l, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", prefs.getString("auth", null), block = block)
+    }
+
+    private fun directFailure(e: Throwable): WalletError {
+        val err = e as? WalletError ?: WalletError.classify(e.message, e)
+        if (err.authRejected) { adapter.authToken = null; prefs.edit().remove("auth").apply() }
+        return err
+    }
+
     private fun fail(result: TransactionResult.Failure<*>): WalletError {
+        WalletDiag.log("wallet request failed", result.message + " | " + WalletDiag.chain(result.e))
         val e = WalletError.classify(result.message, result.e)
         if (e.authRejected) {
             adapter.authToken = null
@@ -362,6 +410,27 @@ class SolanaWallet(context: Context) {
         adapter.rpcCluster = rpcCluster()
         val cluster = clusterName
         var buildError: Throwable? = null
+        // 1.2.0: the logged direct session (same wait and wallet pick as connect) when the app is in front
+        direct { client, auth ->
+            val payer = PublicKey(accountKey(auth) ?: error("No account"))
+            val tx = try {
+                kotlinx.coroutines.runBlocking { build(payer, hash.get()) }
+            } catch (t: Throwable) {
+                buildError = t
+                throw t
+            }
+            client.signAndSendTransactions(arrayOf(tx.serialize()), null).get(MwaDirect.AUTHORIZE_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+        }?.let { r ->
+            return r.fold(
+                onSuccess = { (auth, res) ->
+                    val addr = accountKey(auth)?.let { Base58.encode(it) }.orEmpty()
+                    remember(auth.authToken, addr)
+                    val sig = res.signatures?.firstOrNull()?.let { Base58.encode(it) }.orEmpty()
+                    if (sig.isBlank()) Result.failure(WalletError(WalletError.Kind.FAILED, "Wallet sent no signature")) else Result.success(SentTx(addr, sig, cluster))
+                },
+                onFailure = { Result.failure(buildError?.let(::buildFailure) ?: directFailure(it)) },
+            )
+        }
         val result = try {
             adapter.transact(sender) { auth ->
                 val payer = PublicKey(accountKey(auth) ?: error("No account"))
@@ -400,6 +469,27 @@ class SolanaWallet(context: Context) {
         adapter.rpcCluster = rpcCluster()
         val cluster = clusterName
         var buildError: Throwable? = null
+        direct { client, auth ->
+            val payer = PublicKey(accountKey(auth) ?: error("No account"))
+            val tx = try {
+                kotlinx.coroutines.runBlocking { build(payer, hash.get()) }
+            } catch (t: Throwable) {
+                buildError = t
+                throw t
+            }
+            client.signTransactions(arrayOf(tx.serialize())).get(MwaDirect.AUTHORIZE_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+        }?.let { r ->
+            return r.fold(
+                onSuccess = { (auth, res) ->
+                    val addr = accountKey(auth)?.let { Base58.encode(it) }.orEmpty()
+                    remember(auth.authToken, addr)
+                    val signed = res.signedPayloads?.firstOrNull()
+                        ?: return Result.failure(WalletError(WalletError.Kind.FAILED, "Wallet returned no transaction"))
+                    runCatching { client.sendTransaction(signed) }.map { SentTx(addr, it, cluster) }.recoverCatching { throw buildFailure(it) }
+                },
+                onFailure = { Result.failure(buildError?.let(::buildFailure) ?: directFailure(it)) },
+            )
+        }
         val result = try {
             adapter.transact(sender) { auth ->
                 val payer = PublicKey(accountKey(auth) ?: error("No account"))
@@ -586,6 +676,46 @@ class SolanaWallet(context: Context) {
         }
     }
 
+    /** 1.2.0: what the worker needs to check a Sign-In-With-Solana (raw bytes; the worker gets them base64). */
+    class SiwsProof(val publicKey: ByteArray, val signedMessage: ByteArray, val signature: ByteArray)
+
+    /**
+     * 1.2.0 Verified Seeker: Sign In With Solana through MWA with the worker's payload. A wallet that answers the
+     * sign_in_payload returns its sign_in_result; one that ignores it (older wallets) signs the same SIWS message
+     * as a detached message instead, which the worker checks the same way (fields + Ed25519).
+     */
+    suspend fun signInWithSolana(payloadJson: org.json.JSONObject): Result<SiwsProof> {
+        val payload = runCatching { com.solana.mobilewalletadapter.common.signin.SignInWithSolana.Payload.fromJson(payloadJson) }
+            .getOrElse { return Result.failure(WalletError(WalletError.Kind.FAILED, "bad sign-in payload")) }
+        if (useLocal()) return runCatching {
+            val kp = localKey()
+            val msg = payload.prepareMessage(kp.publicKey.bytes()).encodeToByteArray()
+            SiwsProof(kp.publicKey.bytes(), msg, kp.sign(msg))
+        }
+        val l = directLauncher() ?: return Result.failure(WalletError(WalletError.Kind.FAILED, "Timed out waiting for local association to be ready"))
+        val pkg = walletPackage.takeIf { it.isNotBlank() && it in installedWallets() }
+        WalletDiag.log("sign in with solana", "nonce " + (payload.nonce ?: "").take(6) + "…")
+        val r = MwaDirect.transact(app, l, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", null, signIn = payload) { client, auth ->
+            val si = auth.signInResult
+            if (si != null && si.publicKey.size == 32 && si.signature.size == 64) SiwsProof(si.publicKey, si.signedMessage, si.signature)
+            else {
+                val key = accountKey(auth) ?: error("No account")
+                val msg = payload.prepareMessage(key).encodeToByteArray()
+                val signed = client.signMessagesDetached(arrayOf(msg), arrayOf(key)).get(MwaDirect.AUTHORIZE_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+                val sig = signed.messages.firstOrNull()?.signatures?.firstOrNull() ?: error("Wallet sent no signature")
+                SiwsProof(key, msg, sig)
+            }
+        }
+        return r.fold(
+            onSuccess = { (auth, proof) ->
+                WalletDiag.log("signed in", if (auth.signInResult != null) "sign_in_result" else "detached message")
+                remember(auth.authToken, Base58.encode(proof.publicKey))
+                Result.success(proof)
+            },
+            onFailure = { Result.failure(directFailure(it)) },
+        )
+    }
+
     /** Detached signature of [message] by the connected account (address + base58 signature). */
     suspend fun signText(sender: ActivityResultSender, message: String): Result<ClockProof> = signMessage(sender, message)
 
@@ -629,6 +759,9 @@ class SolanaWallet(context: Context) {
         const val LOCAL_MIN_LAMPORTS = 115_000_000L
 
         /** Test seam for [hasWalletApp]. */
+        /** 1.2.0: our logged direct MWA session (connect + sign). Tests that drive the clientlib-ktx path may turn it off. */
+        @Volatile var directEnabled = true
+
         @Volatile var walletAppCheck: (Context) -> Boolean = { ctx ->
             val probe = android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse("solana-wallet:/v1/associate/local?association=probe&port=1"))
                 .addCategory(android.content.Intent.CATEGORY_BROWSABLE)

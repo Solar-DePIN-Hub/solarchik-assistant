@@ -97,7 +97,7 @@ object CallActionCards {
         val box = Ui.column(ctx, gap = 8).apply { setPadding(dp(20), dp(8), dp(20), 0) }
         box.addView(Ui.text(ctx, ctx.getString(R.string.ca_sheet_amount, amount(a), a.token), 18f, Ui.TEXT, 800).apply { tag = "ca-sheet-amount" })
         if (CallActionRules.large(a.token, a.amount)) box.addView(Ui.text(ctx, ctx.getString(R.string.ca_large), 12.5f, Ui.RED, 700))
-        if (!host.wallet.mainnet && a.token == "USDC") box.addView(Ui.text(ctx, ctx.getString(R.string.ca_usdc_mainnet), 12.5f, Ui.AMBER, 700))
+        if (!host.wallet.mainnet && a.token != "SOL") box.addView(Ui.text(ctx, ctx.getString(R.string.ca_token_mainnet, a.token), 12.5f, Ui.AMBER, 700))
         val input = EditText(ctx).apply {
             tag = "ca-sheet-recipient"
             hint = ctx.getString(R.string.ca_sheet_hint)
@@ -143,8 +143,8 @@ object CallActionCards {
     fun paymentProblem(host: MainActivity, a: CallAction, recipient: String, checked: Boolean): String? {
         val r = recipient.trim()
         return when {
-            a.token != "SOL" && a.token != "USDC" -> host.getString(R.string.ca_err_token)
-            !host.wallet.mainnet && a.token == "USDC" -> host.getString(R.string.ca_usdc_mainnet)
+            a.token !in CallActionRules.PAY_TOKENS -> host.getString(R.string.ca_err_token)
+            !host.wallet.mainnet && a.token != "SOL" -> host.getString(R.string.ca_token_mainnet, a.token)
             CallActionRules.amountRaw(a.token, a.amount) <= 0L -> host.getString(R.string.ca_err_amount)
             !CallActionRules.validAddress(r) -> host.getString(R.string.ca_err_address)
             host.wallet.connected && r == host.wallet.address -> host.getString(R.string.ca_err_self)

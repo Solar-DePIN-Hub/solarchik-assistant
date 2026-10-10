@@ -1,6 +1,8 @@
 import { MINT_CLUSTER, MINT_TREASURY, PRO_LAMPORTS, mintConfig, mintCosign, verifyMint } from "./agent-mint.js";
 import { briefingRoute, callActionsRoute } from "./assistant-extras.js";
 import { checkRules, seasonRulesRoute } from "./season-rules.js";
+import { checkDrops, seasonDropsRoute } from "./season-drops.js";
+import { bonusMin, seekerRoute, seekerStatus } from "./seeker-verify.js";
 
 const SESSION_USD = 0.2;
 
@@ -756,7 +758,11 @@ export async function callCapReason(env, userId, now = Date.now()) {
   const L = callLimits(env);
   const u = await callUsage(env, userId, now);
   if (L.globalMin > 0 && u.global >= L.globalMin * 60) return "CALL_MINUTES_GLOBAL";
-  if (userId && L.accountMin > 0 && u.account >= L.accountMin * 60) return "CALL_MINUTES_ACCOUNT";
+  if (userId && L.accountMin > 0 && u.account >= L.accountMin * 60) {
+    // 1.2.0: a verified Seeker (Seeker Genesis Token) gets SEEKER_BONUS_MIN more minutes a day
+    const seeker = await seekerStatus(env.BALANCES, userId).catch(() => null);
+    if (!seeker || u.account >= (L.accountMin + bonusMin(env)) * 60) return "CALL_MINUTES_ACCOUNT";
+  }
   return "";
 }
 
@@ -2181,6 +2187,17 @@ export default {
       if (r) return r;
     }
 
+    // 1.2.0 Season agent v2: Seeker Season partner drops (official blog/docs + curated @solanamobile posts; X off).
+    if (url.pathname === "/season/drops") {
+      const r = await seasonDropsRoute(env, request, json, ctx);
+      if (r) return r;
+    }
+    // 1.2.0 Verified Seeker: SIWS challenge/verify + Seeker Genesis Token check (one mint = one perk).
+    if (url.pathname.startsWith("/seeker/")) {
+      const r = await seekerRoute(env, request, json, (m, p) => rpc(env, m, p), solRateOk);
+      if (r) return r;
+    }
+
     if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/sip")) {
       return json({ ok: true, where: "cloudflare", sip: "/sip" });
     }
@@ -2431,6 +2448,10 @@ export default {
     const beat = (o) => env.BALANCES.put("season-rules:cron", JSON.stringify({ cron: event.cron, at: Date.now(), ...o })).catch(() => {});
     await beat({ state: "started" });
     if (!env.OPENAI_API_KEY) return beat({ state: "no model key" });
+    // 1.2.0: Season partner drops (only new or changed official pages go to the model)
+    ctx.waitUntil(checkDrops(env)
+      .then((r) => console.log(JSON.stringify({ event: "season_drops", items: r.drops.items.length, newItems: r.newItems, extracted: r.extracted, errors: r.errors })))
+      .catch((e) => console.log(JSON.stringify({ event: "season_drops_fail", error: String(e) }))));
     ctx.waitUntil(checkRules(env)
       .then((r) => { console.log(JSON.stringify({ event: "season_rules", version: r.rules.version, changed: r.changed, extracted: r.extracted, errors: r.errors })); return beat({ state: "done", version: r.rules.version, changed: r.changed, extracted: r.extracted, errors: r.errors }); })
       .catch((e) => { console.log(JSON.stringify({ event: "season_rules_fail", error: String(e) })); return beat({ state: "failed", error: String(e) }); }));

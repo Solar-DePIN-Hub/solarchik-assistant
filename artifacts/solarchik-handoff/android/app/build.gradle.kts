@@ -24,8 +24,8 @@ android {
         applicationId = "net.solardepin.solarchik.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 117
-        versionName = "1.1.7"
+        versionCode = 120
+        versionName = "1.2.0"
         buildConfigField("boolean", "MAINNET_PAID_MINT", "false")
         // The assistant build never talks to mainnet, Seeker included.
         buildConfigField("boolean", "DEVNET_ONLY", "false")
@@ -117,9 +117,9 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    // clientlib-ktx 2.0.7 lists androidx.test.ext:junit-ktx as a runtime dependency (upstream packaging bug). It pulled
+    // clientlib-ktx 2.0.7/2.0.8 list androidx.test.ext:junit-ktx as a runtime dependency (upstream packaging bug). It pulled
     // androidx.test core/monitor/services and the REORDER_TASKS permission into the release APK. MWA never uses them.
-    implementation("com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.7") {
+    implementation("com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.8") {
         exclude(group = "androidx.test")
         exclude(group = "androidx.test.ext")
         exclude(group = "androidx.test.services")

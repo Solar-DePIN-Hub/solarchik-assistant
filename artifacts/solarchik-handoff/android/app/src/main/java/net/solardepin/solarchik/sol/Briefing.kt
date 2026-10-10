@@ -100,6 +100,7 @@ object Briefing {
         season: SeasonPlan,
         now: Long,
         zone: ZoneId,
+        seasonTasks: List<String> = emptyList(),
     ): JSONObject {
         val tz = TimeZone.getTimeZone(zone)
         val clock = SimpleDateFormat("HH:mm", Locale.US).apply { timeZone = tz }
@@ -139,6 +140,8 @@ object Briefing {
             if (!season.done(SeasonItem.ONCHAIN)) add(if (season.clockedToday) "sign today's check-in" else "do the daily check-in")
         }
         o.put("season", JSONObject().put("done", season.doneCount).put("total", season.total).put("left", JSONArray(left)).put("streak", season.streak))
+        // 1.2.0: Seeker Season partner drops (from /season/drops, sourced), at most 3
+        if (seasonTasks.isNotEmpty()) o.put("seasonTasks", JSONArray(seasonTasks.take(3)))
         return o
     }
 
@@ -173,6 +176,10 @@ object Briefing {
                 else -> ctx.getString(R.string.br_wallet_down, num(-d), num(w.optDouble("sol", 0.0)))
             }
         }
+        // 1.2.0: SKR (mainnet, read-only) and today's Season partner apps
+        if (w != null && w.optBoolean("connected") && w.has("skr")) parts += ctx.getString(R.string.br_skr, java.math.BigDecimal(w.optDouble("skr")).setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString())
+        val tasks = f.optJSONArray("seasonTasks")
+        if (tasks != null && tasks.length() > 0) parts += ctx.getString(R.string.br_season_tasks, (0 until minOf(2, tasks.length())).joinToString(", ") { tasks.getString(it).substringBefore(':') })
         val al = f.optJSONArray("alerts")
         if (al != null && al.length() > 0) parts += ctx.getString(R.string.br_alerts, al.getString(0))
         val s = f.optJSONObject("season")
@@ -257,6 +264,10 @@ object AssistantExtras {
         if (alerts.isNotEmpty()) out += "Watcher alerts (24h): " + alerts.joinToString("; ") { it.line() } + "."
         net.solardepin.solarchik.season.SeasonRulesStore(ctx).doc()?.latest?.takeIf { it.relevant && it.summary.isNotBlank() }?.let {
             out += "Latest official Seeker Season note (${it.published}, ${it.url}): ${it.summary.take(200)}"
+        }
+        net.solardepin.solarchik.season.SeasonDropsStore(ctx).let { it.doc("en") ?: it.doc("uk") }?.let { d ->
+            val ls = net.solardepin.solarchik.season.SeasonDrops.lines(d, 4)
+            if (ls.isNotEmpty()) out += "Today's Seeker Season partner drops (perks as announced, on the Solana dApp Store; sources: official Solana Mobile blog/docs and hand-checked @solanamobile posts on X; never promise points): " + ls.joinToString("; ") + "."
         }
         val acts = net.solardepin.solarchik.screen.CallActionStore(ctx).open().take(3)
         if (acts.isNotEmpty()) out += "Actions from calls waiting for the user's confirmation: " + acts.joinToString("; ") { actionLine(it) } + "."

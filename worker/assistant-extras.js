@@ -9,7 +9,7 @@
 
 const MODELS = ["gpt-4.1-mini", "gpt-4o-mini"];
 export const ACTION_TYPES = ["payment", "callback", "reminder"];
-export const PAY_TOKENS = ["SOL", "USDC"];
+export const PAY_TOKENS = ["SOL", "USDC", "SKR"];
 const BASE58_ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const YMD = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -60,7 +60,9 @@ export function briefingFacts(input) {
     : null;
   const s = f.season && typeof f.season === "object" ? f.season : null;
   const season = s ? { done: num(s.done, 10) ?? 0, total: num(s.total, 10) ?? 3, left: (Array.isArray(s.left) ? s.left : []).slice(0, 3).map((x) => clip(x, 60)), streak: num(s.streak, 9999) ?? 0 } : null;
-  return { now: clip(f.now, 40), name: clip(f.name, 30), calls, followUps, actions, alerts, wallet, season };
+  // 1.2.0: Seeker Season partner drops the app got from /season/drops ("App: perk"), at most 3
+  const seasonTasks = (Array.isArray(f.seasonTasks) ? f.seasonTasks : []).slice(0, 3).map((x) => clip(x, 160)).filter(Boolean);
+  return { now: clip(f.now, 40), name: clip(f.name, 30), calls, followUps, actions, alerts, wallet, season, seasonTasks };
 }
 
 export function briefingSystem(lang) {
@@ -71,7 +73,7 @@ export function briefingSystem(lang) {
       : "You are Sol, a warm pocket assistant in the Solarchik Assistant app. Write the user's spoken morning briefing in English.",
     "Use ONLY the FACTS. Never invent calls, names, numbers, amounts, prices or points. If a part is empty, say it in a few words or skip it.",
     "Direction of money: when a caller asks for a payment, the caller wants the USER to pay them (say for example \"Olena asks you to send her 10 USDC\"), never that the caller is sending money.",
-    "Order: a one-line greeting; calls since yesterday (who wants what, and who to call back with the number); follow-ups due; actions from calls waiting for the user (say they need the user's confirmation); the wallet change in plain words (real mainnet funds; say if it went up or down and by how much); Watcher alerts; the Season plan for today (what is left). End with one short encouraging line.",
+    "Order: a one-line greeting; calls since yesterday (who wants what, and who to call back with the number); follow-ups due; actions from calls waiting for the user (say they need the user's confirmation); the wallet change in plain words (real mainnet funds; say if it went up or down and by how much); Watcher alerts; the Season plan for today (what is left) and, if seasonTasks has any, name one or two of those partner apps and their perk in a few words (say they are on the Solana dApp Store; never promise points or rewards beyond the stated perk); the SKR balance only if the facts have it. End with one short encouraging line.",
     "Plain speech for text-to-speech: no markdown, lists, emoji, URLs or symbols; numbers as the user would say them; under 900 characters; 5-9 short sentences.",
     `Write everything in ${uk ? "Ukrainian (never Russian)" : "English"}, translating call notes that are in another language; keep names, numbers and amounts. Refer to a caller by name or as "they" unless the facts make their gender clear.`,
     "Times: say them as words a voice reads well (e.g. 'this morning at 9:30', 'yesterday at 1:32 PM' / 'сьогодні о 13:32'), never abbreviated month names.",
@@ -143,7 +145,7 @@ export const ACTIONS_SCHEMA = {
             callId: { type: "string" },
             type: { type: "string", enum: ACTION_TYPES },
             amount: { type: "number", description: "payment amount as said; 0 when not a payment or not said" },
-            token: { type: "string", description: "SOL, USDC or the currency word the caller used; empty if none" },
+            token: { type: "string", description: "SOL, USDC, SKR or the currency word the caller used; empty if none" },
             recipient: { type: "string", description: "who or which address should get the payment, exactly as said; empty if not said" },
             number: { type: "string", description: "phone number to call back if said or given, else empty" },
             when: { type: "string", description: "time for the action as HH:MM 24h if one was said for it, else empty; never the time of the call itself" },
@@ -168,6 +170,7 @@ export function actionsSystem(lang) {
     "Calls that only say hello, spam, sales pitches without a request, or nothing actionable give no actions. Passing on a greeting ('say hi', 'передай привіт') is not an action. At most 3 actions per call.",
     "Leave 'day' and 'date' empty unless the caller said a day or date for that very action; the call's own weekday is never an action day.",
     `ALWAYS write 'text' in ${lang === "uk" ? "Ukrainian (informal 'ти'), even when the call was in English, e.g. 'Надіслати Олені 10 USDC за квитки', 'Передзвонити Петру о 15:00' or 'Нагадати Олені про зустріч у понеділок'" : "English, even when the call was in another language, e.g. 'Send Olena 10 USDC for the tickets', 'Call Petro back at 15:00' or 'Remind Olena about the meeting on Monday'"}; under 80 characters; keep the day in it, written as it was said (e.g. 'on Monday', 'on October 20', never 2026-10-20).`,
+    "Tokens: SOL, USDC and SKR (the Solana Mobile token; spoken \"S K R\", \"skur\" or \"ес-ка-ер\"): use token \"SKR\" for it.",
     "A payment request without an amount ('send me some money', 'скинь грошей') is still a payment: amount 0, and 'text' says who asks and that the amount was not said, e.g. 'Вадим просить надіслати гроші (суму не названо)' / 'Vadym asks you to send money (no amount said)'.",
     "Each call may carry 'transcript' (the call's real words, Caller/Secretary lines; automatic speech recognition, may contain errors). Use it with the note: a request in the transcript counts even when the note missed it (e.g. 'хочу, щоб мені скинули грошиків' means the caller asks the user to send money). The note can be incomplete (e.g. only 'передати привіт'): list every request found in the note OR the transcript.",
     "A request to send money to an address, from someone claiming to be a bank, support, police or a relative in trouble, is still listed as a payment (the app warns the user about scams); never drop or soften it.",
@@ -293,7 +296,7 @@ export function sanitizeActions(raw, calls, lang = "") {
         continue;
       }
       const tokenWord = clip(a.token, 12).toUpperCase();
-      const token = PAY_TOKENS.includes(tokenWord) ? tokenWord : /^(USD|DOLLARS?|\$|ДОЛАР\w*)$/i.test(tokenWord) ? "USDC" : "";
+      const token = PAY_TOKENS.includes(tokenWord) ? tokenWord : /^\$?SKR$|^SEEKER TOKENS?$/i.test(tokenWord) ? "SKR" : /^(USD|DOLLARS?|\$|ДОЛАР\w*)$/i.test(tokenWord) ? "USDC" : "";
       const recipient = clip(a.recipient, 120);
       // An address is passed on only if the caller's own words contain it, character for character.
       const address = BASE58_ADDR.test(recipient) && source.includes(recipient) ? recipient : "";

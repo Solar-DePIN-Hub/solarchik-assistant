@@ -180,6 +180,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sender = ActivityResultSender(this)
+        // 1.2.0: our logged MWA connect needs its own result launcher, registered before STARTED
+        net.solardepin.solarchik.wallet.WalletDiag.init(this)
+        walletLauncher = net.solardepin.solarchik.wallet.WalletLauncher(this).also { net.solardepin.solarchik.wallet.WalletLauncher.current = it }
         wallet = SolanaWallet(this)
         // 0.21.9: no wallet app (judges' tablets) -> offer the built-in devnet wallet instead of failing
         wallet.offerBuiltIn = { offerBuiltInWallet() }
@@ -465,7 +468,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var walletLauncher: net.solardepin.solarchik.wallet.WalletLauncher? = null
+
     override fun onDestroy() {
+        if (net.solardepin.solarchik.wallet.WalletLauncher.current === walletLauncher) net.solardepin.solarchik.wallet.WalletLauncher.current = null
         screens.values.forEach { runCatching { it.onDestroy() } }
         main.removeCallbacksAndMessages(null)
         scope.cancel()

@@ -125,11 +125,12 @@
     <string name="ca_sheet_check">Я сам перевірив адресу отримувача</string>
     <string name="ca_sheet_note">Гаманець покаже переказ і попросить його схвалити. Solarchik ніколи не підписує оплати.</string>
     <string name="ca_sheet_confirm">Підтвердити в гаманці</string>
-    <string name="ca_err_token">Підтримуються лише перекази SOL і USDC.</string>
+    <string name="ca_err_token">Підтримуються лише перекази SOL, USDC і SKR.</string>
     <string name="ca_err_amount">Неправильна сума.</string>
     <string name="ca_err_address">Введи правильну адресу Solana.</string>
     <string name="ca_err_self">Це твій власний гаманець.</string>
     <string name="ca_err_check">Познач пункт після перевірки адреси.</string>
     <string name="ca_sent">Переказ надіслано: %1$s</string>
     <string name="ca_open_today">Діяти на «Сьогодні»</string>
+    <string name="ca_token_mainnet">Платежі в %1$s працюють лише в основній мережі Solana.</string>
 </resources>

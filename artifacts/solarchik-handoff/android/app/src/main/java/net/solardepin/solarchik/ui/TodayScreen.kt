@@ -452,6 +452,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
                 w.balanceSol().onSuccess { sol = it; balance = it; host.walletSol = it }
                 if (w.mainnet) withContext(Dispatchers.IO) { net.solardepin.solarchik.season.Skr.fetch(w.address) }.onSuccess { skrNow = it; skr = it; host.walletSkr = it }
             }
+            if (MainActivity.tickerEnabled) withContext(Dispatchers.IO) { runCatching { net.solardepin.solarchik.season.SeasonDropsSync.refresh(ctx, host.lang) } }
             val zone = java.time.ZoneId.systemDefault()
             val facts = net.solardepin.solarchik.sol.Briefing.facts(
                 CallInbox.cached(ctx), FollowUps.list(ctx, now),
@@ -459,6 +460,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
                 net.solardepin.solarchik.agents.WatcherStore(ctx).recent(now),
                 net.solardepin.solarchik.sol.AssistantContext.Wallet(w.connected, w.isLocal, if (w.connected) w.address else "", w.mainnet, sol.takeIf { w.connected }, skrNow.takeIf { w.connected && w.mainnet }),
                 st.snap(), net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, w.mainnet), now, zone,
+                seasonTasks = seasonTasks(),
             )
             val text = withContext(Dispatchers.IO) { net.solardepin.solarchik.sol.Briefing.fetch(facts, host.lang, briefingPost) }
                 ?: net.solardepin.solarchik.sol.Briefing.localText(facts, ctx)
@@ -597,7 +599,17 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             else -> kind + " · " + Fmt.short(w.address)
         }
         walletBody.addView(Ui.top(Ui.muted(ctx, sub, 12.5f), 4))
-        if (w.mainnet) walletBody.addView(Ui.top(Ui.text(ctx, skr?.let { Fmt.sol(it, 2) + " SKR" } ?: "… SKR", 16f, Ui.TEXT, 800).apply { tag = "today-wallet-skr" }, 6))
+        // 1.2.0: Verified Seeker badge (Seeker Genesis Token, Settings → Verified Seeker)
+        if (net.solardepin.solarchik.season.SeekerStore(ctx).state().verified) walletBody.addView(Ui.top(Ui.pill(ctx, ctx.getString(R.string.sk_badge) + " Seeker", Ui.GREEN).apply { tag = "today-seeker-badge" }, 6))
+        if (w.mainnet) {
+            // 1.2.0: SKR balance (read-only) with the official staking page next to it; no yield numbers
+            val skrRow = Ui.row(ctx, gap = 8)
+            skrRow.addView(Ui.weight(Ui.text(ctx, skr?.let { Fmt.sol(it, 2) + " SKR" } ?: "… SKR", 16f, Ui.TEXT, 800).apply { tag = "today-wallet-skr" }))
+            skrRow.addView(Ui.button(ctx, ctx.getString(R.string.today_stake_skr), Ui.Btn.GHOST) {
+                host.openUrl(net.solardepin.solarchik.season.Skr.STAKE_URL)
+            }.apply { tag = "today-stake-skr"; textSize = 13f })
+            walletBody.addView(Ui.top(skrRow, 6))
+        }
 
         val desk = host.desk.state()
         val last = desk.log.lastOrNull() ?: desk.runs.mapNotNull { it.last }.maxByOrNull { it.at }
@@ -654,6 +666,9 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             if (this@TodayScreen::walletBody.isInitialized) renderWallet()
         }
     }
+
+    /** 1.2.0: today's Season partner drops for the briefing, in the UI language ("App: perk"). */
+    private fun seasonTasks(): List<String> = net.solardepin.solarchik.season.SeasonDrops.lines(net.solardepin.solarchik.season.SeasonDropsStore(ctx).doc(host.lang))
 
     /** Tests: a known balance without the network. */
     internal fun setBalanceForTest(sol: Double?, skrBalance: Double? = null) { balance = sol; balanceFailed = false; skr = skrBalance }

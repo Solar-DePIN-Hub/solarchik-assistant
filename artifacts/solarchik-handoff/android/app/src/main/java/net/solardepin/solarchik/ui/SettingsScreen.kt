@@ -32,6 +32,9 @@ private const val ASSISTANT = net.solardepin.solarchik.core.SolarchikConfig.SOL_
 
 class SettingsScreen(host: MainActivity) : Screen(host) {
     private lateinit var walletBox: LinearLayout
+    private var diagPanel: WalletDiagPanel? = null
+    internal val seekerPanel by lazy { SeekerPanel(host) { renderSeeker() } }
+    private var seekerBox: LinearLayout? = null
     private lateinit var networkBody: TextView
     private var devnetSwitch: Switch? = null
     private var balance: Double? = null
@@ -130,6 +133,17 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             }
             addView(Ui.top(r, 12))
         })
+
+        // 1.2.0: Verified Seeker (Seeker Genesis Token via SIWS); not verified is a normal state
+        addView(section(R.string.sk_title, R.drawable.ic_wallet, Ui.GREEN).apply {
+            seekerBox = Ui.column(ctx).also { addView(Ui.top(it, 8)) }
+        })
+        renderSeeker()
+        seekerPanel.refresh()
+
+        // 1.2.0: Wallet diagnostics (logged MWA connect, wallet app pick, copy/share the log)
+        diagPanel = WalletDiagPanel(host)
+        addView(section(R.string.wd_title, R.drawable.ic_check, Ui.GOLD).apply { addView(diagPanel!!.view) })
 
         addView(section(R.string.settings_privacy, R.drawable.ic_check, Ui.CYAN).apply {
             addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.settings_privacy_body)).apply { setLineSpacing(0f, 1.3f) }, 8))
@@ -310,6 +324,8 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
 
     override fun render() {
         if (!this::walletBox.isInitialized) return
+        diagPanel?.render()
+        renderSeeker()
         renderNotes()
         renderVoice()
         renderSecretary()
@@ -769,5 +785,11 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("address", text))
         host.toast(ctx.getString(R.string.copied))
+    }
+
+    private fun renderSeeker() {
+        val b = seekerBox ?: return
+        b.removeAllViews()
+        b.addView(seekerPanel.card())
     }
 }
