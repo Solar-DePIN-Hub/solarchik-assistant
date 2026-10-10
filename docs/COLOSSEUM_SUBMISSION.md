@@ -1,67 +1,119 @@
-# Colosseum Crypto World's Fair — draft fields (Solarchik Assistant)
+# Colosseum submission: Sol, AI secretary for Seeker (v1.2.9)
 
-Deadline: 12 Oct 2026 11:59pm PT (13 Oct 2026 09:59 Kyiv).  
-Track: Solana. Category focus: AI Platforms / Agents.  
-Repo: https://github.com/Solar-DePIN-Hub/solarchik-assistant  
-Voice: first person as Vadym. Do not submit until he OKs.
+The text I submitted to Colosseum, kept here so judges can read it next to the code.
 
-## Short description (one liner)
+## Project name
 
-I built Solarchik Assistant: a pocket AI on Android with a voice friend, a real-line call secretary that turns calls into actions, a morning voice briefing and three small agents on Solana mainnet, where every transaction is approved in your wallet.
+Sol: AI secretary for Seeker
 
-## Elevator pitch (~90s / short form)
+## One-liner
 
-I got tired of cold chatbots and spam calls. Solarchik Assistant puts one character on your phone home screen. You hold a mic and talk to Sol. If you cannot pick up, the AI secretary answers on a real number, talks to the caller, and leaves a short summary: who called, why, what to do next. What the caller asked for becomes a card: call back in one tap, a reminder, or a payment you approve in your own wallet, with the recipient typed or confirmed by you and a scam warning. Every morning Sol reads you a short briefing: calls, follow-ups, how your wallet changed, your Seeker Season plan. Three agents, all off by default: a Season Agent, a Saver that moves small amounts into USDC or SKR through real Jupiter swaps with caps, and a Watcher that only watches prices. It runs on Solana mainnet with Mobile Wallet Adapter; the app never signs for your wallet.
+Sol answers the calls you miss, and every morning one swipe clears what came out of them: call back, remind, or pay on Solana.
+
+## Short description
+
+Sol is an Android app for Seeker. When I can't pick up, an AI secretary answers on a real phone line, writes me a note and turns the call into cards. Every morning the cards wait in one stack with my Season tasks and habits. Payments are one tap and one approval in my own wallet, on Solana mainnet.
+
+## Full description
+
+I'm Vadym, a solo founder from Ukraine. In meetings I miss calls, and some of them matter: a client, a friend asking me to pay back for lunch. Others are scams asking for money. So I built Sol.
+
+How a day with Sol works:
+
+1. Someone calls and I'm busy. My carrier forwards the missed call to Sol's line.
+2. An AI secretary answers, talks to the caller, and takes the message.
+3. I get a short note (who, why, how urgent) and cards: call back, reminder, or payment.
+4. In the morning, Today shows one stack: cards from calls, today's Seeker Season tasks, money people owe me or I owe them, and my habits. Each card says what it is and where it came from.
+5. Swipe right when it's done. Swipe left for Later, Tomorrow or Dismiss. Tap to do it: the dialer, the payment, the Season post.
+6. When every card is handled, I clock in and my streak grows. Signing a CLOCK IN memo on mainnet is optional.
+
+Circle is the money part. It's people I save myself, with their wallet address. Each person has Send and Request. Request makes a Solana Pay link and QR and opens an SMS ("Hi Ira, here's my payment link for 0.01 SOL"). When the money lands, the app finds the transaction on chain and shows "Paid ✓". If a caller says "send me 0.01 SOL for lunch", the call adds that debt to Circle.
+
+Sol is the mic button in the middle. I hold it and ask "who do I owe?" or "send Ira what I owe", and Sol opens the right card. Nothing is sent until I approve it in my wallet.
+
+For Seeker owners there's a Season agent. Every day it reads Solana Mobile's official sources and a dated list of partner drops announced on X, and puts today's tasks into the stack. Each task opens the original announcement. It never claims, farms or signs anything. A Verified Seeker check (Genesis Token) gives 10 extra secretary minutes a day.
 
 ## Problem
 
-People get spam and unknown calls, and most AI tools feel like another chat tab. Mobile users need something that actually picks up, talks, and leaves a clear next step, with a real on-chain habit, not a slide deck.
+Freelancers and small business owners miss calls while they work, and a missed call can be a lost client. People don't listen to voicemail. Scam calls make people stop picking up unknown numbers. And when someone asks to be paid back, the call is in one app and the wallet in another, so it gets forgotten.
 
 ## Solution
 
-Native Kotlin Android app. Sol for voice. Secretary on a real line with transcripts, reminders and action cards. Morning voice briefing from local data. Mainnet check-in memos, capped Jupiter swaps, SOL/USDC transfers and an experimental SPL-approve delegated limit, all through MWA. Metaplex Core agent NFTs (tested on devnet; mainnet collection coming soon).
+One app that picks up for me and turns the call into the next step. The secretary answers, I get a note and cards, and every morning one stack clears them. Money only moves after one tap in my own wallet.
 
-## How it uses Solana
+## Why Solana, why Seeker
 
-- Mainnet-beta by default; Mobile Wallet Adapter only (Phantom / Solflare / Seed Vault); real SOL/SKR balances, Solscan/Orb links
-- Daily check-in as a mainnet memo transaction
-- Jupiter swaps (SOL/USDC/SKR/JUP), opt-in, daily cap, slippage and impact limits; Saver agent proposals use the same review
-- Payments from call notes as SOL / USDC (transferChecked) transfers the user approves
-- Experimental delegated limit: SPL Approve to an agent key, caps, revoke/withdraw
-- Metaplex Core agent NFTs, Free / Pro (0.1 SOL), paid checks on the server (devnet tested; mainnet coming soon)
+- Speed and cost: my 0.01 SOL payments from the app settled in about 3–4 seconds with a fee of 0.00008 SOL. Paying back a $1 lunch right after a call only makes sense when the fee is a fraction of a cent.
+- Solana Pay: a request is a plain link or QR anyone with a Solana wallet can open, so I can send it by SMS. The reference key lets the app confirm the payment on chain by itself.
+- Seeker: the wallet is built into the phone (Seed Vault), and Sol uses the same Mobile Wallet Adapter flow as Phantom. Seeker owners already hold a wallet, so they're who I start with.
 
-## Demo video script (film on phone, ~2–3 min)
+## Competition
 
-1. Morning: the briefing notification, Sol speaks the summary.
-2. Secretary call: the note, then the action cards (call back, reminder, payment with the scam warning).
-3. Payment: type the recipient, the wallet app opens, approve a tiny amount, show Solscan.
-4. Agents: Season Agent plan, Saver proposal → swap review → wallet; Watcher alert.
-5. Check-in memo on mainnet. Close: “Solarchik Assistant — pocket AI on Solana.”
+- Google Call Screen (Pixel) asks the caller why they're calling and shows a transcript.
+- Truecaller Assistant answers and transcribes calls; it comes with Truecaller Premium, $9.99 a month in the US App Store.
+- Rosie, an AI receptionist for small businesses, starts at $49 a month.
 
-## Links to paste
+People already pay for a phone secretary. As far as I know, none of them turns a call into a to-do stack and a wallet payment, or keeps track of who owes whom.
+
+## Try it
+
+- Android APK (latest release): https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/latest
+- Call the shared demo secretary line: +380 91 481 0885. Say who you are and what you want.
+
+## Business model (proposed, nothing is billed yet)
+
+1. Free: Sol, the wallet, Circle, habits, and secretary minutes on the shared demo line.
+2. Pro, $7.99 a month: my own secretary number, more minutes, cards from every call.
+3. Business (planned): for small service businesses that miss calls while they work, like barbers, repair shops and freelancers. Own number, booking from the call, deposit requests.
+4. A small fee on Circle payments (planned, not in the app yet). Every Request I send by SMS also reaches someone who may not have the app yet.
+
+## Go-to-market
+
+1. Seeker owners first, through the Solana dApp Store and the Seeker community. They already have a wallet on the phone.
+2. Then small businesses and freelancers who miss calls during the day.
+
+## Traction
+
+Live on Solana mainnet, tested by 4 people, my family and friends.
+
+## Proof on mainnet
+
+Two real 0.01 SOL payments from the app (Circle → Send → Phantom) on 10 Oct 2026:
+- https://solscan.io/tx/4z8PUAVD99bFWRM2KHpAGFqarESNDxQBsKNVzsh3e2MCT65N79tgSKayRvfRSVZg8AMhJVnkA7ftUd22ByLUnW6z
+- https://solscan.io/tx/3BtXnkEfWTbZbGSzEKFJVsrMTRYqBvGY39xMSd1gzdAEvWCBwFBLE13cYmqRug5xzgeA8Fv2XsDyF8bvdFFQbVTr
+
+## Team
+
+Vadym Bilobrovets, solo founder, Solar DePIN, Ukraine. I do the design, the Android app and the backend. I'm also the first user: I built this because I miss calls in meetings.
+
+## How it's built
+
+- Android app: native Kotlin, no WebView. The app holds no API keys.
+- Phone secretary: GSM conditional forwarding → Zadarma number → SIP → OpenAI Realtime voice agent → Cloudflare Worker saves the transcript, writes the note and the action cards. AI minutes are capped per call and per day.
+- Wallet: Mobile Wallet Adapter 2.0 (Phantom, Solflare, Seed Vault on Seeker). The app simulates every transaction on mainnet before the wallet opens. The server never holds keys. The wallet sees the app as app.solardepin.net, verified with Digital Asset Links.
+- Solana: SOL / USDC / SKR transfers, Solana Pay requests with reference keys, balance reads, an optional CLOCK IN memo, Seeker Genesis Token check (Token-2022) with Sign In With Solana.
+- Season agent: the worker reads Solana Mobile's blog and docs, plus a curated, dated list of partner drops from X.
+- Tests: Android unit and Robolectric tests, worker tests.
+- Open source, MIT.
+
+## Honest limits
+
+This is a hackathon build by one person and it hasn't been audited. I test on an Android tablet with Phantom; I don't own a Seeker yet, so Seed Vault and the Genesis Token check aren't tested on a real Seeker. The secretary runs on one shared demo line; personal numbers are a Pro feature I haven't built yet. The APK is signed with my own key, not a store key.
+
+## Roadmap
+
+1. Personal secretary numbers and Pro billing in USDC / SKR.
+2. Publish to the Solana dApp Store.
+3. Business plan pilot: booking and deposits from the call card.
+4. Test on a real Seeker.
+5. An external security review.
+
+## Links
 
 - GitHub: https://github.com/Solar-DePIN-Hub/solarchik-assistant
-- CLOCK IN game repo (separate): https://github.com/Solar-DePIN-Hub/Solarchik
-- API / market: https://solarchik-market.vercel.app
-- Demo (CLOCK IN cut, reuse until Assistant cut): https://youtu.be/oAxoliLwUXo
-- APK: https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/download/v1.2.6.1/solarchik-assistant.apk
-- Deck PDF (CLOCK IN frames; refresh for Assistant): docs/clockin-deck.pdf in this repo
+- APK: https://github.com/Solar-DePIN-Hub/solarchik-assistant/releases/latest
+- Pitch video: PITCH_VIDEO_URL
+- Tech video: TECH_VIDEO_URL
+- Demo secretary line: +380 91 481 0885
 - X: https://x.com/SolarDePin
 - Email: team.solardepinhub@gmail.com
-
-## Honest disclosures
-
-- Started Sep 19, 2026 on the Solarchik line; older Jul Telegram prototype is unrelated.
-- MunichTech and CLOCK IN used the game-shaped build; Colosseum is repositioned as Assistant in this repo.
-- No dApp Store publish yet. SKR is shown read-only (mainnet balance); staking is a link to stake.solanamobile.com. The Seeker Season plan never signs or repeats anything, and it can't show Season points.
-- 1.1.0 is on mainnet with real funds; swaps and agents are opt-in with small caps. Signed mainnet transactions were verified by building and simulating against mainnet, not by spending funds. Agent NFT mint on mainnet is not open yet.
-- No Seeker in hand: the demo video is filmed on an Android tablet with Phantom through Mobile Wallet Adapter. The app is built for Seeker and reaches Seed Vault through the same MWA flow, but Seed Vault on a real Seeker is not tested yet. Seeker Season counts Seed Vault activity, so the tablet's check-ins do not count for Season.
-- Prior accelerator wins were with a different project (answer No if the form means this product).
-
-## Open before submit
-
-- [x] New `applicationId` (`net.solardepin.solarchik.assistant`) so Assistant installs beside the game APK (v1.0.0)
-- [x] Home UI: Today with Sol + large mic, secretary, follow-ups, wallet, Seeker Season (v1.0.0)
-- [x] v1.1.0 mainnet build: three agents, morning briefing, call → action
-- [ ] Fresh demo video + deck frames for Assistant story
-- [ ] Update Colosseum project page links to this repo

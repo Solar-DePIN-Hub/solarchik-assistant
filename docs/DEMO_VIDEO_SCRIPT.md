@@ -1,3 +1,5 @@
+> Historical: the shot list for the 1.1.4 demo. The current videos are linked in the [README](../README.md).
+
 # Solarchik Assistant 1.1.4: demo video shot list (2:20–2:30)
 
 This video plays right after the 2-minute speech (pitch-2min-en.md, kept with the Colosseum deliverables), and later on its own for Colosseum. It must work on its own: the speech explains the problem, why Seeker and the business model. The video **shows** it. Nothing from the speech is repeated word for word, so the captions below use different wording on purpose.

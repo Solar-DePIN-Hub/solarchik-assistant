@@ -1,3 +1,5 @@
+> Historical: this checklist is for my first CLOCK IN build (the game, Solarchik 0.20.5, repo Solar-DePIN-Hub/Solarchik). The current app is described in the [README](../README.md).
+
 # CLOCK IN compliance checklist (Solarchik 0.20.5)
 
 Checked 1–2 Oct 2026 against the official documents. Status: PASS / FAIL / OWNER (only Vadym can do it) / UNKNOWN.

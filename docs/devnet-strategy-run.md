@@ -1,3 +1,5 @@
+> Historical: a devnet run from the 1.0.x builds, before the app moved to mainnet. Current mainnet proof is in the [README](../README.md#on-chain-proof).
+
 # Strategy NFTs: devnet run (2026-10-02)
 
 Real devnet transactions made by `scripts/strategy-devnet-run.ts` (branch `web-fees`) with the real server code
