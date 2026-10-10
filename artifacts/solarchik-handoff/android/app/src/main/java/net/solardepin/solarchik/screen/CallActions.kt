@@ -286,7 +286,7 @@ class CallActionStore(context: Context) {
 
     fun save(list: List<CallAction>) {
         val a = JSONArray()
-        list.takeLast(120).forEach {
+        dedupe(list).takeLast(120).forEach {
             a.put(JSONObject().put("id", it.id).put("callKey", it.callKey).put("type", it.type).put("amount", it.amount).put("token", it.token)
                 .put("recipient", it.recipient).put("said", it.saidAddress).put("number", it.number).put("time", it.time).put("day", it.day)
                 .put("text", it.text).put("quote", it.quote).put("source", it.source).put("status", it.status).put("sig", it.signature).put("remindAt", it.remindAt).put("date", it.date))
@@ -300,12 +300,33 @@ class CallActionStore(context: Context) {
     fun forCall(key: String): List<CallAction> = all().filter { it.callKey == key }
     fun find(id: String): CallAction = all().first { it.id == id }
 
-    companion object { const val PREFS = "solarchik.callactions" }
+    companion object {
+        const val PREFS = "solarchik.callactions"
+
+        /**
+         * 1.2.4: one card per call and kind (reminders: per call and day), and one open "call back" per number.
+         * A card the user already finished or dismissed wins over an open copy; otherwise the newest copy stays.
+         */
+        fun dedupe(list: List<CallAction>): List<CallAction> {
+            fun rank(a: CallAction) = if (a.status == CallAction.OPEN) 0 else 1
+            val byKind = LinkedHashMap<String, CallAction>()
+            list.forEach { a ->
+                val k = a.callKey + "|" + a.type + if (a.type == CallAction.REMINDER) "|" + a.date + "|" + a.text.lowercase().filter { it.isLetterOrDigit() }.take(24) else ""
+                val old = byKind[k]
+                if (old == null || rank(a) >= rank(old)) { byKind.remove(k); byKind[k] = a }
+            }
+            val out = byKind.values.toMutableList()
+            // the same number to call back from several calls: keep the newest open one
+            val openCb = out.filter { it.type == CallAction.CALLBACK && it.status == CallAction.OPEN && it.number.isNotBlank() }
+            val keep = openCb.groupBy { it.number.filter { c -> c.isDigit() }.takeLast(9) }.values.map { it.last().id }.toSet()
+            return out.filter { it.type != CallAction.CALLBACK || it.status != CallAction.OPEN || it.number.isBlank() || it.id in keep }
+        }
+    }
 }
 
 object CallActionSync {
     /** Bump when extraction gets better: calls already looked at are looked at once more. */
-    const val RULES = 2
+    const val RULES = 3
 
     /**
      * Looks at new answered calls once: the worker first, the local rules when it is unreachable.
@@ -314,7 +335,7 @@ object CallActionSync {
     fun run(ctx: Context, calls: List<CallItem>, lang: String, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault(),
             post: (String, String) -> Pair<Int, String> = net.solardepin.solarchik.sol.Briefing::httpPost): List<CallAction> {
         val store = CallActionStore(ctx)
-        store.upgradeRules(RULES)
+        if (store.upgradeRules(RULES)) store.save(store.all()) // 1.2.4: old duplicate cards go on upgrade
         val todo = CallActionRules.candidates(calls, store.processed(), now)
         if (todo.isEmpty()) return emptyList()
         val reply = runCatching { post(ScreenApi.BASE + "/call/actions", CallActionRules.requestBody(todo, lang, zone)) }.getOrNull()

@@ -71,6 +71,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     private var balance: Double? = null
     private var balanceAt = 0L
     private var balanceFailed = false
+    private var balanceAddr = ""
     private lateinit var briefingBody: LinearLayout
     private lateinit var actionsBox: LinearLayout
     private lateinit var actionsWrap: View
@@ -450,7 +451,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             var sol: Double? = balance
             var skrNow: Double? = skr
             if (w.connected) {
-                w.balanceSol().onSuccess { sol = it; balance = it; host.walletSol = it }
+                w.balanceSol().onSuccess { sol = it; balance = it; balanceAddr = w.address; host.walletSol = it; host.walletSolAddr = w.address }
                 if (w.mainnet) withContext(Dispatchers.IO) { net.solardepin.solarchik.season.Skr.fetch(w.address) }.onSuccess { skrNow = it; skr = it; host.walletSkr = it }
             }
             if (MainActivity.tickerEnabled) withContext(Dispatchers.IO) { runCatching { net.solardepin.solarchik.season.SeasonDropsSync.refresh(ctx, host.lang) } }
@@ -463,8 +464,11 @@ class TodayScreen(host: MainActivity) : Screen(host) {
                 st.snap(), net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, w.mainnet), now, zone,
                 seasonTasks = seasonTasks(),
             )
-            val text = withContext(Dispatchers.IO) { net.solardepin.solarchik.sol.Briefing.fetch(facts, host.lang, briefingPost) }
+            val base = withContext(Dispatchers.IO) { net.solardepin.solarchik.sol.Briefing.fetch(facts, host.lang, briefingPost) }
                 ?: net.solardepin.solarchik.sol.Briefing.localText(facts, ctx)
+            // 1.2.4 Circle: what calls say you owe, read from the phone's own ledger (not made up by the model)
+            val owe = net.solardepin.solarchik.circle.Circle.briefLines(ctx, net.solardepin.solarchik.circle.Circle.current(ctx), now, zone)
+            val text = (listOf(base) + owe).joinToString(" ")
             st.lastText = text
             st.playedAt = now
             st.pendingDay = ""
@@ -493,7 +497,9 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     }
 
     private fun renderActions() {
-        val open = net.solardepin.solarchik.screen.CallActionStore(ctx).open().takeLast(4).reversed()
+        // 1.2.4: newest first, but an open payment request is never pushed out by call-back cards
+        val all = net.solardepin.solarchik.screen.CallActionStore(ctx).open().reversed()
+        val open = (all.filter { it.payment } + all.filterNot { it.payment }).take(4)
         actionsWrap.visibility = if (open.isEmpty()) View.GONE else View.VISIBLE
         actionsBox.removeAllViews()
         open.forEach { actionsBox.addView(CallActionCards.card(host, it) { render() }) }
@@ -587,7 +593,9 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             walletBody.addView(Ui.top(Ui.button(ctx, ctx.getString(if (w.mainnet) R.string.mn_today_wallet_connect else R.string.today_wallet_setup), Ui.Btn.PRIMARY, R.drawable.ic_wallet) { setupWallet() }.apply { tag = "today-wallet-setup" }, 14))
             return
         }
-        val bal = balance
+        // 1.2.4: the same live read Settings shows (shared through host.walletSol), for this address only
+        if (balanceAddr != w.address) { balance = null; skr = null; balanceFailed = false }
+        val bal = balance ?: host.walletSol.takeIf { host.walletSolAddr == w.address }
         walletBody.addView(Ui.display(ctx, when {
             bal != null -> Fmt.sol(bal) + " SOL"
             balanceFailed -> "— SOL"
@@ -657,11 +665,17 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         val w = host.wallet
         if (!w.connected || !MainActivity.tickerEnabled) return
         val now = SystemClock.elapsedRealtime()
-        if (!force && balanceAt != 0L && now - balanceAt < 30_000) return
+        // 1.2.4: no balance yet (or a new address) is never throttled: Today showed "— SOL" while Settings had it
+        val missing = balance == null || balanceAddr != w.address
+        if (!force && !missing && balanceAt != 0L && now - balanceAt < 30_000) return
         balanceAt = now
+        val addr = w.address
         host.scope.launch {
-            val r = withContext(Dispatchers.IO) { w.balanceSol() }
-            r.onSuccess { balance = it; balanceFailed = false; host.walletSol = it }.onFailure { balanceFailed = balance == null }
+            var r = withContext(Dispatchers.IO) { w.balanceSol() }
+            if (r.isFailure) { kotlinx.coroutines.delay(1500); r = withContext(Dispatchers.IO) { w.balanceSol() } } // one quiet retry
+            if (addr != w.address) return@launch
+            r.onSuccess { balance = it; balanceAddr = addr; balanceFailed = false; host.walletSol = it; host.walletSolAddr = addr }
+                .onFailure { balanceFailed = balance == null && host.walletSolAddr != addr; if (balanceFailed) balanceAt = 0L }
             // 1.1.0: real SKR on mainnet next to SOL (read-only)
             if (w.mainnet) withContext(Dispatchers.IO) { net.solardepin.solarchik.season.Skr.fetch(w.address) }.onSuccess { skr = it; host.walletSkr = it }
             if (this@TodayScreen::walletBody.isInitialized) renderWallet()
@@ -672,7 +686,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
     private fun seasonTasks(): List<String> = net.solardepin.solarchik.season.SeasonDrops.lines(net.solardepin.solarchik.season.SeasonDropsStore(ctx).doc(host.lang))
 
     /** Tests: a known balance without the network. */
-    internal fun setBalanceForTest(sol: Double?, skrBalance: Double? = null) { balance = sol; balanceFailed = false; skr = skrBalance }
+    internal fun setBalanceForTest(sol: Double?, skrBalance: Double? = null) { balance = sol; balanceAddr = host.wallet.address; balanceFailed = false; skr = skrBalance }
     private var skr: Double? = null
 
     // ------------------------------------------------------------------ Seeker Season

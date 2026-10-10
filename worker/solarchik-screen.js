@@ -921,6 +921,15 @@ export function translateSystem(lang) {
 /** Applies a translated field set to an inbox item (text rebuilt from the summary when there is one). */
 /** 1.2.1: the "Callback <number>." part of a note in the reader's language. */
 /** 1.2.3: notes stored before the fix: "Ira: says they…" reads "Ira says they…". */
+/** 1.2.4: the note's intent as a sentence ("says they paid…" -> "Says they paid…"; follow-ups show it alone). */
+export function tidyItem(it) {
+  if (!it || typeof it !== "object") return it;
+  const out = it.text ? { ...it, text: tidyNote(it.text) } : { ...it };
+  const i = out.summary && typeof out.summary.intent === "string" ? out.summary.intent : "";
+  if (i && /^[a-zа-яіїєґ]/.test(i)) out.summary = { ...out.summary, intent: i.charAt(0).toUpperCase() + i.slice(1) };
+  return out;
+}
+
 export function tidyNote(text) {
   return String(text || "").replace(/^([^:\n]{1,60}): (?=[a-zа-яіїєґ])/, "$1 ");
 }
@@ -940,9 +949,9 @@ export function applyNoteLang(it, tr, lang = "") {
 
 export async function localizeItems(env, items, lang) {
   if (!Array.isArray(items) || !items.length) return items;
-  if (!lang) return items.map((it) => (it && it.text ? { ...it, text: tidyNote(it.text) } : it));
+  if (!lang) return items.map(tidyItem);
   const want = items.filter((it) => it && it.callId && it.status !== "pending" && Object.values(noteFields(it)).some((v) => needsLang(v, lang)));
-  const cbFix = (list) => list.map((it) => (it && it.text ? { ...it, text: tidyNote(lang === "uk" ? callbackWord(it.text, lang) : it.text) } : it));
+  const cbFix = (list) => list.map((it) => tidyItem(it && it.text && lang === "uk" ? { ...it, text: callbackWord(it.text, lang) } : it));
   if (!want.length) return cbFix(items);
   const done = {};
   await Promise.all(want.map(async (it) => {
@@ -1009,6 +1018,49 @@ export async function blockedNumbers(env, userId) {
   } catch {
     return [];
   }
+}
+
+/**
+ * 1.2.4 Circle: payments the owner sent from the app to a caller, confirmed on chain, so the secretary can say
+ * "Vadym already sent it" next time that number calls. Only number, amount, token, signature, time; 30 days.
+ */
+export async function settledFor(env, userId, caller) {
+  const n = e164(caller);
+  if (!userId || !n) return [];
+  try {
+    const v = JSON.parse((await env.BALANCES.get("settled:" + userId + ":" + n)) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+export function settledNote(list, lang, now = Date.now()) {
+  const fresh = (list || []).filter((x) => x && x.amount && x.token && now - (x.at || 0) < 30 * 86400_000).slice(-2);
+  if (!fresh.length) return "";
+  const what = fresh.map((x) => `${x.amount} ${x.token}`).join(" and ");
+  return `\nThis caller: the owner already sent them ${what} from the app (confirmed on Solana). If they ask about that money, say briefly that it was already sent and they can check their wallet. Do not mention it otherwise, and still take any new message.`;
+}
+
+export async function recordSettled(env, body, check = (sig) => rpc(env, "getSignatureStatuses", [[sig], { searchTransactionHistory: true }])) {
+  const userId = String(body.userId || "").trim();
+  const n = e164(body.number);
+  const sig = String(body.signature || "").trim();
+  const amount = Number(body.amount);
+  const token = String(body.token || "").toUpperCase();
+  if (!validUserId(userId) || !n || !/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(sig) || !(amount > 0) || !["SOL", "SKR", "USDC"].includes(token)) return { status: 400, body: { error: "userId, number (E.164), amount, token, signature required" } };
+  let st;
+  try {
+    st = (await check(sig))?.value?.[0];
+  } catch {
+    return { status: 503, body: { error: "rpc unavailable" } };
+  }
+  const ok = st && !st.err && (st.confirmationStatus === "confirmed" || st.confirmationStatus === "finalized");
+  if (!ok) return { status: 409, body: { error: "not confirmed on chain" } };
+  const list = (await settledFor(env, userId, n)).filter((x) => x.sig !== sig);
+  list.push({ amount: Number(amount.toFixed(9)), token, sig, at: Date.now() });
+  await env.BALANCES.put("settled:" + userId + ":" + n, JSON.stringify(list.slice(-5)), { expirationTtl: 30 * 86400 });
+  return { status: 200, body: { ok: true, number: n, count: list.length } };
 }
 
 export async function isBlocked(env, userId, caller) {
@@ -1292,7 +1344,8 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
     require_approval: "never",
     allowed_tools: [NOTE_TOOL.name],
   };
-  let accept = await acceptCall(env, callId, { ...base, instructions: voiceFor(lang, true), tools: [tool] });
+  const paidNote = settledNote(await settledFor(env, userId, parties.caller).catch(() => []), lang);
+  let accept = await acceptCall(env, callId, { ...base, instructions: voiceFor(lang, true) + paidNote, tools: [tool] });
   let withTool = accept.ok;
   if (!accept.ok && accept.status !== 404) {
     // The note tool must never cost the call: answer without it (the inbox keeps the "answered" line).
@@ -2348,6 +2401,12 @@ export default {
         }
         return { userId, item, lines: rec?.lines || [], durationSec: (item && item.durationSec) || rec?.durationSec || null };
       });
+    }
+
+    if (request.method === "POST" && url.pathname === "/circle/settled") {
+      // 1.2.4 Circle: the app paid this caller (checked on chain here before it is kept)
+      const r = await recordSettled(env, await request.json().catch(() => ({})));
+      return json(r.body, r.status);
     }
 
     if (url.pathname === "/block" && (request.method === "GET" || request.method === "POST")) {

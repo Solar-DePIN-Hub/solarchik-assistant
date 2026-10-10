@@ -171,6 +171,17 @@ class SolanaWallet(context: Context) {
     private fun localKey(): org.sol4k.Keypair =
         LocalKey.keypair(app) ?: throw WalletError(WalletError.Kind.FAILED, "Built-in wallet key is unavailable")
 
+    /** 1.2.4: waits (about 30 s at most) for a sent signature to be confirmed on chain. */
+    suspend fun waitConfirmed(sig: String): Boolean {
+        for (i in 0 until 25) {
+            val seen = runCatching { rpc.signatureStatus(sig) }.getOrNull()
+            if (seen == "confirmed" || seen == "finalized") return true
+            if (seen == "failed") return false
+            kotlinx.coroutines.delay(if (i < 10) 700L else 1500L)
+        }
+        return false
+    }
+
     /** Sends a locally signed tx and waits until it is confirmed (or fails on chain). */
     private suspend fun sendConfirmed(raw: ByteArray): String {
         val sig = rpc.sendTransaction(raw)
@@ -316,7 +327,17 @@ class SolanaWallet(context: Context) {
         val launcher = directLauncher()
         if (launcher != null) {
             val pkg = walletPackage.takeIf { it.isNotBlank() && it in installedWallets() }
-            val r = MwaDirect.authorize(app, launcher, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", prefs.getString("auth", null))
+            val forget = { adapter.authToken = null; prefs.edit().remove("auth").apply() }
+            var r = MwaDirect.authorize(app, launcher, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", prefs.getString("auth", null), forget)
+            // 1.2.4: the wallet refused the saved token and closed the session: one new session, no token (the approve prompt)
+            if (r.exceptionOrNull()?.message?.startsWith(MwaDirect.NEW_SESSION) == true) {
+                forget()
+                val again = directLauncher()
+                if (again != null) {
+                    WalletDiag.log("retry", "new session without the saved token")
+                    r = MwaDirect.authorize(app, again, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", null, forget)
+                }
+            }
             return r.fold(
                 onSuccess = { auth ->
                     val key = accountKey(auth) ?: return Result.failure(WalletError(WalletError.Kind.FAILED, "Wallet connected without account"))
@@ -382,7 +403,8 @@ class SolanaWallet(context: Context) {
         val l = directLauncher() ?: return null
         adapter.rpcCluster = rpcCluster()
         val pkg = walletPackage.takeIf { it.isNotBlank() && it in installedWallets() }
-        return MwaDirect.transact(app, l, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", prefs.getString("auth", null), block = block)
+        return MwaDirect.transact(app, l, pkg, if (mainnet) "solana:mainnet" else "solana:devnet", if (mainnet) "mainnet-beta" else "devnet", prefs.getString("auth", null),
+            onTokenRejected = { adapter.authToken = null; prefs.edit().remove("auth").apply() }, block = block)
     }
 
     private fun directFailure(e: Throwable): WalletError {

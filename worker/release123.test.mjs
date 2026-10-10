@@ -20,3 +20,9 @@ test("the secretary asks SOL, SKR or USDC for a bare number, never dollars", () 
   assert.match(VOICE, /SOL, SKR or USDC\?/);
   assert.match(VOICE, /never ask about dollars/);
 });
+
+test("1.2.4: the intent alone (follow-ups) starts with a capital", async () => {
+  const out = await localizeItems({}, [{ callId: "c", status: "done", text: "Ira: says they paid.", summary: { caller_name: "Ira", intent: "says they paid for lunch" } }], "en");
+  assert.equal(out[0].summary.intent, "Says they paid for lunch");
+  assert.equal(out[0].text, "Ira says they paid.");
+});

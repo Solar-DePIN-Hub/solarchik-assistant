@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="circle_title">Коло</string>
+    <string name="circle_body">Люди, яким ти платиш. Коли абонент просить надіслати гроші, це з\'являється тут як твій борг. Адреси — лише ті, що ти зберіг сам, ніколи не почуті в дзвінку. Усе лишається на телефоні, і нічого не надсилається, доки ти не підтвердиш у гаманці.</string>
+    <string name="circle_owe_label">Ти винен</string>
+    <string name="circle_owe_none">Зараз нічого.</string>
+    <string name="circle_settled_label">Розраховано</string>
+    <string name="circle_settled_line">Надіслано %1$s: %2$s %3$s</string>
+    <string name="circle_people_label">Люди</string>
+    <string name="circle_people_none">Поки нікого. Додай людину тут або з картки оплати.</string>
+    <string name="circle_add">Додати людину</string>
+    <string name="circle_edit_title">Змінити</string>
+    <string name="circle_you_owe">Ти винен %1$s: %2$s %3$s</string>
+    <string name="circle_from_call">З дзвінка · %1$s</string>
+    <string name="circle_from_you">Додано тобою</string>
+    <string name="circle_no_wallet">гаманця ще немає</string>
+    <string name="circle_send">Надіслати</string>
+    <string name="circle_edit">Змінити</string>
+    <string name="circle_delete">Видалити</string>
+    <string name="circle_delete_q">Видалити %1$s з Кола? Картки з дзвінків лишаться.</string>
+    <string name="circle_settle">Розрахуватися: %1$s %2$s для %3$s</string>
+    <string name="circle_add_wallet">Додати гаманець: %1$s</string>
+    <string name="circle_ask">Попросити гаманець: %1$s</string>
+    <string name="circle_ask_text">Привіт, %1$s! Надішли, будь ласка, адресу свого гаманця Solana. Можна посиланням solana:, наприклад solana:ТВОЯ_АДРЕСА</string>
+    <string name="circle_ask_text_amount">Привіт, %1$s! Хочу надіслати тобі %2$s %3$s. Надішли, будь ласка, адресу свого гаманця Solana. Можна посиланням solana:, наприклад solana:ТВОЯ_АДРЕСА?amount=%2$s</string>
+    <string name="circle_f_name">Ім\'я</string>
+    <string name="circle_f_phone">Телефон (необов\'язково, для збігу з дзвінками)</string>
+    <string name="circle_f_address">Адреса Solana або посилання solana: (необов\'язково)</string>
+    <string name="circle_f_note">Зберігай лише адресу, яку людина дала тобі сама. Перевір її: переказ не скасувати.</string>
+    <string name="circle_paste">Вставити адресу</string>
+    <string name="circle_paste_empty">Буфер обміну порожній.</string>
+    <string name="circle_save">Зберегти</string>
+    <string name="circle_err_name">Введи ім\'я.</string>
+    <string name="circle_s_amount">Сума</string>
+    <string name="circle_s_to">Кому: %1$s · %2$s (з твого Кола)</string>
+    <string name="circle_send_title">Надіслати: %1$s</string>
+    <string name="circle_next">Далі</string>
+    <string name="circle_card_to">Кому: %1$s · %2$s, з твого Кола</string>
+    <string name="circle_confirm">Надіслати %1$s %2$s для %3$s?\n\n%4$s\n\nДалі відкриється гаманець і попросить підтвердити.</string>
+    <string name="circle_confirm_send">Відкрити гаманець</string>
+    <string name="ca_pay_manual">Ввести адресу</string>
+    <string name="circle_brief_line">Ти винен %1$s %2$s %3$s після дзвінка %4$s.</string>
+    <string name="circle_brief_yesterday">учора</string>
+    <string name="circle_brief_today">сьогодні</string>
+    <string name="circle_brief_earlier">раніше</string>
+    <string name="circle_sol_none">Судячи з дзвінків, ти зараз нікому нічого не винен.</string>
+    <string name="circle_sol_owe">Судячи з дзвінків, ти винен: %1$s.</string>
+    <string name="circle_sol_open">Ось картка для %1$s. Нічого не надсилається, доки ти не підтвердиш у гаманці.</string>
+    <string name="circle_sol_nothing_for">Не бачу, щоб ти щось був винен %1$s.</string>
+</resources>

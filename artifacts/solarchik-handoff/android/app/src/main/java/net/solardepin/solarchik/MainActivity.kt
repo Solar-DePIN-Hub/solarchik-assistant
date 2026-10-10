@@ -92,6 +92,7 @@ class MainActivity : ComponentActivity() {
     private val main = Handler(Looper.getMainLooper())
     var current: Tab = Tab.TODAY
         private set
+    private var statusScrim: View? = null
     var topInset = 0
         private set
     var bottomInset = 0
@@ -520,6 +521,9 @@ class MainActivity : ComponentActivity() {
             })
         }
         this.navWrap = navWrap
+        // 1.2.4: an opaque strip under the status bar so the tabs don't scroll under the clock (not on the full-bleed run)
+        statusScrim = View(this).apply { setBackgroundColor(Ui.BG); tag = "status-scrim" }
+        root.addView(statusScrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.TOP))
         root.clipChildren = false
         root.addView(navWrap, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         nav.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> movePill(current, animate = false) }
@@ -541,6 +545,7 @@ class MainActivity : ComponentActivity() {
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             topInset = bars.top
             bottomInset = bars.bottom
+            statusScrim?.let { v -> v.layoutParams = (v.layoutParams as FrameLayout.LayoutParams).apply { height = bars.top } }
             navWrap.setPadding(0, 0, 0, bars.bottom)
             (toastView.layoutParams as FrameLayout.LayoutParams).bottomMargin = dp(104) + bars.bottom
             screens.values.forEach { it.applyInsets() }
@@ -666,6 +671,7 @@ class MainActivity : ComponentActivity() {
         screen.applyInsets()
         // 0.22.0: the rooftop is full-bleed; every other screen keeps the floating nav.
         if (this::navWrap.isInitialized) navWrap.visibility = if (tab == Tab.YARD) View.GONE else View.VISIBLE
+        statusScrim?.visibility = if (tab == Tab.YARD) View.GONE else View.VISIBLE
         if (animate && changed) {
             // Slide from the side of the tab we came from, with a soft fade.
             val dir = if (tab == Tab.TODAY) -1 else if (from == Tab.TODAY) 1 else if (tab.ordinal > from.ordinal) 1 else -1
@@ -735,6 +741,8 @@ class MainActivity : ComponentActivity() {
 
     /** 1.1.0: last balances read on Today (for Sol's context); null until read. */
     @Volatile var walletSol: Double? = null
+    /** 1.2.4: the address [walletSol] belongs to. */
+    @Volatile var walletSolAddr: String = ""
     @Volatile var walletSkr: Double? = null
 
     /** 1.1.0: on mainnet, while NFT mints are "coming soon", paper agents run without owning an NFT. */

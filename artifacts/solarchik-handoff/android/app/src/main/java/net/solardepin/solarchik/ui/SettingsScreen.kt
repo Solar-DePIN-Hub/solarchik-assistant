@@ -33,6 +33,7 @@ private const val ASSISTANT = net.solardepin.solarchik.core.SolarchikConfig.SOL_
 class SettingsScreen(host: MainActivity) : Screen(host) {
     private lateinit var walletBox: LinearLayout
     private var diagPanel: WalletDiagPanel? = null
+    private var circlePanel: CirclePanel? = null
     internal val seekerPanel by lazy { SeekerPanel(host) { renderSeeker() } }
     private var seekerBox: LinearLayout? = null
     private lateinit var networkBody: TextView
@@ -133,6 +134,10 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             }
             addView(Ui.top(r, 12))
         })
+
+        // 1.2.4: Circle (people you pay, what calls say you owe them)
+        circlePanel = CirclePanel(host).also { it.render() }
+        addView(section(R.string.circle_title, R.drawable.ic_wallet, Ui.CYAN).apply { tag = "settings-circle"; addView(circlePanel!!.view) })
 
         // 1.2.0: Verified Seeker (Seeker Genesis Token via SIWS); not verified is a normal state
         addView(section(R.string.sk_title, R.drawable.ic_wallet, Ui.GREEN).apply {
@@ -308,7 +313,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     private fun refreshBalance() {
         if (!host.wallet.connected) return
         host.scope.launch {
-            host.wallet.balanceSol().onSuccess { balance = it; render() }
+            host.wallet.balanceSol().onSuccess { balance = it; host.walletSol = it; host.walletSolAddr = host.wallet.address; render() }
             // 1.1.0: real SKR next to SOL on mainnet (read-only token account read)
             if (host.wallet.mainnet && MainActivity.tickerEnabled) {
                 val addr = host.wallet.address
@@ -762,7 +767,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 .onSuccess {
                     host.toast(ctx.getString(if (it.isEmpty() && host.wallet.isLocal) R.string.lw_enough else R.string.settings_airdrop_ok))
                     delay(4000)
-                    host.wallet.balanceSol().onSuccess { b -> balance = b }
+                    host.wallet.balanceSol().onSuccess { b -> balance = b; host.walletSol = b; host.walletSolAddr = host.wallet.address }
                 }
                 .onFailure { host.toast(ctx.getString(R.string.settings_airdrop_fail)) }
             airdropping = false

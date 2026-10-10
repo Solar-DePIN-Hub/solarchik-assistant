@@ -9,6 +9,7 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.solardepin.solarchik.MainActivity
 import net.solardepin.solarchik.R
 import net.solardepin.solarchik.screen.ActionReminders
@@ -32,10 +33,24 @@ object CallActionCards {
     fun title(ctx: Context, a: CallAction, who: String): String = when (a.type) {
         CallAction.PAYMENT -> ctx.getString(R.string.ca_pay_title, amount(a), a.token.ifBlank { "?" }, a.recipient.ifBlank { who.ifBlank { ctx.getString(R.string.calls_unknown) } })
         CallAction.CALLBACK -> if (a.time.isNotBlank()) ctx.getString(R.string.ca_cb_title_at, who.ifBlank { a.number }, a.time) else ctx.getString(R.string.ca_cb_title, who.ifBlank { a.number })
-        else -> a.text.ifBlank { ctx.getString(R.string.ca_rem_title) } + (if (a.time.isNotBlank() && !a.text.contains(a.time)) " · ${a.time}" else "")
+        else -> inUi(a.text).ifBlank { ctx.getString(R.string.ca_rem_title) } + (if (a.time.isNotBlank() && !a.text.contains(a.time)) " · ${a.time}" else "")
     }
 
-    fun amount(a: CallAction): String = java.math.BigDecimal(a.amount).stripTrailingZeros().toPlainString()
+    private val CYR = Regex("[\\u0400-\\u04FF]")
+
+    /** 1.2.4: card text saved in another language (a Ukrainian quote in the English UI) is not shown as is. */
+    fun inUi(text: String): String {
+        if (text.isBlank()) return text
+        val en = net.solardepin.solarchik.screen.ScreenApi.uiLang() == "en"
+        return if ((en && CYR.containsMatchIn(text)) || (!en && RU.containsMatchIn(text))) "" else text
+    }
+    private val RU = Regex("[ыэъёЫЭЪЁ]|\\b(Хотел|хотел|привет|пожалуйста|перезвон)")
+
+    /** The caller's words for the card: the saved quote, or the call's (translated) note when the quote is in another language. */
+    fun quote(a: CallAction, call: net.solardepin.solarchik.screen.CallItem?): String =
+        inUi(a.quote).ifBlank { if (a.quote.isBlank()) "" else inUi(call?.intent.orEmpty()) }
+
+    fun amount(a: CallAction): String = java.math.BigDecimal.valueOf(a.amount).stripTrailingZeros().toPlainString()
 
     /** Full card with buttons (Today). */
     fun card(host: MainActivity, a: CallAction, onChange: () -> Unit): LinearLayout = Ui.card(host, accent = if (a.payment) Ui.RED else Ui.PURPLE, pad = 14).apply {
@@ -53,7 +68,7 @@ object CallActionCards {
         })
         addView(head)
         addView(Ui.top(Ui.text(ctx, title(ctx, a, who), 15f, Ui.TEXT, 800).apply { tag = "ca-title" }, 6))
-        if (a.quote.isNotBlank()) addView(Ui.top(Ui.muted(ctx, "“" + a.quote + "”", 12f), 4))
+        quote(a, call).takeIf { it.isNotBlank() }?.let { q -> addView(Ui.top(Ui.muted(ctx, "“$q”", 12f).apply { tag = "ca-quote" }, 4)) }
         if (a.remindAt > System.currentTimeMillis()) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.ca_reminder_set, CallText.time(a.remindAt)), 12f, Ui.GOLD, 700).apply { tag = "ca-reminder-at" }, 4))
         // 1.1.0 polish: the main action gets its own full-width row so labels never truncate (EN and UK)
         var main: View? = null
@@ -61,7 +76,13 @@ object CallActionCards {
         when (a.type) {
             CallAction.PAYMENT -> {
                 addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.ca_pay_warning), 12f, Ui.RED, 700).apply { tag = "ca-pay-warning"; setLineSpacing(0f, 1.2f) }, 8))
-                main = Ui.button(ctx, ctx.getString(R.string.ca_pay_prepare), Ui.Btn.PRIMARY, R.drawable.ic_wallet) { paySheet(host, a, onChange) }.apply { tag = "ca-pay" }
+                // 1.2.4 Circle: the recipient comes from the user's own contacts (matched by phone, then name), never from the call
+                val contacts = net.solardepin.solarchik.circle.CircleStore(ctx).all()
+                val c = net.solardepin.solarchik.circle.Circle.match(contacts, who.ifBlank { a.recipient }, call?.dialNumber.orEmpty())
+                val d = net.solardepin.solarchik.circle.Debt(a, call, c, c?.name ?: who.ifBlank { a.recipient })
+                if (c != null && c.address.isNotBlank()) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.circle_card_to, c.name, Fmt.short(c.address)), 12.5f, Ui.GREEN, 700).apply { tag = "ca-pay-contact" }, 6))
+                addView(Ui.top(CirclePanel.actions(host, d, onChange), 10))
+                btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.ca_pay_manual), Ui.Btn.GHOST) { paySheet(host, a, onChange) }.apply { tag = "ca-pay" }))
             }
             CallAction.CALLBACK -> {
                 if (a.number.isNotBlank()) main = Ui.button(ctx, ctx.getString(R.string.ca_dial) + " " + a.number, Ui.Btn.PRIMARY) { dial(ctx, a) }.apply { tag = "ca-dial" }
@@ -111,7 +132,7 @@ object CallActionCards {
                 tag = "ca-sheet-said"
                 addView(Ui.text(ctx, ctx.getString(R.string.ca_said_warning), 12.5f, Ui.RED, 800).apply { setLineSpacing(0f, 1.2f) })
                 addView(Ui.top(Ui.text(ctx, a.saidAddress, 13f, Ui.TEXT, 700).apply { tag = "ca-sheet-said-addr"; setTextIsSelectable(true) }, 6))
-                addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.ca_said_use), Ui.Btn.GHOST) { input.setText(a.saidAddress) }.apply { tag = "ca-sheet-use-said" }, 6))
+                // 1.2.4: no "use this address" button: an address heard on a call is never taken over (type it yourself after checking)
             })
         }
         val check = CheckBox(ctx).apply { tag = "ca-sheet-check"; text = ctx.getString(R.string.ca_sheet_check); setTextColor(Ui.TEXT) }
@@ -153,12 +174,39 @@ object CallActionCards {
         }
     }
 
-    private fun send(host: MainActivity, a: CallAction, recipient: String, onChange: () -> Unit) {
+    /**
+     * 1.2.4 Circle: pay a saved contact. One confirm here (who, how much, the saved address), then the wallet's own
+     * approval. No checkbox: the address is one the user saved themselves.
+     */
+    fun payContact(host: MainActivity, a: CallAction, c: net.solardepin.solarchik.circle.Contact, onChange: () -> Unit) {
+        val ctx = host
+        val problem = paymentProblem(host, a, c.address, true)
+        if (problem != null) { host.toast(problem); return }
+        val msg = ctx.getString(R.string.circle_confirm, net.solardepin.solarchik.circle.Circle.amount(a.amount), a.token, c.name, c.address)
+        val dlg = android.app.AlertDialog.Builder(ctx).setTitle(R.string.ca_sheet_title).setMessage(msg)
+            .setPositiveButton(R.string.circle_confirm_send) { _, _ -> send(host, a, c.address, onChange, c) }
+            .setNegativeButton(android.R.string.cancel, null).create()
+        dlg.show()
+        lastSheet = dlg
+    }
+
+    private fun send(host: MainActivity, a: CallAction, recipient: String, onChange: () -> Unit, contact: net.solardepin.solarchik.circle.Contact? = null) {
         host.scope.launch {
             val raw = CallActionRules.amountRaw(a.token, a.amount)
             val r = host.wallet.signAndSend(host.sender) { payer, blockhash -> CallActionRules.paymentTx(payer, PublicKey(recipient), a.token, raw, blockhash) }
             r.onSuccess { sent ->
-                CallActionStore(host).update(a.id) { it.copy(status = CallAction.DONE, signature = sent.signature) }
+                val store = CallActionStore(host)
+                if (store.all().none { it.id == a.id }) store.add(listOf(a.copy(status = CallAction.DONE, signature = sent.signature))) // sent from Circle
+                else store.update(a.id) { it.copy(status = CallAction.DONE, signature = sent.signature) }
+                // the secretary may tell this caller next time that it was sent (number, amount, token, signature only)
+                val call = CallInbox.cached(host).firstOrNull { it.key == a.callKey }
+                val number = contact?.phone?.takeIf { it.isNotBlank() } ?: call?.dialNumber.orEmpty()
+                // only after the chain confirms it
+                if (number.isNotBlank()) host.scope.launch {
+                    val ok = withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { host.wallet.waitConfirmed(sent.signature) }.getOrDefault(false) }
+                    if (ok) withContext(kotlinx.coroutines.Dispatchers.IO) { net.solardepin.solarchik.circle.Settled.report(host, number, net.solardepin.solarchik.circle.Circle.amount(a.amount), a.token, sent.signature, call?.owner) }
+                    else net.solardepin.solarchik.wallet.WalletDiag.log("circle", "payment " + Fmt.short(sent.signature) + " not confirmed yet; the secretary is not told")
+                }
                 host.toast(host.getString(R.string.ca_sent, Fmt.short(sent.signature)))
             }.onFailure { host.toast(host.errorText(it)) }
             onChange()

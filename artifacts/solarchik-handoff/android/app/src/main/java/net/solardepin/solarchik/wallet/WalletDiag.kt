@@ -106,12 +106,59 @@ object WalletDiag {
     fun logcat(): String = runCatching {
         val p = ProcessBuilder("logcat", "-d", "-v", "time", "--pid=" + android.os.Process.myPid()).redirectErrorStream(true).start()
         val tags = listOf("LocalAssociationScenario", "MobileWalletAdapter", "WebSocket", "JsonRpc20", "SolanaWallet", "MwaDirect", "ActivityTaskManager")
-        val all = p.inputStream.bufferedReader().readLines().filter { l -> tags.any { l.contains(it) } }
+        val all = compactLogcat(p.inputStream.bufferedReader().readLines().filter { l -> tags.any { l.contains(it) } })
         p.destroy()
         // 1.2.3: the first lines matter most (when did the first dial happen?); keep the head and the tail
         val out = if (all.size <= 200) all else all.take(80) + listOf("… " + (all.size - 200) + " lines skipped …") + all.takeLast(120)
         out.joinToString("\n")
     }.getOrDefault("")
+
+    private val FRAME = Regex("^\\s*(at |Caused by:|\\.\\.\\. \\d+ more|Suppressed:)")
+    private val STAMP = Regex("^\\d\\d-\\d\\d (\\d\\d:\\d\\d:\\d\\d\\.\\d{3}) ([VDIWEF])/([^(]+)\\(\\s*\\d+\\):\\s?(.*)$")
+    private val NOISE = Regex("(?i)retrying in|connect attempt failed|^connect$|failed establishing a websocket connection")
+
+    /**
+     * 1.2.4: logcat in short: no stack frames, one line per failed WebSocket dial ("ws dial failed: ECONNREFUSED", each with its time),
+     * and repeats of any other identical line folded into "(×N)".
+     */
+    fun compactLogcat(lines: List<String>): List<String> {
+        val reason = Regex("ECONNREFUSED|SocketTimeoutException|ECONNRESET|ENETUNREACH|EACCES|EPERM")
+        val out = ArrayList<String>()
+        var last = ""
+        var repeat = 0
+        var pendTime = ""
+        var pendReason: String? = null
+        fun emit(time: String, body: String, fold: Boolean = true) {
+            if (fold && body == last) { repeat++; return }
+            if (repeat > 1) out[out.size - 1] = out.last() + " (×$repeat)"
+            out += (if (time.isNotBlank()) "$time " else "") + body
+            last = body
+            repeat = 1
+        }
+        fun flushDial() { pendReason?.let { emit(pendTime, "ws dial failed" + (if (it.isNotBlank()) ": $it" else ""), fold = false) }; pendReason = null }
+        for (raw in lines) {
+            val m = STAMP.find(raw)
+            val msg = (m?.groupValues?.get(4) ?: raw).trim()
+            val time = m?.groupValues?.get(1).orEmpty()
+            if (FRAME.containsMatchIn(msg)) {
+                if (pendReason == "") reason.find(msg)?.let { pendReason = it.value }
+                continue
+            }
+            if (msg.contains("Failed to connect", true) || reason.containsMatchIn(msg)) {
+                flushDial()
+                pendTime = time
+                pendReason = reason.find(msg)?.value.orEmpty()
+                continue
+            }
+            if (NOISE.containsMatchIn(msg)) continue
+            flushDial()
+            val tag = m?.groupValues?.get(3)?.trim().orEmpty()
+            emit(time, (if (tag.isNotBlank()) "$tag: " else "") + msg.take(160))
+        }
+        flushDial()
+        if (repeat > 1) out[out.size - 1] = out.last() + " (×$repeat)"
+        return out
+    }
 
     fun shortAddr(a: String): String = if (a.length > 10) a.take(4) + "…" + a.takeLast(4) else a
 

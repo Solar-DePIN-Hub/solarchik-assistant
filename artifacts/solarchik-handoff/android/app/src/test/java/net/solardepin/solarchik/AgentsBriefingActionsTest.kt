@@ -517,8 +517,9 @@ class AgentsBriefingActionsTest {
         sheet.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick(); idle()
         assertTrue(sheet.isShowing)
         assertEquals(CallAction.OPEN, CallActionStore(app).find(scam.id).status)
-        (find(root, "ca-sheet-use-said") as View).performClick(); idle()
-        assertEquals(friend, input.text.toString())
+        // 1.2.4: no one-tap "use this address" for an address heard on a call
+        assertNull(find(root, "ca-sheet-use-said"))
+        assertEquals("", input.text.toString())
         shot(root, "20_payment_sheet_scam_warning")
         sheet.dismiss()
         // Sol knows about the waiting actions

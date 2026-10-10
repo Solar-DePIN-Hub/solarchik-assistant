@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="circle_title">Circle</string>
+    <string name="circle_body">People you pay. When a caller asks you to send money, it shows up here as what you owe them. Addresses are only ones you save yourself, never one heard on a call. Everything stays on this phone, and nothing is sent until you approve it in your wallet.</string>
+    <string name="circle_owe_label">You owe</string>
+    <string name="circle_owe_none">Nothing right now.</string>
+    <string name="circle_settled_label">Settled</string>
+    <string name="circle_settled_line">Paid %1$s %2$s %3$s</string>
+    <string name="circle_people_label">People</string>
+    <string name="circle_people_none">No one yet. Add someone, or add them from a payment card.</string>
+    <string name="circle_add">Add person</string>
+    <string name="circle_edit_title">Edit person</string>
+    <string name="circle_you_owe">You owe %1$s %2$s %3$s</string>
+    <string name="circle_from_call">From their call · %1$s</string>
+    <string name="circle_from_you">Added by you</string>
+    <string name="circle_no_wallet">no wallet yet</string>
+    <string name="circle_send">Send</string>
+    <string name="circle_edit">Edit</string>
+    <string name="circle_delete">Delete</string>
+    <string name="circle_delete_q">Delete %1$s from your Circle? Their call cards stay.</string>
+    <string name="circle_settle">Settle: send %1$s %2$s to %3$s</string>
+    <string name="circle_add_wallet">Add %1$s\'s wallet</string>
+    <string name="circle_ask">Ask %1$s for wallet</string>
+    <string name="circle_ask_text">Hi %1$s! Could you send me your Solana wallet address? You can also send a solana: link with it, like solana:YOUR_ADDRESS</string>
+    <string name="circle_ask_text_amount">Hi %1$s! I\'d like to send you %2$s %3$s. Could you send me your Solana wallet address? You can also send a solana: link with it, like solana:YOUR_ADDRESS?amount=%2$s</string>
+    <string name="circle_f_name">Name</string>
+    <string name="circle_f_phone">Phone (optional, matches their calls)</string>
+    <string name="circle_f_address">Solana address or solana: link (optional)</string>
+    <string name="circle_f_note">Save only an address the person gave you themselves. Double-check it: a transfer can\'t be undone.</string>
+    <string name="circle_paste">Paste address</string>
+    <string name="circle_paste_empty">The clipboard is empty.</string>
+    <string name="circle_save">Save</string>
+    <string name="circle_err_name">Enter a name.</string>
+    <string name="circle_s_amount">Amount</string>
+    <string name="circle_s_to">To %1$s · %2$s (saved in your Circle)</string>
+    <string name="circle_send_title">Send to %1$s</string>
+    <string name="circle_next">Next</string>
+    <string name="circle_card_to">To %1$s · %2$s, from your Circle</string>
+    <string name="circle_confirm">Send %1$s %2$s to %3$s?\n\n%4$s\n\nYour wallet app opens next and asks you to approve.</string>
+    <string name="circle_confirm_send">Open wallet</string>
+    <string name="ca_pay_manual">Enter address</string>
+    <string name="circle_brief_line">You owe %1$s %2$s %3$s from %4$s call.</string>
+    <string name="circle_brief_yesterday">yesterday\'s</string>
+    <string name="circle_brief_today">today\'s</string>
+    <string name="circle_brief_earlier">an earlier</string>
+    <string name="circle_sol_none">You don\'t owe anyone right now, going by your calls.</string>
+    <string name="circle_sol_owe">Going by your calls, you owe: %1$s.</string>
+    <string name="circle_sol_open">Here\'s the card for %1$s. Nothing is sent until you approve it in your wallet.</string>
+    <string name="circle_sol_nothing_for">I don\'t see anything you owe %1$s.</string>
+</resources>

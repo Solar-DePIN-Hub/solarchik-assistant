@@ -76,6 +76,8 @@ class WalletLauncher(private val activity: ComponentActivity) {
  */
 object MwaDirect {
     const val START_WAIT_MS = 45_000L
+    /** 1.2.4: the wallet dropped the session after refusing the saved token; the caller asks again in a new one. */
+    const val NEW_SESSION = "session closed after the saved token was refused"
     /** After the wallet activity returned AND the user is back in the app, how long a session may still take to appear. */
     const val AFTER_RESULT_MS = 6_000L
     const val AUTHORIZE_WAIT_MS = 120_000L
@@ -96,9 +98,10 @@ object MwaDirect {
         chain: String,
         legacyCluster: String,
         authToken: String?,
+        onTokenRejected: () -> Unit = {},
     ): Result<MobileWalletAdapterClient.AuthorizationResult> {
         override?.let { return it(pkg) }
-        return transact(ctx, launcher, pkg, chain, legacyCluster, authToken) { _, _ -> Unit }.map { it.first }
+        return transact(ctx, launcher, pkg, chain, legacyCluster, authToken, onTokenRejected = onTokenRejected) { _, _ -> Unit }.map { it.first }
     }
 
     /** Test seam for [transact]: the authorize result (the block then runs against [FAKE_CLIENT]). */
@@ -121,6 +124,7 @@ object MwaDirect {
         legacyCluster: String,
         authToken: String?,
         signIn: com.solana.mobilewalletadapter.common.signin.SignInWithSolana.Payload? = null,
+        onTokenRejected: () -> Unit = {},
         block: (MobileWalletAdapterClient, MobileWalletAdapterClient.AuthorizationResult) -> T,
     ): Result<Pair<MobileWalletAdapterClient.AuthorizationResult, T>> {
         transactOverride?.let { o -> return o(pkg).map { a -> a to block(FAKE_CLIENT ?: error("no fake client"), a) } }
@@ -223,14 +227,24 @@ object MwaDirect {
                         null -> c?.message ?: "Execution exception"
                         else -> "Remote exception"
                     }
-                    // a saved token the wallet no longer accepts: one fresh authorize in the same session
-                    if (code == -1 && !authToken.isNullOrBlank() && proto != SessionProperties.ProtocolVersion.LEGACY) {
-                        WalletDiag.log("retry", "authorize without the saved token")
+                    // a saved token the wallet no longer accepts (Phantom answers a stale reauthorize with -1 in ~1 s):
+                    // forget it and ask afresh in the same session, so the user sees the approve prompt, not an error.
+                    // 1.2.4: the legacy path too (Phantom 26 runs as a legacy session: "could not parse session properties").
+                    if (code == -1 && !authToken.isNullOrBlank()) {
+                        onTokenRejected()
+                        WalletDiag.log("retry", "saved token refused: fresh authorize without it")
                         try {
-                            client.authorize(identity, icon, IDENTITY_NAME, chain, null, null, null, null).get(AUTHORIZE_WAIT_MS, TimeUnit.MILLISECONDS)
+                            (if (proto == SessionProperties.ProtocolVersion.LEGACY) client.authorize(identity, icon, IDENTITY_NAME, legacyCluster)
+                            else client.authorize(identity, icon, IDENTITY_NAME, chain, null, null, null, signIn)).get(AUTHORIZE_WAIT_MS, TimeUnit.MILLISECONDS)
                         } catch (e2: Throwable) {
-                            WalletDiag.error("authorize failed again", (e2 as? ExecutionException)?.cause ?: e2)
-                            return@withContext Result.failure(WalletError.classify("User did not authorize signing", (e2 as? ExecutionException)?.cause ?: e2))
+                            val c2 = (e2 as? ExecutionException)?.cause ?: e2
+                            val code2 = (c2 as? JsonRpc20Client.JsonRpc20RemoteException)?.code
+                            WalletDiag.error("fresh authorize failed" + (code2?.let { " (code $it)" } ?: ""), c2)
+                            // the wallet answered: a decline is final. No answer (session gone): the caller tries a new session.
+                            return@withContext Result.failure(
+                                if (code2 != null) WalletError.classify("User did not authorize signing", c2)
+                                else WalletError(WalletError.Kind.FAILED, NEW_SESSION + ": " + (c2.message ?: ""), authRejected = true)
+                            )
                         }
                     } else return@withContext Result.failure(WalletError.classify(msg, c))
                 } catch (e: TimeoutException) {

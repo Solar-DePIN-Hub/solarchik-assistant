@@ -290,6 +290,30 @@ class SolScreen(host: MainActivity) : Screen(host) {
             }
             return
         }
+        // 1.2.4 Circle: "who do I owe?" / "send Ira what I owe" from the ledger on this phone; a payment opens its card
+        val debts = net.solardepin.solarchik.circle.Circle.current(ctx)
+        net.solardepin.solarchik.circle.CircleRules.intent(msg, debts)?.let { it ->
+            val reply = when (it) {
+                is net.solardepin.solarchik.circle.CircleRules.Intent.WhoOwe -> net.solardepin.solarchik.circle.CircleRules.whoOweText(ctx, debts)
+                is net.solardepin.solarchik.circle.CircleRules.Intent.Pay -> {
+                    val d = it.debt
+                    if (d == null) {
+                        if (it.name.isBlank()) net.solardepin.solarchik.circle.CircleRules.whoOweText(ctx, debts) else ctx.getString(R.string.circle_sol_nothing_for, it.name)
+                    } else {
+                        val c = d.contact
+                        if (c != null && c.address.isNotBlank()) CallActionCards.payContact(host, d.action, c) { render() }
+                        else CirclePanel.edit(host, c ?: net.solardepin.solarchik.circle.Contact("", d.who, d.call?.dialNumber.orEmpty())) { saved ->
+                            if (saved.address.isNotBlank()) CallActionCards.payContact(host, d.action, saved) { render() }
+                        }
+                        ctx.getString(R.string.circle_sol_open, d.who)
+                    }
+                }
+            }
+            store.add(ChatTurn("assistant", reply, System.currentTimeMillis(), local = true))
+            render()
+            speak(reply, auto = true)
+            return
+        }
         // 1.0.0: calls / "what can you do" are answered from this phone (call archive), instantly and offline
         (net.solardepin.solarchik.sol.AssistantRules.answer(ctx, msg, net.solardepin.solarchik.screen.CallInbox.cached(ctx),
                 season = { net.solardepin.solarchik.season.SeasonStore.planFor(ctx, host.save, host.wallet.mainnet) },

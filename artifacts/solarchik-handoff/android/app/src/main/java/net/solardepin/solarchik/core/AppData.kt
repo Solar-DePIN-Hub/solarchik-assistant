@@ -14,6 +14,7 @@ import androidx.work.WorkManager
 object AppData {
     /** Every SharedPreferences file the app writes. Keep in sync when a new store is added. */
     val PREFS = listOf(
+        "solarchik.circle",
         "solarchik-game",
         "solarchik.swap",
         "solarchik-lang",
