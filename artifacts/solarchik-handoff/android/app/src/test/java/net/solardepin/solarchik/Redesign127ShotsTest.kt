@@ -35,14 +35,14 @@ import java.io.File
 /**
  * 1.2.7: the eight redesign screens rendered from the real build at the mockups' size (1080×2340, 411 dp at
  * xxhdpi), English, real defaults (mainnet, no fake balances beyond the seeded test wallet below). Written to
- * /workspace/deliverables/redesign/compare-1.2.7/build/ as 01…08 next to the mockups' names.
+ * /workspace/deliverables/redesign/compare-1.2.8/build/ as 01…08 next to the mockups' names.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "en-w411dp-h891dp-xxhdpi")
 class Redesign127ShotsTest {
     private val app = ApplicationProvider.getApplicationContext<Context>()
-    private val dir = File(System.getProperty("solarchik.compare") ?: "/workspace/deliverables/redesign/compare-1.2.7/build").apply { mkdirs() }
+    private val dir = File(System.getProperty("solarchik.compare") ?: "/workspace/deliverables/redesign/compare-1.2.8/build").apply { mkdirs() }
     private val now = System.currentTimeMillis()
     private val owner = "8J3hQ1JZq8CkQ6CwRNrsdc9UHS1R1JZmE7vUfnTqC7ic"
     private val realCluster = System.getProperty("solarchik.cluster")
@@ -53,8 +53,10 @@ class Redesign127ShotsTest {
 
     private fun item(id: String, who: String, intent: String, number: String, minsAgo: Long) =
         CallItem("me", id, number, "$who: $intent. Callback $number.", now - minsAgo * 60_000L, CallInbox.DONE, "screen", who, intent, "", "call back at 3", number, "en", 65, 0.0, false)
-    private val ira = item("rtc_u2_EXOf3p3o", "Ira", "Ira says they paid for lunch yesterday, asks Vadym to send them 0.01 SOL and to call back at 15:00", "+380637443792", 60)
-    private val andrii = item("rtc_u3_EXAndr3o", "Andrii", "Andrii will send the 0.5 SOL deposit tomorrow", "+380501112233", 90)
+    private fun item(id: String, who: String, intent: String, number: String, minsAgo: Long, notes: String) =
+        CallItem("me", id, number, "$who: $intent", now - minsAgo * 60_000L, CallInbox.DONE, "screen", who, intent, "", notes, number, "en", 65, 0.0, false)
+    private val ira = item("rtc_u2_EXOf3p3o", "Ira", "Ira paid for lunch yesterday and asks you to send her 0.01 SOL. She'd like a call back at 15:00.", "+380637443792", 60, "")
+    private val andrii = item("rtc_u3_EXAndr3o", "Andrii", "Andrii will send the 0.5 SOL deposit tomorrow.", "+380501112233", 90, "")
 
     @Before fun setUp() {
         System.setProperty("solarchik.cluster", "mainnet")
@@ -64,6 +66,7 @@ class Redesign127ShotsTest {
     @After fun tearDown() {
         if (realCluster == null) System.clearProperty("solarchik.cluster") else System.setProperty("solarchik.cluster", realCluster)
         MainActivity.tickerEnabled = realTicker; MainActivity.onboardingEnabled = realOnboarding
+        net.solardepin.solarchik.screen.ScreenApi.requestForTest = null
     }
 
     private fun idle() = repeat(10) { ShadowLooper.idleMainLooper(); Thread.sleep(5) }
@@ -100,6 +103,15 @@ class Redesign127ShotsTest {
         File(dir, "$name.txt").writeText(texts(content).filter { it.isNotBlank() }.joinToString("\n"))
     }
 
+    /** 1.2.8: a row the mockup shows at rest must end above the floating nav (not under it). */
+    private fun aboveNav(root: View, tag: String, name: String) {
+        val v = find(root, tag) ?: run { problems += "$name: no $tag"; return }
+        val nav = find(root, "nav-wrap") ?: find(root, "nav-bar") ?: run { problems += "$name: no nav"; return }
+        val a = IntArray(2); val b = IntArray(2); v.getLocationInWindow(a); nav.getLocationInWindow(b)
+        val navTop = b[1] + (nav as? ViewGroup)?.let { g -> (0 until g.childCount).map { g.getChildAt(it) }.filter { it.visibility == View.VISIBLE }.minOfOrNull { it.top } ?: 0 }!!
+        if (a[1] + v.height > navTop) problems += "$name: $tag ends at ${a[1] + v.height}px, nav starts at ${navTop}px"
+    }
+
     private fun seed() {
         CallActionStore(app).upgradeRules(CallActionSync.RULES)
         CallInbox.store(app, listOf(ira, andrii))
@@ -112,7 +124,7 @@ class Redesign127ShotsTest {
         CallActionStore(app).markProcessed(listOf(ira.key, andrii.key))
         Habits.set(app, Habits.WORKOUT, true)
         Habits.set(app, Habits.WALLET, true)
-        app.getSharedPreferences("seeker-wallet", Context.MODE_PRIVATE).edit().putString("address", owner).putString("auth", "t").putString("wallet_pkg", "app.phantom").commit()
+        app.getSharedPreferences("seeker-wallet", Context.MODE_PRIVATE).edit().putString("address", owner).putString("auth", "t").putString("walletPkg", "app.phantom").commit()
     }
 
     @Test fun theEightScreens() {
@@ -136,11 +148,14 @@ class Redesign127ShotsTest {
         // 04 Circle (owe Ira, Andrii owes you)
         a.select(MainActivity.Tab.CIRCLE); idle()
         shot(d, "04-circle")
+        aboveNav(d, "circle-add-row", "04-circle")
         // 05 Me (wallet tiles on mainnet, habits, secretary)
         a.select(MainActivity.Tab.ME); idle()
         (a.screen(MainActivity.Tab.ME) as MeScreen).setBalanceForTest(0.0096, 0.0, 0.0)
         a.screen(MainActivity.Tab.ME)?.render(); idle()
         shot(d, "05-me")
+        aboveNav(d, "today-settings", "05-me")
+        if (find(d, "me-wallet-addr").let { (it as? TextView)?.text?.startsWith("Phantom") } != true) problems += "05-me: wallet name is not Phantom"
         // 06 habits picker
         HabitsSheet.show(a) {}; idle()
         val hs = HabitsSheet.last!!
@@ -158,10 +173,29 @@ class Redesign127ShotsTest {
         shot(d, "03-clocked-in")
         assertTrue(find(d, "stack-clocked") != null)
 
-        // 08 call detail (Ira), transcript collapsed, sticky Call Ira back
+        // 08 call detail (Ira), transcript collapsed, sticky Call Ira back; the conversation as the server keeps it
+        val lines = listOf(
+            "caller" to "Hi, it's Ira. Is Vadym there?", "secretary" to "He can't pick up right now. I can take a message.",
+            "caller" to "I paid for our lunch yesterday, could he send me 0.01 SOL?", "secretary" to "Sure, I'll pass that on. Anything else?",
+            "caller" to "Yes, please ask him to call me back at three.", "secretary" to "Got it: a call back at 15:00.",
+            "caller" to "Thanks, bye!",
+        )
+        net.solardepin.solarchik.screen.ScreenApi.requestForTest = { _, url, _ ->
+            if (!url.contains("/call?")) null else 200 to org.json.JSONObject()
+                .put("item", org.json.JSONObject().put("callId", ira.callId).put("caller", ira.caller).put("text", ira.text).put("at", ira.at).put("status", "done").put("source", "screen").put("lang", "en").put("durationSec", 65).put("chargedUsd", 0.0)
+                    .put("summary", org.json.JSONObject().put("caller_name", "Ira").put("intent", ira.intent).put("callback", ira.callback)))
+                .put("lines", org.json.JSONArray().apply { lines.forEach { (w, t) -> put(org.json.JSONObject().put("who", w).put("text", t)) } })
+                .put("durationSec", 65).toString()
+        }
         val det = Robolectric.buildActivity(CallsActivity::class.java, Intent(app, CallsActivity::class.java).putExtra(CallsActivity.EXTRA_KEY, ira.key)).create().start().resume().visible().get(); idle()
         shot(det.window.decorView, "08-call-detail")
+        // the note comes before the facts (mockup 08)
+        val dv = det.window.decorView
+        val note = find(dv, "call-note"); val facts = find(dv, "call-detail")
+        if (note == null) problems += "08-call-detail: no note"
+        else if (facts != null) { val n = IntArray(2); val f = IntArray(2); note.getLocationInWindow(n); facts.getLocationInWindow(f); if (n[1] > f[1]) problems += "08-call-detail: facts above the note" }
 
+        net.solardepin.solarchik.screen.ScreenApi.requestForTest = null
         File(dir, "problems.txt").writeText(problems.joinToString("\n"))
         assertTrue(problems.joinToString("\n"), problems.isEmpty())
     }

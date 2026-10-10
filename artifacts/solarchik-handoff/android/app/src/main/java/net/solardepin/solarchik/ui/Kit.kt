@@ -113,14 +113,14 @@ object Kit {
     }
 
     /** One list row: tile, title, optional subtitle, and a trailing view (chevron by default). */
-    fun row(ctx: Context, iconRes: Int?, color: Int, title: CharSequence, sub: CharSequence?, trailing: View? = null, lead: View? = null, onTap: (() -> Unit)? = null): LinearLayout = Ui.row(ctx, gap = 14).apply {
+    fun row(ctx: Context, iconRes: Int?, color: Int, title: CharSequence, sub: CharSequence?, trailing: View? = null, lead: View? = null, subLines: Int = 2, onTap: (() -> Unit)? = null): LinearLayout = Ui.row(ctx, gap = 14).apply {
         gravity = Gravity.CENTER_VERTICAL
         minimumHeight = ctx.dp(68)
         setPadding(ctx.dp(16), ctx.dp(10), ctx.dp(16), ctx.dp(10))
         (lead ?: iconRes?.let { tile(ctx, it, color) })?.let { addView(it) }
         val col = Ui.column(ctx)
         col.addView(Ui.text(ctx, title, 16f, Ui.TEXT, 700).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
-        if (!sub.isNullOrBlank()) col.addView(Ui.top(Ui.text(ctx, sub, 14f, MUTED, 600).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END }, 2))
+        if (!sub.isNullOrBlank()) col.addView(Ui.top(Ui.text(ctx, sub, 14f, MUTED, 600).apply { maxLines = subLines; ellipsize = TextUtils.TruncateAt.END }, 2))
         addView(Ui.weight(col))
         val t = trailing ?: if (onTap != null) icon(ctx, net.solardepin.solarchik.R.drawable.lc_chev, MUTED, 20) else null
         t?.let { addView(it) }

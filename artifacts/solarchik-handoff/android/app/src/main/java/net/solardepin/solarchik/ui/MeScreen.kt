@@ -195,14 +195,20 @@ class MeScreen(host: MainActivity) : Screen(host) {
         val secOn = sec.supported() && net.solardepin.solarchik.screen.PlayerIds.screeningOn(ctx) && sec.holdsRole(ctx)
         val today = net.solardepin.solarchik.sol.AssistantRules.today(net.solardepin.solarchik.screen.CallInbox.cached(ctx), System.currentTimeMillis()).count { !it.blocked }
         Kit.addRow(main, Kit.row(ctx, R.drawable.lc_headset, Ui.CYAN, ctx.getString(R.string.me_sec),
-            if (secOn) ctx.resources.getQuantityString(R.plurals.me_sec_on, today, today) else ctx.getString(R.string.me_sec_off)) {
+            if (secOn) ctx.resources.getQuantityString(R.plurals.me_sec_on, today, today) else ctx.getString(R.string.me_sec_off), subLines = 1) {
             if (secOn) host.openCalls() else { host.select(MainActivity.Tab.SETTINGS, animate = true); (host.screen(MainActivity.Tab.SETTINGS) as? SettingsScreen)?.focusSecretary() }
         }.apply { tag = "today-secretary" })
         Kit.addRow(main, Kit.row(ctx, R.drawable.lc_bell, Ui.GOLD, ctx.getString(R.string.me_stack_at), null,
             trailing = Kit.toggle(ctx, MorningStack.notifyOn(ctx)) { on -> MorningStack.setNotify(ctx, on); if (on) host.requestNotifications(fromUser = true) }.apply { tag = "me-stack-notify" }).apply { tag = "me-stack" })
+        Kit.addRow(main, Kit.row(ctx, R.drawable.lc_more, Ui.TEXT, ctx.getString(R.string.me_settings), ctx.getString(R.string.me_settings_sub), subLines = 1) { host.select(MainActivity.Tab.SETTINGS, animate = true) }.apply { tag = "today-settings" })
+        listBox.addView(main)
+
+        listBox.addView(Ui.top(Kit.section(ctx, ctx.getString(R.string.me_more_title)), 8))
+        val more = Kit.list(ctx)
+        // 1.2.8: the briefing row moved here, so the first list matches the mockup (secretary, stack time, settings)
         val t = host.screen(MainActivity.Tab.TODAY) as? TodayScreen
         val pol = net.solardepin.solarchik.sol.BriefingStore(ctx).policy()
-        Kit.addRow(main, Kit.row(ctx, R.drawable.lc_vol, Ui.PURPLE, ctx.getString(R.string.me_briefing),
+        Kit.addRow(more, Kit.row(ctx, R.drawable.lc_vol, Ui.PURPLE, ctx.getString(R.string.me_briefing),
             if (pol.enabled) ctx.getString(R.string.br_at, pol.label) else ctx.getString(R.string.br_off),
             trailing = Kit.chip(ctx, ctx.getString(when { t?.briefingBusy == true -> R.string.br_preparing; t?.briefingPlaying == true -> R.string.br_stop; else -> R.string.br_play }), Ui.GOLD, R.drawable.lc_play).apply {
                 tag = "today-briefing-play"; minHeight = dp(40)
@@ -212,11 +218,6 @@ class MeScreen(host: MainActivity) : Screen(host) {
                     if (ts?.briefingPlaying == true) ts.stopBriefing() else ts?.playBriefing()
                 }
             }) { pickBriefingTime() }.apply { tag = "today-briefing" })
-        Kit.addRow(main, Kit.row(ctx, R.drawable.lc_more, Ui.TEXT, ctx.getString(R.string.me_settings), ctx.getString(R.string.me_settings_sub)) { host.select(MainActivity.Tab.SETTINGS, animate = true) }.apply { tag = "today-settings" })
-        listBox.addView(main)
-
-        listBox.addView(Ui.top(Kit.section(ctx, ctx.getString(R.string.me_more_title)), 8))
-        val more = Kit.list(ctx)
         Kit.addRow(more, Kit.row(ctx, R.drawable.lc_phone, Ui.CYAN, ctx.getString(R.string.me_calls), null) { host.openCalls() }.apply { tag = "me-calls" })
         Kit.addRow(more, Kit.row(ctx, R.drawable.lc_mic, Ui.GOLD, ctx.getString(R.string.me_sol_chat), null) { host.select(MainActivity.Tab.SOL, animate = true) }.apply { tag = "me-sol" })
         Kit.addRow(more, Kit.row(ctx, R.drawable.lc_spark, Ui.PURPLE, ctx.getString(R.string.me_season), null) { host.select(MainActivity.Tab.SEASON, animate = true) }.apply { tag = "today-season" })

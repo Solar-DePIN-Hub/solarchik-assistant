@@ -49,7 +49,7 @@ class SolanaPayTest {
     private val owner = "8J3hQ1JZq8CkQ6CwRNrsdc9UHS1R1JZmE7vUfnTqC7ic"
     private val payer = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
     private val mv = "mvines9iiHiQTysrwkJjGf2gb9Ex9jXJX8ns3qwf2kN"
-    private val dir = File("/workspace/deliverables/redesign/compare-1.2.7/build").apply { mkdirs() }
+    private val dir = File("/workspace/deliverables/redesign/compare-1.2.8/build").apply { mkdirs() }
 
     private val realCluster = System.getProperty("solarchik.cluster")
     private val realOnboarding = MainActivity.onboardingEnabled

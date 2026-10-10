@@ -2,6 +2,7 @@ package net.solardepin.solarchik.ui
 
 import android.content.Context
 import android.content.Intent
+import android.view.Gravity
 import android.net.Uri
 import android.text.InputType
 import android.view.View
@@ -262,21 +263,36 @@ object CallActionCards {
 
     /** Compact rows for the call screen: what was found, and a way to act on it from Today. */
     fun rows(ctx: Context, key: String, who: String): View? {
-        // 1.2.5: call-backs are already "What next → Call back" right below; list only what that does not cover
-        val list = CallActionStore(ctx).forCall(key).filter { it.status == CallAction.OPEN && it.type != CallAction.CALLBACK }
+        // 1.2.8 (mockup 08 "Cards from this call"): every open card this call put in the Morning stack, call-backs
+        // included, one row each with where it lives; a tap opens it on Today (nothing is done from here).
+        val list = CallActionStore(ctx).forCall(key).filter { it.status == CallAction.OPEN }
         if (list.isEmpty()) return null
-        return Ui.card(ctx, accent = Ui.PURPLE, pad = 14).apply {
+        return Ui.column(ctx).apply {
             tag = "call-found-actions"
-            addView(Ui.label(ctx, ctx.getString(R.string.ca_title)))
+            val head = Ui.row(ctx, gap = 8).apply { gravity = Gravity.CENTER_VERTICAL }
+            head.addView(Ui.weight(Kit.section(ctx, ctx.getString(R.string.ca_from_call))))
+            head.addView(Ui.text(ctx, ctx.getString(R.string.ca_in_stack), 14f, Kit.MUTED, 600))
+            addView(head)
+            val box = Kit.list(ctx)
             list.forEach { a ->
-                addView(Ui.top(Ui.text(ctx, title(ctx, a, who), 14f, Ui.TEXT, 700), 6))
-                val btns = Ui.row(ctx, gap = 8)
-                if (a.type == CallAction.CALLBACK && a.number.isNotBlank()) btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.ca_dial), Ui.Btn.SECONDARY) { dial(ctx, a) }))
-                btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.ca_open_today), Ui.Btn.GHOST) {
+                val (icon, color, sub) = when (a.type) {
+                    CallAction.CALLBACK -> Triple(R.drawable.lc_phone, Ui.CYAN, ctx.getString(R.string.ca_sub_stack))
+                    CallAction.PAYMENT -> Triple(R.drawable.lc_users, Ui.GOLD, ctx.getString(R.string.ca_sub_pay))
+                    CallAction.OWED -> Triple(R.drawable.lc_users, Ui.GREEN, ctx.getString(R.string.ca_sub_owed))
+                    else -> Triple(R.drawable.lc_clock, Ui.PURPLE, ctx.getString(R.string.ca_sub_stack))
+                }
+                val short = when {
+                    a.type == CallAction.CALLBACK && a.time.isNotBlank() -> ctx.getString(R.string.ca_cb_short, a.time)
+                    a.type == CallAction.PAYMENT && a.amount > 0 -> ctx.getString(R.string.card_settle, amount(a), a.token.ifBlank { "SOL" })
+                    a.type == CallAction.OWED && a.amount > 0 -> ctx.getString(R.string.payreq_btn, amount(a), a.token.ifBlank { "SOL" })
+                    else -> title(ctx, a, who)
+                }
+                Kit.addRow(box, Kit.row(ctx, icon, color, short, sub,
+                    trailing = Kit.chip(ctx, ctx.getString(R.string.ca_chip_today), color)) {
                     ctx.startActivity(Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra(MainActivity.EXTRA_CALL_ACTION, a.id))
-                }.apply { tag = "call-action-open" }))
-                addView(Ui.top(btns, 6))
+                }.apply { tag = "call-action-open" })
             }
+            addView(Ui.top(box, 10))
         }
     }
 }

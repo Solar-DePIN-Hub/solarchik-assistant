@@ -142,7 +142,8 @@ class CircleScreen(host: MainActivity) : Screen(host) {
             addView(r)
             val reason = d.call?.let { ctx.getString(R.string.circle_hero_reason_call, d.who, CallText.time(it.at)) } ?: ctx.getString(R.string.circle_hero_reason_you)
             val quote = CallActionCards.inUi(d.action.quote).takeIf { it.length > 8 }
-            addView(Ui.top(Ui.text(ctx, listOfNotNull(quote?.let { "“$it”" }, reason).joinToString("\n"), 15f, Ui.withAlpha(Ui.TEXT, 0xCC), 600).apply { maxLines = 3; setLineSpacing(0f, 1.2f) }, 14))
+            // 1.2.8: quote and source on one line (mockup: "For lunch, from her call yesterday")
+            addView(Ui.top(Ui.text(ctx, listOfNotNull(quote?.let { "“$it”" }, reason).joinToString(" · "), 15f, Ui.withAlpha(Ui.TEXT, 0xCC), 600).apply { maxLines = 2; ellipsize = android.text.TextUtils.TruncateAt.END; setLineSpacing(0f, 1.2f) }, 12))
             if (owe != null) {
                 val ct = owe.contact
                 if (ct != null && ct.address.isNotBlank()) {
@@ -156,9 +157,13 @@ class CircleScreen(host: MainActivity) : Screen(host) {
                             if (saved.address.isNotBlank()) CallActionCards.payContact(host, owe.action, saved) { host.renderAll() }
                         }
                     }.apply { tag = "circle-add-wallet" }, 16))
-                    addView(Ui.top(Kit.ghost(ctx, ctx.getString(R.string.circle_ask, owe.who)) { CirclePanel.ask(host, owe.who, owe) }.apply { tag = "circle-ask" }, 10))
+                    // 1.2.8: a text link, not a second big button (mockup has one CTA)
+                    addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.circle_ask, owe.who), 15f, Ui.CYAN, 800).apply {
+                        tag = "circle-ask"; gravity = Gravity.CENTER; minHeight = dp(44); isClickable = true
+                        setOnClickListener { CirclePanel.ask(host, owe.who, owe) }
+                    }, 4))
                 }
-                addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.card_pay_safe), 14f, Kit.MUTED, 600).apply { gravity = Gravity.CENTER }, 10))
+                if (ct != null && ct.address.isNotBlank()) addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.card_pay_safe), 14f, Kit.MUTED, 600).apply { gravity = Gravity.CENTER }, 10))
             } else {
                 // 1.2.7 two-way Circle: a Solana Pay request (QR + share link) to the user's own wallet
                 val pending = PayRequestStore(ctx).forAction(d.action.id)?.takeIf { it.status == PayRequest.OPEN }
@@ -166,8 +171,10 @@ class CircleScreen(host: MainActivity) : Screen(host) {
                 addView(Ui.top(Kit.primary(ctx, ctx.getString(if (pending != null) R.string.payreq_show else R.string.payreq_btn, Circle.amount(d.amount), d.token), R.drawable.lc_wallet) {
                     PayRequestSheet.show(host, d) { host.renderAll() }
                 }.apply { tag = "circle-request" }, 16))
-                addView(Ui.top(Kit.ghost(ctx, ctx.getString(R.string.circle_owed_yes), R.drawable.lc_check, Ui.GREEN) { received(d) }.apply { tag = "circle-owed-received" }, 10))
-                addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.payreq_note), 14f, Kit.MUTED, 600).apply { gravity = Gravity.CENTER }, 10))
+                addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.circle_owed_yes), 15f, Ui.GREEN, 800).apply {
+                    tag = "circle-owed-received"; gravity = Gravity.CENTER; minHeight = dp(44); isClickable = true
+                    setOnClickListener { received(d) }
+                }, 4))
             }
         }
     }
@@ -183,7 +190,8 @@ class CircleScreen(host: MainActivity) : Screen(host) {
         val mine = owe.filter { (c != null && it.contact?.id == c.id) || Circle.nameKey(it.who) == key }
         val theirs = owed.filter { (c != null && it.contact?.id == c.id) || Circle.nameKey(it.who) == key }
         val sub = when {
-            c == null || c.address.isBlank() -> ctx.getString(R.string.circle_no_wallet).replaceFirstChar { it.uppercase() }
+            // 1.2.8: one short line next to a chip ("No wallet yet" wrapped under "Owes you 0.5 SOL")
+            c == null || c.address.isBlank() -> ctx.getString(R.string.circle_no_wallet_short)
             c.phone.isNotBlank() -> Kit.phoneEnds(ctx, c.phone)
             else -> Fmt.short(c.address)
         }
@@ -193,7 +201,7 @@ class CircleScreen(host: MainActivity) : Screen(host) {
             c == null || c.address.isBlank() -> Kit.chip(ctx, ctx.getString(R.string.circle_chip_ask), Ui.TEXT).apply { tag = "circle-ask-chip"; background = Ui.rounded(Ui.withAlpha(Color.WHITE, 0x10), dp(18).toFloat()) }
             else -> null
         }
-        return Kit.row(ctx, null, Ui.TEXT, name, sub, trailing = chip ?: Kit.icon(ctx, R.drawable.lc_chev, Kit.MUTED, 20), lead = Kit.avatar(ctx, name, 52)) {
+        return Kit.row(ctx, null, Ui.TEXT, name, sub, trailing = chip ?: Kit.icon(ctx, R.drawable.lc_chev, Kit.MUTED, 20), lead = Kit.avatar(ctx, name, 52), subLines = 1) {
             person(c, name, mine, theirs)
         }.apply { tag = "circle-contact" }
     }

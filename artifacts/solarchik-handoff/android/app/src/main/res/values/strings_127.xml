@@ -133,12 +133,12 @@
     <string name="me_edit">Edit</string>
     <string name="me_habits_none">No habits yet. Tap Edit.</string>
     <string name="me_sec">Phone secretary</string>
-    <string name="me_sec_off">Set up · answers the calls you miss</string>
+    <string name="me_sec_off">Off · tap to set up</string>
     <string name="me_stack_at">Morning stack at 8:00</string>
     <string name="me_briefing">Morning briefing</string>
     <string name="me_briefing_sub">Sol reads your day aloud</string>
     <string name="me_settings">Settings</string>
-    <string name="me_settings_sub">Language, network, diagnostics</string>
+    <string name="me_settings_sub">Language, network, logs</string>
     <string name="me_more_title">More</string>
     <string name="me_calls">Calls history</string>
     <string name="me_sol_chat">Sol chat</string>
@@ -214,4 +214,14 @@
     <string name="calls_transcript_hide">Hide</string>
     <string name="calls_transcript_collapsed">The note above is written from this conversation.</string>
     <string name="call_back_who">Call %s back</string>
+    <string name="calls_details_label">Details</string>
+    <string name="calls_detail_title">Call</string>
+    <string name="circle_no_wallet_short">No wallet</string>
+    <string name="ca_from_call">Cards from this call</string>
+    <string name="ca_in_stack">In today\'s stack</string>
+    <string name="ca_sub_stack">Morning stack</string>
+    <string name="ca_sub_pay">Circle · approve in wallet</string>
+    <string name="ca_sub_owed">Circle · send a request</string>
+    <string name="ca_chip_today">Today</string>
+    <string name="ca_cb_short">Call back at %s</string>
 </resources>

@@ -133,7 +133,7 @@
     <string name="me_edit">Змінити</string>
     <string name="me_habits_none">Звичок поки немає. Натисни Змінити.</string>
     <string name="me_sec">Телефонний секретар</string>
-    <string name="me_sec_off">Налаштувати · відповідає на пропущені</string>
+    <string name="me_sec_off">Вимкнено · налаштувати</string>
     <string name="me_stack_at">Ранковий стос о 8:00</string>
     <string name="me_briefing">Ранковий брифінг</string>
     <string name="me_briefing_sub">Сол читає твій день уголос</string>
@@ -214,4 +214,14 @@
     <string name="calls_transcript_hide">Сховати</string>
     <string name="calls_transcript_collapsed">Нотатку вище написано з цієї розмови.</string>
     <string name="call_back_who">Передзвонити: %s</string>
+    <string name="calls_details_label">Деталі</string>
+    <string name="calls_detail_title">Дзвінок</string>
+    <string name="circle_no_wallet_short">Без гаманця</string>
+    <string name="ca_from_call">Картки з цього дзвінка</string>
+    <string name="ca_in_stack">У сьогоднішньому стосі</string>
+    <string name="ca_sub_stack">Ранковий стос</string>
+    <string name="ca_sub_pay">Коло · у гаманці</string>
+    <string name="ca_sub_owed">Коло · запит</string>
+    <string name="ca_chip_today">Сьогодні</string>
+    <string name="ca_cb_short">Передзвонити о %s</string>
 </resources>

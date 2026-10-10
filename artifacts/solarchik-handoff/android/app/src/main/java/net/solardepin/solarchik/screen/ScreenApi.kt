@@ -192,7 +192,11 @@ object ScreenApi {
 
     private fun parse(body: String): JSONObject = runCatching { JSONObject(body.ifBlank { "{}" }) }.getOrElse { JSONObject() }
 
+    /** Tests only: answer a request without the network (method, url, body) -> (code, body); null = go online. */
+    @Volatile internal var requestForTest: ((String, String, String?) -> Pair<Int, String>?)? = null
+
     private fun request(method: String, url: String, body: String?): Pair<Int, String> {
+        requestForTest?.invoke(method, url, body)?.let { return it }
         val c = URL(url).openConnection() as HttpURLConnection
         c.requestMethod = method
         c.connectTimeout = 12000

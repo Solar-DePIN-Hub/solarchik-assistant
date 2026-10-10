@@ -321,72 +321,32 @@ class CallsActivity : ComponentActivity() {
     private fun renderDetail(base: CallItem) {
         val d = detail
         val it = d?.item?.copy(owner = base.owner) ?: base
-        header(CallText.who(this, it).ifBlank { getString(R.string.calls_unknown) }, back = true)
-        val card = Ui.card(this, accent = statusColor(it), pad = 16).apply { tag = "call-detail" }
-        val pills = Ui.row(this, gap = 6).apply { gravity = Gravity.CENTER_VERTICAL }
-        pills.addView(Ui.pill(this, CallText.status(this, it), statusColor(it)))
-        CallText.language(this, it, d?.lines?.joinToString(" ") { l -> l.text }.orEmpty()).takeIf { l -> l.isNotBlank() }?.let { l -> pills.addView(Ui.pill(this, l, Ui.CYAN)) }
-        card.addView(pills)
-        fun fact(label: Int, value: String) {
-            if (value.isBlank()) return
-            val r = Ui.row(this, gap = 10)
-            r.addView(Ui.text(this, getString(label), 12f, Ui.MUTED, 700), LinearLayout.LayoutParams(dp(110), ViewGroup.LayoutParams.WRAP_CONTENT))
-            r.addView(Ui.weight(Ui.text(this, value, 14f, Ui.TEXT, 700).apply { setTextIsSelectable(true) }))
-            card.addView(Ui.top(r, 8))
-        }
-        fact(R.string.calls_f_time, CallText.time(it.at) + " · " + getString(R.string.calls_kyiv))
-        fact(R.string.calls_f_number, net.solardepin.solarchik.screen.Phones.show(this, it.caller.takeIf { c -> c != "unknown" }.orEmpty()).ifBlank { getString(R.string.calls_hidden) })
-        if (it.callback.isNotBlank() && it.callback != it.caller) fact(R.string.calls_f_callback, net.solardepin.solarchik.screen.Phones.show(this, it.callback))
-        fact(R.string.calls_f_name, it.callerName)
-        fact(R.string.calls_f_duration, CallInbox.duration(d?.durationSec ?: it.durationSec))
-        fact(R.string.calls_f_urgency, when (it.urgency) { "high" -> getString(R.string.calls_urg_high); "medium" -> getString(R.string.calls_urg_medium); "low" -> getString(R.string.calls_urg_low); else -> "" })
-        fact(R.string.calls_f_cost, when {
-            it.chargedUsd == null -> ""
-            it.chargedUsd <= 0.0 -> getString(R.string.calls_cost_free)
-            else -> "$" + Fmt.sol(it.chargedUsd, 2) + if (it.trial) " · " + getString(R.string.sec_trial) else ""
-        })
-        column.addView(card)
+        header(getString(R.string.calls_detail_title), back = true)
+        // 1.2.8 (mockup 08): who called and when on one line, then the secretary's note first; the facts card moves
+        // below the actions as "Details".
+        val who = Ui.row(this, gap = 14).apply { gravity = Gravity.CENTER_VERTICAL; tag = "call-who" }
+        who.addView(Kit.avatar(this, CallText.who(this, it).ifBlank { "?" }, 56))
+        val whoText = Ui.column(this)
+        whoText.addView(Ui.display(this, CallText.who(this, it).ifBlank { getString(R.string.calls_unknown) }, 24f).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+        val subParts = listOfNotNull(
+            it.caller.takeIf { c -> c.isNotBlank() && c != "unknown" }?.let { c -> Kit.phoneEnds(this, c) }?.takeIf { e -> e.isNotBlank() },
+            CallText.time(it.at).takeIf { t -> t.isNotBlank() },
+            CallInbox.duration(d?.durationSec ?: it.durationSec).takeIf { x -> x.isNotBlank() },
+        )
+        if (subParts.isNotEmpty()) whoText.addView(Ui.top(Ui.text(this, subParts.joinToString(" · "), 14f, Ui.MUTED, 600).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }, 2))
+        who.addView(Ui.weight(whoText))
+        column.addView(who)
 
         column.addView(Ui.card(this, pad = 16).apply {
-            addView(Ui.label(this@CallsActivity, getString(R.string.calls_note_label), Ui.GOLD))
+            val lab = Ui.row(this@CallsActivity, gap = 8).apply { gravity = Gravity.CENTER_VERTICAL }
+            lab.addView(Kit.icon(this@CallsActivity, R.drawable.lc_headset, Ui.CYAN, 18))
+            lab.addView(Ui.label(this@CallsActivity, getString(R.string.calls_note_label), Ui.CYAN))
+            addView(lab)
             addView(Ui.top(Ui.text(this@CallsActivity, CallText.summary(this@CallsActivity, it), 16f, Ui.TEXT, 700).apply { setTextIsSelectable(true); setLineSpacing(0f, 1.2f); tag = "call-note" }, 6))
         })
 
         // 1.1.0: requests found in this call (payment / callback / reminder); acted on from Today, never automatically
         CallActionCards.rows(this, it.key, it.who)?.let { v -> column.addView(v) }
-
-        // post-call actions
-        val actions = Ui.card(this, pad = 14).apply { tag = "call-actions" }
-        actions.addView(Ui.label(this, getString(R.string.calls_actions_label)))
-        val num = it.dialNumber
-        val isBlocked = num.isNotBlank() && blocked.contains(num)
-        val r1 = Ui.row(this, gap = 8)
-        if (num.isNotBlank()) {
-            // 1.2.7: "Call Ira back" is the sticky primary at the bottom of the screen (one yellow button)
-            val who = CallText.who(this, it).ifBlank { "" }
-            val back = Kit.primary(this, if (who.isNotBlank() && it.callerName.isNotBlank()) getString(R.string.call_back_who, it.callerName) else getString(R.string.calls_call_back), R.drawable.lc_phone) { dial(num) }.apply { tag = "call-back" }
-            sticky.addView(back, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            sticky.visibility = View.VISIBLE
-        }
-        val remindAt = CallNotes.Reminders.at(this, it.key)
-        r1.addView(Ui.weight(Ui.button(this, getString(if (remindAt > 0) R.string.calls_remind_change else R.string.calls_remind), Ui.Btn.SECONDARY, R.drawable.ic_timer) { askRemind(it) }.apply { tag = "call-remind" }))
-        actions.addView(Ui.top(r1, 8))
-        if (remindAt > 0) {
-            actions.addView(Ui.top(Ui.row(this, gap = 8).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                addView(Ui.weight(Ui.text(this@CallsActivity, getString(R.string.calls_remind_set, CallText.time(remindAt)), 12f, Ui.GOLD, 700)))
-                addView(Ui.text(this@CallsActivity, getString(R.string.calls_remind_cancel), 12f, Ui.MUTED, 800).apply {
-                    minHeight = dp(40); gravity = Gravity.CENTER
-                    setOnClickListener { _ -> CallNotes.cancelReminder(this@CallsActivity, it); render() }
-                })
-            }, 6))
-        }
-        val blk = Ui.button(this, getString(if (isBlocked) R.string.calls_unblock else R.string.calls_block), Ui.Btn.GHOST) { askBlock(it, !isBlocked) }.apply { tag = "call-block" }
-        Ui.setEnabled(blk, num.isNotBlank())
-        actions.addView(Ui.top(blk, 8))
-        actions.addView(Ui.top(Ui.muted(this, getString(if (isBlocked) R.string.calls_blocked_body else R.string.calls_block_body), 11f).apply { setLineSpacing(0f, 1.2f) }, 6))
-        column.addView(actions)
-        pad()
 
         // transcript
         column.addView(Ui.card(this, pad = 14).apply {
@@ -424,6 +384,65 @@ class CallsActivity : ComponentActivity() {
                 }
             }
         })
+
+        // post-call actions
+        val actions = Ui.card(this, pad = 14).apply { tag = "call-actions" }
+        actions.addView(Ui.label(this, getString(R.string.calls_actions_label)))
+        val num = it.dialNumber
+        val isBlocked = num.isNotBlank() && blocked.contains(num)
+        val r1 = Ui.row(this, gap = 8)
+        if (num.isNotBlank()) {
+            // 1.2.7: "Call Ira back" is the sticky primary at the bottom of the screen (one yellow button)
+            val who = CallText.who(this, it).ifBlank { "" }
+            val back = Kit.primary(this, if (who.isNotBlank() && it.callerName.isNotBlank()) getString(R.string.call_back_who, it.callerName) else getString(R.string.calls_call_back), R.drawable.lc_phone) { dial(num) }.apply { tag = "call-back" }
+            sticky.addView(back, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            sticky.visibility = View.VISIBLE
+        }
+        val remindAt = CallNotes.Reminders.at(this, it.key)
+        r1.addView(Ui.weight(Ui.button(this, getString(if (remindAt > 0) R.string.calls_remind_change else R.string.calls_remind), Ui.Btn.SECONDARY, R.drawable.ic_timer) { askRemind(it) }.apply { tag = "call-remind" }))
+        actions.addView(Ui.top(r1, 8))
+        if (remindAt > 0) {
+            actions.addView(Ui.top(Ui.row(this, gap = 8).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                addView(Ui.weight(Ui.text(this@CallsActivity, getString(R.string.calls_remind_set, CallText.time(remindAt)), 12f, Ui.GOLD, 700)))
+                addView(Ui.text(this@CallsActivity, getString(R.string.calls_remind_cancel), 12f, Ui.MUTED, 800).apply {
+                    minHeight = dp(40); gravity = Gravity.CENTER
+                    setOnClickListener { _ -> CallNotes.cancelReminder(this@CallsActivity, it); render() }
+                })
+            }, 6))
+        }
+        val blk = Ui.button(this, getString(if (isBlocked) R.string.calls_unblock else R.string.calls_block), Ui.Btn.GHOST) { askBlock(it, !isBlocked) }.apply { tag = "call-block" }
+        Ui.setEnabled(blk, num.isNotBlank())
+        actions.addView(Ui.top(blk, 8))
+        actions.addView(Ui.top(Ui.muted(this, getString(if (isBlocked) R.string.calls_blocked_body else R.string.calls_block_body), 11f).apply { setLineSpacing(0f, 1.2f) }, 6))
+        column.addView(actions)
+        pad()
+
+        val card = Ui.card(this, pad = 16).apply { tag = "call-detail" }
+        card.addView(Ui.label(this, getString(R.string.calls_details_label)))
+        val pills = Ui.row(this, gap = 6).apply { gravity = Gravity.CENTER_VERTICAL }
+        pills.addView(Ui.pill(this, CallText.status(this, it), statusColor(it)))
+        CallText.language(this, it, d?.lines?.joinToString(" ") { l -> l.text }.orEmpty()).takeIf { l -> l.isNotBlank() }?.let { l -> pills.addView(Ui.pill(this, l, Ui.CYAN)) }
+        card.addView(Ui.top(pills, 8))
+        fun fact(label: Int, value: String) {
+            if (value.isBlank()) return
+            val r = Ui.row(this, gap = 10)
+            r.addView(Ui.text(this, getString(label), 12f, Ui.MUTED, 700), LinearLayout.LayoutParams(dp(110), ViewGroup.LayoutParams.WRAP_CONTENT))
+            r.addView(Ui.weight(Ui.text(this, value, 14f, Ui.TEXT, 700).apply { setTextIsSelectable(true) }))
+            card.addView(Ui.top(r, 8))
+        }
+        fact(R.string.calls_f_time, CallText.time(it.at) + " · " + getString(R.string.calls_kyiv))
+        fact(R.string.calls_f_number, net.solardepin.solarchik.screen.Phones.show(this, it.caller.takeIf { c -> c != "unknown" }.orEmpty()).ifBlank { getString(R.string.calls_hidden) })
+        if (it.callback.isNotBlank() && it.callback != it.caller) fact(R.string.calls_f_callback, net.solardepin.solarchik.screen.Phones.show(this, it.callback))
+        fact(R.string.calls_f_name, it.callerName)
+        fact(R.string.calls_f_duration, CallInbox.duration(d?.durationSec ?: it.durationSec))
+        fact(R.string.calls_f_urgency, when (it.urgency) { "high" -> getString(R.string.calls_urg_high); "medium" -> getString(R.string.calls_urg_medium); "low" -> getString(R.string.calls_urg_low); else -> "" })
+        fact(R.string.calls_f_cost, when {
+            it.chargedUsd == null -> ""
+            it.chargedUsd <= 0.0 -> getString(R.string.calls_cost_free)
+            else -> "$" + Fmt.sol(it.chargedUsd, 2) + if (it.trial) " · " + getString(R.string.sec_trial) else ""
+        })
+        column.addView(card)
     }
 
     // ---------------- actions ----------------
