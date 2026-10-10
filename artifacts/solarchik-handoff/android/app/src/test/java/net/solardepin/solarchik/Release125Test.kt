@@ -183,7 +183,7 @@ class Release125Test {
         a.screen(MainActivity.Tab.CIRCLE)?.onShow(); idle()
         audit(a.window.decorView, "11-circle-settled")
         assertTrue(texts(a.window.decorView).any { it == "Paid Ira 0.01 SOL" })
-        assertTrue(texts(a.window.decorView).any { it.endsWith("Solscan ↗") })
+        assertTrue("1.2.10: the row opens the payment detail", texts(a.window.decorView).any { it.endsWith("Details") })
         assertNull(find(a.window.decorView, "circle-settle"))
 
         // 7) the stack: Later on what's left; with nothing left, Today says Clocked in (no money needed)

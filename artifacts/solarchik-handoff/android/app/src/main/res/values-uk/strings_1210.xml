@@ -3,7 +3,7 @@
     <string name="run_result_kicker">РЕЗУЛЬТАТ ЗАБІГУ</string>
     <string name="run_play_again">Грати ще</string>
     <string name="run_back_today">До «Сьогодні»</string>
-    <string name="run_result_score">%d очок</string>
+    <string name="run_result_score">Рахунок: %d</string>
     <string name="calls_back_btn">Назад</string>
     <string name="calls_transcript_failed">Зараз не вдалося завантажити розмову.</string>
     <string name="calls_retry">Спробувати ще</string>

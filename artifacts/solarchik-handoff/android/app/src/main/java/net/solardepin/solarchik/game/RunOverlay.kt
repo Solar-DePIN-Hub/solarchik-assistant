@@ -591,8 +591,8 @@ class RunOverlay(private val ctx: Context, private val actions: Actions) : Frame
         // one row so both stay above the fold on a short landscape screen
         val deadButtons = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         deadButtons.addView(button(ctx.getString(if (runSigning) R.string.run_again_full else R.string.run_play_again), true, 60, 22f, null) { actions.again() }.apply { tag = "run-again" },
-            LinearLayout.LayoutParams(0, dp(64), 1.4f))
-        deadButtons.addView(button(ctx.getString(if (runSigning) R.string.run_yard else R.string.run_back_today), false, 60, 15f, R.drawable.ic_run_home) { actions.yard() }.apply { tag = "run-back-today" },
+            LinearLayout.LayoutParams(0, dp(64), if (runSigning) 1.7f else 1f))
+        deadButtons.addView(button(ctx.getString(if (runSigning) R.string.run_yard else R.string.run_back_today), false, 60, 15f, R.drawable.ic_run_home) { actions.yard() }.apply { tag = "run-back-today"; maxLines = 1 },
             LinearLayout.LayoutParams(0, dp(64), 1f).apply { marginStart = dp(10) })
         deadLeft.addView(deadButtons, lp(top = 14, h = 64))
         deadCols.addView(deadLeft, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))

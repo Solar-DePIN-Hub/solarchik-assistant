@@ -121,6 +121,9 @@ class RunActivity : ComponentActivity(), RunView.Listener, RunOverlay.Actions {
         game.postDelayed({ audioReady = true; maybeGo() }, AUDIO_WAIT_MS) // never wait on audio forever
     }
 
+    /** Tests: the loading cover waits for real frames, which Robolectric never draws. */
+    @androidx.annotation.VisibleForTesting internal fun onLoadingDoneForTest() = overlay.setLoading(false)
+
     private var artReady = false
     private var audioReady = false
     private var begun = false

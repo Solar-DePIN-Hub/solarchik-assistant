@@ -48,12 +48,14 @@ class Fixes0220Test {
     private val realCheck = SolanaWallet.walletAppCheck
 
     @Before fun setUp() {
+        net.solardepin.solarchik.game.RunOverlay.runSigning = true // 1.2.10: the legacy in-run signing flow, still covered
         MainActivity.tickerEnabled = false
         SolanaWallet.walletAppCheck = { false }
         LocalKey.box = TestBox()
     }
 
     @After fun tearDown() {
+        net.solardepin.solarchik.game.RunOverlay.runSigning = false
         MainActivity.tickerEnabled = true
         SolanaWallet.walletAppCheck = realCheck
     }
