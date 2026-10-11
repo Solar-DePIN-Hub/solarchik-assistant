@@ -12,7 +12,7 @@ Built for the [Colosseum](https://www.colosseum.org/) hackathon (and the Solana 
 | --- | --- | --- | --- |
 | ![Today: the morning stack](docs/img/today-stack.png) | ![The secretary's note and the cards it made](docs/img/call-note.png) | ![Circle: who owes whom](docs/img/circle.png) | ![A Solana Pay request](docs/img/request-qr.png) |
 
-**Demo (with real Seeker):** https://youtu.be/RHWErS_Pjks
+**Demo (with real Seeker):** https://youtu.be/-7SXHOq-W2g
 
 ## Try it
 
