@@ -12,7 +12,7 @@ Built for the [Colosseum](https://www.colosseum.org/) hackathon (and the Solana 
 | --- | --- | --- | --- |
 | ![Today: the morning stack](docs/img/today-stack.png) | ![The secretary's note and the cards it made](docs/img/call-note.png) | ![Circle: who owes whom](docs/img/circle.png) | ![A Solana Pay request](docs/img/request-qr.png) |
 
-Videos: [tech demo](TECH_VIDEO_URL) · [pitch](PITCH_VIDEO_URL)
+**Demo (with real Seeker):** https://youtu.be/RHWErS_Pjks
 
 ## Try it
 
@@ -32,6 +32,7 @@ The APK is signed with my own release key, not a store key. Package: `net.solard
 - **Sol.** The mic button in the middle. Hold it and ask "who do I owe?" or "send Ira what I owe". Sol answers from my own data and opens the right card. He never sends anything by himself.
 - **Season agent.** Every day the worker reads Solana Mobile's official sources (blog and docs) plus a dated, hand-checked list of partner drops announced on X, and puts today's Seeker Season tasks into the stack. Each task opens the original announcement. It doesn't claim, farm or sign anything.
 - **Verified Seeker.** Sign In With Solana plus a Seeker Genesis Token check (Token-2022) on the server. It gives a badge and 10 extra secretary minutes a day. Everything else works without a Seeker.
+- **Tested on a real Seeker.** Seed Vault connect, mainnet balances (SOL, USDC, SKR), Season task and Clock in. See the demo video.
 - A small rooftop runner tile, left over from my first CLOCK IN build. It's a break, not the product.
 
 ## How it works
@@ -89,7 +90,6 @@ Traction, honestly: it's live on mainnet and tested by 4 people, my family and f
 - Personal secretary numbers and Pro billing (USDC / SKR).
 - Publish to the Solana dApp Store with a store key.
 - Business plan pilot: booking and deposits from the call card.
-- Test Seed Vault and the Genesis Token check on a real Seeker (I don't own one yet; I test on an Android tablet with Phantom).
 - An external security review.
 
 ## Build from source
