@@ -44,7 +44,7 @@ object AssistantContext {
             val cb = c.callback.takeIf { it.isNotBlank() && it != "unknown" }?.let { ", callback $it" }.orEmpty()
             return "${who(c)} ${clock.format(Date(c.at))} ($state)" + (if (what.isNotBlank() && !c.blocked) ": $what" else "") + cb
         }
-        val today = AssistantRules.today(calls, now).filter { !it.blocked }
+        val today = AssistantRules.today(calls, now, zone).filter { !it.blocked }
         val parts = ArrayList<String>()
         parts += "Now: ${day.format(Date(now))} (${zone.id})."
         parts += "Phone secretary: ${if (secretaryOn) "on" else "off"}."

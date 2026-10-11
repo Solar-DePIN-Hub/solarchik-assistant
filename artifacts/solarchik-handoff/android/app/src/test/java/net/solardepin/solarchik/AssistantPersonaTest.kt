@@ -92,7 +92,8 @@ class AssistantPersonaTest {
     }
 
     @Test fun solScreenSendsThePhoneState() {
-        val now = System.currentTimeMillis()
+        // a fixed midday "now" (25 minutes before a real time just after midnight would be yesterday)
+        val now = java.time.LocalDate.now().atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         CallInbox.store(app, calls(now))
         val a = Robolectric.buildActivity(MainActivity::class.java).setup().visible().get()
         repeat(5) { ShadowLooper.idleMainLooper() }

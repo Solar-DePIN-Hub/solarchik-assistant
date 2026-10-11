@@ -71,8 +71,8 @@ object AssistantRules {
     }
 
     /** Calls that started on the phone's current local day. */
-    fun today(calls: List<CallItem>, now: Long = System.currentTimeMillis()): List<CallItem> {
-        val start = java.util.Calendar.getInstance().apply {
+    fun today(calls: List<CallItem>, now: Long = System.currentTimeMillis(), zone: java.util.TimeZone = java.util.TimeZone.getDefault()): List<CallItem> {
+        val start = java.util.Calendar.getInstance(zone).apply {
             timeInMillis = now
             set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
         }.timeInMillis

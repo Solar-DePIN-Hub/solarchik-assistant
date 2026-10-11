@@ -74,7 +74,9 @@ class TodayTest {
     private fun todayAt(minutesAgo: Int): Long {
         val now = System.currentTimeMillis()
         val start = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
-        return maxOf(start + 60_000L * (10 - minutesAgo / 60).coerceAtLeast(1), now - minutesAgo * 60_000L)
+        val t = now - minutesAgo * 60_000L
+        // just after midnight: keep "today" (and the order: longer ago = earlier) instead of crossing into yesterday
+        return if (t >= start) t else start + (now - start) / (2 + minutesAgo)
     }
 
     /** Sample calls in the worker's /inbox shape. Numbers are made up. */
