@@ -23,6 +23,22 @@ Built for the [Colosseum](https://www.colosseum.org/) hackathon (and the Solana 
 
 The APK is signed with my own release key, not a store key. Package: `net.solardepin.solarchik.assistant`.
 
+## Current Release
+
+The APK on GitHub Releases matches commit `699933035f32c143b83accbdeb6fa97f496f6819` on `main`.
+
+To reproduce the build:
+
+```bash
+cd artifacts/solarchik-handoff/android
+echo "sdk.dir=$ANDROID_HOME" > local.properties   # if ANDROID_HOME is not already set
+./gradlew :app:assembleDebug
+```
+
+Debug APK output: `app/build/outputs/apk/debug/app-debug.apk` (or `/tmp/solarchik-apk-build/outputs/apk/debug/app-debug.apk` depending on buildRoot).
+
+No environment variables are required for a debug build. For a signed release build, place `app/solarchik-release.jks` and set `SOLARCHIK_STORE_PASSWORD` / `SOLARCHIK_KEY_PASSWORD` (or use `keystore.properties`). These are not committed.
+
 ## What it does
 
 - **Calls.** When I can't pick up, my carrier forwards the call (standard GSM conditional forwarding) to a Zadarma number. The call goes over SIP to an OpenAI Realtime voice agent that talks to the caller like a receptionist. My Cloudflare Worker saves the transcript, writes a short note (who, why, how urgent) and pulls out action cards: call back, reminder, or payment. The Calls tab keeps the history.
