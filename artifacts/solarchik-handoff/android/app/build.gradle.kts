@@ -71,10 +71,19 @@ android {
     signingConfigs {
         // Release key lives only on the build box (gitignored). Debug builds use the standard debug key.
         create("release") {
-            storeFile = file("solarchik-release.jks")
-            storePassword = keystoreSecret("SOLARCHIK_STORE_PASSWORD", "storePassword")
-            keyAlias = "solarchik"
-            keyPassword = keystoreSecret("SOLARCHIK_KEY_PASSWORD", "keyPassword")
+            // Store builds: SOL_KEYSTORE=/workspace/secure/sol-release.jks + SOL_KEYSTORE_PASS (production key, alias sol-release).
+            val solKs = System.getenv("SOL_KEYSTORE")
+            if (solKs != null) {
+                storeFile = file(solKs)
+                storePassword = System.getenv("SOL_KEYSTORE_PASS")
+                keyAlias = System.getenv("SOL_KEY_ALIAS") ?: "sol-release"
+                keyPassword = System.getenv("SOL_KEYSTORE_PASS")
+            } else {
+                storeFile = file("solarchik-release.jks")
+                storePassword = keystoreSecret("SOLARCHIK_STORE_PASSWORD", "storePassword")
+                keyAlias = "solarchik"
+                keyPassword = keystoreSecret("SOLARCHIK_KEY_PASSWORD", "keyPassword")
+            }
             enableV1Signing = true
             enableV2Signing = true
             enableV3Signing = true
@@ -88,7 +97,7 @@ android {
             isDebuggable = false
             isJniDebuggable = false
             // Unsigned release when the box keystore is absent (e.g. a fresh clone).
-            signingConfig = if (file("solarchik-release.jks").exists()) signingConfigs.getByName("release") else null
+            signingConfig = if (System.getenv("SOL_KEYSTORE") != null || file("solarchik-release.jks").exists()) signingConfigs.getByName("release") else null
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
