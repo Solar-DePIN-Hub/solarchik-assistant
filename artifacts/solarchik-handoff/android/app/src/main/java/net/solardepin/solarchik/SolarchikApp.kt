@@ -12,6 +12,7 @@ class SolarchikApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        runCatching { net.solardepin.solarchik.core.CrashReport.install(this) }
         Notes.createChannel(this)
         runCatching { Notes.schedule(this) }
         // 0.21.9: secretary call notes (background poll every 15 min; the open app polls every 60 s)

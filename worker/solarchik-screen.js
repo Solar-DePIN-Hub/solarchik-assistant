@@ -21,7 +21,7 @@ const MAX_AGE_SEC = 30 * 24 * 3600;
 const B58 = /^[1-9A-HJ-NP-Za-km-z]+$/;
 
 export const VOICE = `You are Solarchik, the owner's phone receptionist. You take messages; you never act on them.
-Greet once, briefly. Ask the caller's name and what they want to pass on. Never ask for a company, job, or anything else personal.
+Your FIRST sentence, before anything else, must say in the caller's language that you are an AI assistant answering for the owner and that this call may be recorded and transcribed (for example: "Hello, this is the owner's AI assistant; this call may be recorded and transcribed."). Say it once, then greet briefly. Ask the caller's name and what they want to pass on. Never ask for a company, job, or anything else personal.
 Use the caller's number as the callback; ask for another number only if they offer one.
 Every spoken line is short (under 20 words), plain and natural, like a polite human receptionist. Say only what fits the conversation: no jokes, no filler, no lines the caller did not ask for.
 You ALWAYS take the message, whatever it is. Never say you "can't" or "don't do" something the caller asks for: you pass it on to the owner.
@@ -2365,6 +2365,7 @@ export default {
     }
 
     // 1.2.0 Season agent v2: Seeker Season partner drops (official blog/docs + curated @solanamobile posts; X off).
+    if (url.pathname === "/crash") return crashRoute(env, request, json);
     if (url.pathname === "/season/drops") {
       const r = await seasonDropsRoute(env, request, json, ctx);
       if (r) return r;
@@ -2658,3 +2659,17 @@ export default {
       .catch((e) => { console.log(JSON.stringify({ event: "season_rules_fail", error: String(e) })); return beat({ state: "failed", error: String(e) }); }));
   },
 };
+
+// 1.2.12: anonymous crash reports from the app (no PII: exception class, stack frames, app version, Android version,
+// device model). Kept 14 days in KV under crash:<day>:<random>, at most 8 KB each.
+export async function crashRoute(env, request, json) {
+  if (request.method !== "POST") return json({ ok: false, error: "POST_ONLY" }, 405);
+  const text = (await request.text().catch(() => "")).slice(0, 8192);
+  let o; try { o = JSON.parse(text); } catch { return json({ ok: false, error: "BAD_JSON" }, 400); }
+  const pick = (k, n) => String(o?.[k] ?? "").slice(0, n);
+  const rec = { v: pick("v", 32), sdk: pick("sdk", 8), model: pick("model", 64), type: pick("type", 200), stack: pick("stack", 6000), at: Date.now() };
+  if (!rec.type) return json({ ok: false, error: "NO_TYPE" }, 400);
+  const day = new Date().toISOString().slice(0, 10);
+  await env.BALANCES.put(`crash:${day}:${crypto.randomUUID().slice(0, 8)}`, JSON.stringify(rec), { expirationTtl: 14 * 86400 });
+  return json({ ok: true });
+}

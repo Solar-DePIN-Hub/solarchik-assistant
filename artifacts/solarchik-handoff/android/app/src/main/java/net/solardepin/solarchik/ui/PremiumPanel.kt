@@ -92,6 +92,16 @@ class PremiumPanel(private val host: MainActivity) {
         val w = host.wallet
         if (busy) return
         if (!w.connected || !w.mainnet) { host.toast(ctx.getString(R.string.pm_need_wallet)); return }
+        // 1.2.12: exact amount, token and recipient before the wallet opens
+        android.app.AlertDialog.Builder(ctx).setTitle(R.string.pm_title)
+            .setMessage(ctx.getString(R.string.pm_confirm, Premium.TREASURY))
+            .setPositiveButton(R.string.pm_confirm_pay) { _, _ -> pay() }
+            .setNegativeButton(android.R.string.cancel, null).show()
+    }
+
+    private fun pay() {
+        val w = host.wallet
+        if (busy) return
         busy = true; render()
         val ref = SolanaPay.newReference()
         host.scope.launch {

@@ -282,4 +282,12 @@
     <string name="pm_invalid">The payment could not be verified. Contact support with your transaction link.</string>
     <string name="pm_pending">Payment sent, still confirming. Open Settings again in a minute.</string>
     <string name="settings_terms_open">Terms</string>
+    <string name="pm_confirm">Amount: 7.99 USDC\nFor: Sol Premium, 30 days\nTo (Sol treasury): %1$s\n\nYour wallet opens next and shows the same transfer for approval.</string>
+    <string name="pm_confirm_pay">Pay 7.99 USDC</string>
+    <string name="pr_title">Permission needed</string>
+    <string name="pr_mic">Sol uses the microphone only while you hold the mic button, to turn your voice into text. Nothing is recorded in the background.</string>
+    <string name="pr_notes">Notifications tell you about new call notes, reminders and payments. You can turn them off any time.</string>
+    <string name="pr_generic">Sol needs this permission for the feature you just opened. You can change it any time in system settings.</string>
+    <string name="pr_continue">Continue</string>
+    <string name="pr_not_now">Not now</string>
 </resources>

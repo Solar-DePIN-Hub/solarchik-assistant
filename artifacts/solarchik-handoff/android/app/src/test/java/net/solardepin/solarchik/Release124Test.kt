@@ -38,8 +38,8 @@ class Release124Test {
     private val vadim2 = item("rtc_u2_EXEyYp3o", "Vadim", "Wanted to just say hi to the owner.", "+380638500117", 600)
 
     @Test fun version() {
-        assertEquals("1.2.11", BuildConfig.VERSION_NAME)
-        assertEquals(132, BuildConfig.VERSION_CODE)
+        assertEquals("1.2.12", BuildConfig.VERSION_NAME)
+        assertEquals(133, BuildConfig.VERSION_CODE)
     }
 
     @Test fun theExactSummaryMakesAPayCardEvenOffline() {

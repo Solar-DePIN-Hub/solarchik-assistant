@@ -610,7 +610,7 @@ class CallsActivity : ComponentActivity() {
     private fun askNotifications() {
         if (Notes.allowed(this)) return
         if (Notes.needsRuntimePermission() && androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            notePermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            net.solardepin.solarchik.core.PermRationale.then(this, android.Manifest.permission.POST_NOTIFICATIONS) { notePermission.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
         } else {
             runCatching { startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)) }
         }

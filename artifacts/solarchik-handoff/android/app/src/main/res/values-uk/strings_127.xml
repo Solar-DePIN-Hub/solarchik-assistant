@@ -284,4 +284,12 @@
     <string name="pm_invalid">Оплату не вдалося підтвердити. Напиши в підтримку з посиланням на транзакцію.</string>
     <string name="pm_pending">Оплату надіслано, ще підтверджується. Відкрий Налаштування за хвилину.</string>
     <string name="settings_terms_open">Умови</string>
+    <string name="pm_confirm">Сума: 7.99 USDC\nЗа: Sol Premium, 30 днів\nКому (скарбниця Sol): %1$s\n\nДалі відкриється гаманець і покаже цей самий переказ для підтвердження.</string>
+    <string name="pm_confirm_pay">Сплатити 7.99 USDC</string>
+    <string name="pr_title">Потрібен дозвіл</string>
+    <string name="pr_mic">Sol використовує мікрофон лише поки ти тримаєш кнопку мікрофона, щоб перетворити голос на текст. У фоні нічого не записується.</string>
+    <string name="pr_notes">Сповіщення розкажуть про нові нотатки дзвінків, нагадування й платежі. Їх можна вимкнути будь-коли.</string>
+    <string name="pr_generic">Цей дозвіл потрібен для функції, яку ти відкрив. Змінити його можна в налаштуваннях системи.</string>
+    <string name="pr_continue">Продовжити</string>
+    <string name="pr_not_now">Не зараз</string>
 </resources>

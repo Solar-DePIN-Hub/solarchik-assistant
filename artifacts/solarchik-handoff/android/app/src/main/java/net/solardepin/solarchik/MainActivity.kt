@@ -156,7 +156,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         permCallback = cb
-        permLauncher.launch(perm)
+        net.solardepin.solarchik.core.PermRationale.then(this, perm, onCancel = { permCallback = null; cb(false) }) { permLauncher.launch(perm) }
     }
 
     /** "uk" or "en" from the app locale. */
@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
         prefs.edit().putBoolean("asked", true).apply()
         val perm = android.Manifest.permission.POST_NOTIFICATIONS
         if (notes.needsRuntimePermission() && (!asked || shouldShowRequestPermissionRationale(perm))) {
-            notePermission.launch(perm)
+            net.solardepin.solarchik.core.PermRationale.then(this, perm) { notePermission.launch(perm) }
         } else if (fromUser) {
             runCatching {
                 startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName))

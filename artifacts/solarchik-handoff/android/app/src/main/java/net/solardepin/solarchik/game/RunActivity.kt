@@ -317,7 +317,7 @@ class RunActivity : ComponentActivity(), RunView.Listener, RunOverlay.Actions {
         else {
             // 0.21.7: the system permission dialog never pops over a live run: pause first, then ask.
             setPaused(true)
-            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+            net.solardepin.solarchik.core.PermRationale.then(this, Manifest.permission.RECORD_AUDIO) { micPermission.launch(Manifest.permission.RECORD_AUDIO) }
         }
     }
 
