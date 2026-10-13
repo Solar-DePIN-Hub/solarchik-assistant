@@ -513,8 +513,8 @@ class CallsActivity : ComponentActivity() {
     }
 
     private fun dial(number: String) {
-        if (number.isBlank()) return
-        runCatching { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number)))) }
+        if (number.isBlank()) { android.widget.Toast.makeText(this, R.string.au_no_number, android.widget.Toast.LENGTH_LONG).show(); return }
+        runCatching { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number)))) }.onFailure { android.widget.Toast.makeText(this, R.string.au_no_dialer, android.widget.Toast.LENGTH_LONG).show() }
             .onFailure {
                 (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("number", number))
                 toast(getString(R.string.calls_no_dialer))
@@ -523,7 +523,7 @@ class CallsActivity : ComponentActivity() {
 
     private fun askBlock(item: CallItem, block: Boolean) {
         val num = item.dialNumber
-        if (num.isBlank()) return
+        if (num.isBlank()) { android.widget.Toast.makeText(this, R.string.au_no_number, android.widget.Toast.LENGTH_LONG).show(); return }
         val go = {
             scope.launch {
                 val list = withContext(Dispatchers.IO) { ScreenApi.block(item.owner, num, block) }

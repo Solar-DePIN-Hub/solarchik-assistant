@@ -3,7 +3,7 @@
     <string name="circle_title">Circle</string>
     <string name="circle_body">Who you owe, and who owes you. When a caller asks you to send money, it shows up as what you owe them. When they say they\'ll pay you, Request sends them a Solana Pay link to your own wallet. Only addresses you save yourself. Never one heard on a call. Nothing is sent until you approve it in your wallet.</string>
     <string name="circle_owe_label">You owe</string>
-    <string name="circle_owe_none">Nothing right now.</string>
+    <string name="circle_owe_none">Nothing right now. Money mentioned on calls lands here.</string>
     <string name="circle_settled_label">Settled</string>
     <string name="circle_settled_line">Paid %1$s %2$s %3$s</string>
     <string name="circle_people_label">People</string>

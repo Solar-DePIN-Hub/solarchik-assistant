@@ -569,7 +569,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
             CallAction.CALLBACK -> { if (a.number.isNotBlank()) CallActionCards.dial(ctx, a); MorningStack.done(ctx, a.id); countHandled(); render() }
             CallAction.OWED -> {
                 // opens the Solana Pay request (QR + share); once a request is out, the card leaves the stack
-                val d = net.solardepin.solarchik.circle.Circle.currentOwed(ctx).firstOrNull { it.action.id == a.id } ?: return
+                val d = net.solardepin.solarchik.circle.Circle.currentOwed(ctx).firstOrNull { it.action.id == a.id } ?: run { host.toast(ctx.getString(R.string.au_owed_gone)); host.renderAll(); return }
                 PayRequestSheet.show(host, d) {
                     if (net.solardepin.solarchik.circle.PayRequestStore(ctx).forAction(a.id) != null && !countedOwed.contains(a.id)) { countedOwed += a.id; MorningStack.touched(ctx); countHandled() }
                     host.renderAll()

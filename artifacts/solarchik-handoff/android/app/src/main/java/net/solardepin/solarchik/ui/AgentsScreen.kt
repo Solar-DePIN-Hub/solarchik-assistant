@@ -248,7 +248,7 @@ class AgentsScreen(host: MainActivity) : Screen(host) {
         val sku = agent.sku
         val btns = Ui.row(ctx, gap = 8)
         val soon = host.minter.canMint(sku, AgentTier.FREE) == MintError.Kind.MAINNET_SOON
-        if (soon) btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.mn_mint_soon), Ui.Btn.SECONDARY) {}.apply { tag = "agent-mint-soon"; Ui.setEnabled(this, false) }))
+        if (soon) btns.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.mn_mint_soon), Ui.Btn.SECONDARY) { host.toast(ctx.getString(R.string.mn_mint_soon_body)) }.apply { tag = "agent-mint-soon"; alpha = 0.6f }))
         else for (t in listOf(AgentTier.FREE, AgentTier.PRO)) {
             val block = host.minter.canMint(sku, t)
             val busy = busySku == sku.skuId(t)

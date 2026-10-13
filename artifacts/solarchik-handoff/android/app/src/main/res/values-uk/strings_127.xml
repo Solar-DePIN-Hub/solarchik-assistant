@@ -292,4 +292,8 @@
     <string name="pr_generic">Цей дозвіл потрібен для функції, яку ти відкрив. Змінити його можна в налаштуваннях системи.</string>
     <string name="pr_continue">Продовжити</string>
     <string name="pr_not_now">Не зараз</string>
+    <string name="au_no_number">Номер абонента прихований, тож нема куди дзвонити чи що блокувати.</string>
+    <string name="au_no_dialer">Не знайдено застосунку для дзвінків.</string>
+    <string name="au_owed_gone">Цей платіж уже опрацьовано.</string>
+    <string name="au_clock_not_ready">Спершу пробіжи 1200 м, щоб відкрити сьогоднішній CLOCK IN, а тоді підпиши тут.</string>
 </resources>

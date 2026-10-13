@@ -13,7 +13,7 @@
     <string name="wd_clear">Clear</string>
     <string name="wd_cleared">Log cleared</string>
     <string name="wd_copied">Log copied</string>
-    <string name="wd_empty">No wallet steps logged yet.</string>
+    <string name="wd_empty">No wallet steps logged yet. Connect a wallet on the Me tab and each step is logged here.</string>
     <string name="wd_share_failed">No app to share the log with</string>
     <string name="as_skr_no_wallet">Connect a wallet first (Today → Connect wallet), then I can read your SKR balance.</string>
     <string name="as_skr_devnet">SKR lives on Solana mainnet, and this wallet is on a test network, so there is no SKR to read.</string>

@@ -102,7 +102,7 @@
     <string name="play_first">Your first run</string>
     <string name="play_btn">Play</string>
     <string name="streak_desc">Streak: %d days</string>
-    <string name="circle_tab_sub_none">Nobody owes anybody right now.</string>
+    <string name="circle_tab_sub_none">Nobody owes anybody right now. When a caller mentions money, it shows up here.</string>
     <string name="circle_sum_owe">You owe %s</string>
     <string name="circle_sum_owed">owed %s</string>
     <string name="circle_hero_owe">You owe</string>
@@ -290,4 +290,8 @@
     <string name="pr_generic">Sol needs this permission for the feature you just opened. You can change it any time in system settings.</string>
     <string name="pr_continue">Continue</string>
     <string name="pr_not_now">Not now</string>
+    <string name="au_no_number">The caller\'s number is hidden, so there is nothing to call or block.</string>
+    <string name="au_no_dialer">No phone app found to place the call.</string>
+    <string name="au_owed_gone">This payment was already handled.</string>
+    <string name="au_clock_not_ready">Run 1,200 m first to unlock today\'s CLOCK IN, then sign it here.</string>
 </resources>

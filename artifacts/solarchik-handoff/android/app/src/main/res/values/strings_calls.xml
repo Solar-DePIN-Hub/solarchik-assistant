@@ -80,7 +80,7 @@
     <string name="calls_no_dialer">No dialer on this device: the number is copied.</string>
     <string name="calls_transcript_label">Conversation</string>
     <string name="calls_transcript_hint">Speech-to-text of the call; mistakes in the caller\'s words are possible.</string>
-    <string name="calls_transcript_none">No conversation was saved for this call.</string>
+    <string name="calls_transcript_none">No conversation was saved for this call. Calls shorter than a few seconds have no transcript.</string>
     <string name="calls_transcript_offline">Could not load the conversation (offline).</string>
     <string name="calls_who_caller">Caller</string>
     <string name="calls_who_secretary">Secretary</string>

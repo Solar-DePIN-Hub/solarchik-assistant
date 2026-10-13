@@ -105,7 +105,7 @@
     <string name="lane_w">Weather</string>
     <string name="lane_dex">SOL/USDC</string>
     <string name="agents_mine">My agents</string>
-    <string name="agents_mine_empty">Nothing minted on %1$s yet.</string>
+    <string name="agents_mine_empty">Nothing minted on %1$s yet. Tap an agent above to mint one.</string>
     <string name="agents_connect_hint">Connect a wallet to see agents you own.</string>
     <string name="agent_verified">On chain ✓</string>
     <string name="agent_pending">Confirming…</string>
@@ -263,7 +263,7 @@
     <string name="notes_blocked">Notifications are off for Sol.</string>
     <string name="notes_allow">Allow notifications</string>
     <string name="report_title">Today\'s note · UTC day</string>
-    <string name="report_none">No closed positions today.</string>
+    <string name="report_none">No closed positions today. Start a strategy on the desk to see results here.</string>
     <string name="report_positions">Closed positions: %1$d, in profit: %2$d. P&amp;L %3$s SOL.</string>
     <string name="report_fees">Fees charged %1$s, owed %2$s, waived %3$s SOL.</string>
     <string name="report_signed">Today is signed.</string>
@@ -336,7 +336,7 @@
     <string name="sec_checking">Checking…</string>
     <string name="sec_topup_how">Opens your Solana wallet with a mainnet USDC payment request. After you approve it, tap Check payment. Credit pays for AI notes only.</string>
     <string name="sec_reports">Screened calls</string>
-    <string name="sec_reports_empty">No screened calls yet.</string>
+    <string name="sec_reports_empty">No screened calls yet. Make Sol your call screening app above to start.</string>
     <string name="sec_report_head">%1$s · %2$s · %3$s</string>
     <string name="sec_action_silenced">silenced</string>
     <string name="sec_action_declined">declined</string>
@@ -345,7 +345,7 @@
     <string name="sec_status_failed">AI note failed. The call was still handled.</string>
     <string name="sec_voicemails">Voicemails</string>
     <string name="sec_voicemails_tap">Tap to load voicemails.</string>
-    <string name="sec_voicemails_empty">No voicemails.</string>
+    <string name="sec_voicemails_empty">No voicemails. Messages callers leave with the secretary show up here.</string>
     <string name="sec_rationale_title">Make Sol your call screener?</string>
     <string name="sec_rationale_body">Android will ask you to pick Sol as the call screening app. It only sees numbers that are not in your contacts and only the number itself, never the conversation. You can turn it off here or in system settings at any time.</string>
     <string name="sec_rationale_go">Continue</string>

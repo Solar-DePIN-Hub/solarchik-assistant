@@ -523,7 +523,8 @@ class YardScreen(host: MainActivity) : Screen(host) {
     fun signFromRun() = clockIn()
 
     private fun clockIn() {
-        if (!ClockIn.ready(save) || signing) return
+        if (signing) return // the sign sheet is already open
+        if (!ClockIn.ready(save)) { host.toast(ctx.getString(R.string.au_clock_not_ready)); return }
         signing = true
         render()
         host.scope.launch {
