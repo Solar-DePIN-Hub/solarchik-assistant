@@ -81,7 +81,7 @@
     <string name="today_checkin_none">Start a streak</string>
     <string name="today_play_sub">Rooftop run · best %d m</string>
 
-    <string name="today_footer">Solarchik Assistant %1$s · Solana %2$s</string>
+    <string name="today_footer">Sol %1$s · Solana %2$s</string>
 
     <string name="onb_skip">Skip</string>
     <string name="onb_next">Next</string>

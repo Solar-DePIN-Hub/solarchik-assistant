@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Соларчик Асистент</string>
-    <string name="brand">Соларчик</string>
+    <string name="app_name">Sol</string>
+    <string name="brand">Sol</string>
 
     <string name="nav_yard">Дім</string>
     <string name="nav_run">Грати</string>
@@ -163,7 +163,7 @@
     <string name="settings_run_music">Гучність музики</string>
     <string name="settings_run_sfx">Гучність ефектів</string>
     <string name="settings_language">Мова</string>
-    <string name="settings_language_body">Типово Соларчик англійською. Тут можна вибрати українську або «Як у телефоні», щоб мова була як на телефоні. Це змінює й чат та голос Сола.</string>
+    <string name="settings_language_body">Типово Sol англійською. Тут можна вибрати українську або «Як у телефоні», щоб мова була як на телефоні. Це змінює й чат та голос Сола.</string>
     <string name="settings_language_open">Змінити мову застосунку</string>
     <string name="settings_notes">Нагадування</string>
     <string name="settings_about">Про застосунок</string>
@@ -173,7 +173,7 @@
     <string name="err_declined">Гаманець не підписав. Нічого не відправлено.</string>
     <string name="err_network">Проблема з мережею. Перевір звʼязок і спробуй ще.</string>
     <string name="err_failed">Помилка гаманця: %1$s</string>
-    <string name="note_channel">Соларчик</string>
+    <string name="note_channel">Sol</string>
     <string name="note_streak_title">Щоденна відмітка</string>
     <string name="note_streak_body">Сьогоднішню відмітку ще не підписано. Один дотик у гаманці зберігає стрік; день закінчиться приблизно за 3 години.</string>
     <string name="note_reward_title">Вікно без комісії</string>
@@ -248,7 +248,7 @@
     <string name="desk_log_empty">Запусти стратегію, щоб бачити тут кожне рішення.</string>
     <string name="notes_how">Локальні нагадування, перевірка приблизно щогодини: якщо сьогоднішню відмітку не підписано приблизно за 3 години до кінця дня (03:00 за Києвом = 00:00 UTC). Ранковий брифінг, сповіщення Спостерігача й нагадування з дзвінків налаштовуються окремо.</string>
     <string name="notes_allowed">Сповіщення дозволено</string>
-    <string name="notes_blocked">Сповіщення для Solarchik вимкнено.</string>
+    <string name="notes_blocked">Сповіщення для Sol вимкнено.</string>
     <string name="notes_allow">Дозволити сповіщення</string>
     <string name="report_title">Нотатка дня · день UTC</string>
     <string name="report_none">Сьогодні закритих позицій немає.</string>
@@ -309,7 +309,7 @@
     <string name="settings_delete_done">Усі дані застосунку на цьому телефоні видалено.</string>
     <!-- Секретар дзвінків (Налаштування) -->
     <string name="sec_title">Секретар дзвінків</string>
-    <string name="sec_body">Дзвінки з номерів, яких немає в твоїх контактах, можна вимкнути без звуку або відхилити. Контакти завжди дзвонять: Solarchik не читає твої контакти. Кожен перевірений дзвінок записується тут, на цьому телефоні.</string>
+    <string name="sec_body">Дзвінки з номерів, яких немає в твоїх контактах, можна вимкнути без звуку або відхилити. Контакти завжди дзвонять: Sol не читає твої контакти. Кожен перевірений дзвінок записується тут, на цьому телефоні.</string>
     <string name="sec_needs_android10">Потрібен Android 10 або новіший.</string>
     <string name="sec_toggle">Перевіряти невідомі номери</string>
     <string name="sec_mode">Коли дзвонить невідомий номер</string>
@@ -335,8 +335,8 @@
     <string name="sec_voicemails">Голосові повідомлення</string>
     <string name="sec_voicemails_tap">Торкніться, щоб завантажити голосові.</string>
     <string name="sec_voicemails_empty">Голосових немає.</string>
-    <string name="sec_rationale_title">Зробити Solarchik фільтром дзвінків?</string>
-    <string name="sec_rationale_body">Android попросить обрати Solarchik застосунком для перевірки дзвінків. Він бачить лише номери, яких немає в твоїх контактах, і лише сам номер, ніколи не розмову. Вимкнути можна тут або в системних налаштуваннях будь-коли.</string>
+    <string name="sec_rationale_title">Зробити Sol фільтром дзвінків?</string>
+    <string name="sec_rationale_body">Android попросить обрати Sol застосунком для перевірки дзвінків. Він бачить лише номери, яких немає в твоїх контактах, і лише сам номер, ніколи не розмову. Вимкнути можна тут або в системних налаштуваннях будь-коли.</string>
     <string name="sec_rationale_go">Далі</string>
     <string name="sec_role_denied">Перевірку дзвінків не ввімкнено.</string>
     <string name="sec_paid">Оплату отримано: додано %1$s.</string>
@@ -399,7 +399,7 @@
     <string name="run_hearts_shield_a11y">%1$d з 3 сердець, щит увімкнено</string>
     <string name="run_score_a11y">Очки %1$d</string>
     <string name="run_a11y_view">Забіг дахами. Двічі торкнись, щоб стрибнути.</string>
-    <string name="run_mic_denied">Мікрофон для Solarchik вимкнено.</string>
+    <string name="run_mic_denied">Мікрофон для Sol вимкнено.</string>
     <string name="ch_sunrise">Золота година</string>
     <string name="ch_village">Сонячний квартал</string>
     <string name="ch_storm">Лінія шторму</string>

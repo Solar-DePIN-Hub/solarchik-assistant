@@ -46,6 +46,11 @@ class SeasonDropsPanel(private val host: MainActivity, private val onChange: () 
         if (items.isEmpty()) {
             addView(Ui.top(Ui.muted(ctx, ctx.getString(if (loading) R.string.sd_loading else R.string.sd_empty), 13f).apply { tag = "season-drops-empty" }, 10))
         } else items.take(6).forEachIndexed { i, d -> addView(Ui.top(row(d, i), if (i == 0) 12 else 8)) }
+        // 1.2.11: when the worker last re-read the sources (its cron runs every 6 h), so a stale list is visible as stale
+        doc?.checkedAt?.takeIf { it > 0 }?.let { at ->
+            val f = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, net.solardepin.solarchik.core.AppLocale.ui(ctx))
+            addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.sd_updated, f.format(java.util.Date(at))), 11.5f).apply { tag = "season-drops-updated" }, 12))
+        }
         addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.sd_sources), 11.5f).apply { tag = "season-drops-sources"; setLineSpacing(0f, 1.2f) }, 12))
         addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.sd_no_points), 11.5f).apply { setLineSpacing(0f, 1.2f) }, 4))
     }

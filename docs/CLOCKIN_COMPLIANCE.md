@@ -32,7 +32,7 @@ Sources
 | 14 | Judging 25 % each: stickiness, UX, innovation, presentation | T 8.1; S | n/a | Covered by the video/deck |
 | 15 | SKR integration prize (optional; staking does not qualify) | B; S FAQ; K | FAIL (not integrated) | SKR (`SKRbvo6G…`) exists only on mainnet; this work is devnet-only, so no SKR integration was added |
 | 16 | Winners: publish on Solana dApp Store within 30 days; KYC via Sumsub | T 9.3, 10 | OWNER (later) | |
-| 17 | dApp Store: signed release APK, not debug | C; N | PASS (box key) / OWNER | Release APK signed with the BOX TEST KEY. The store build must use the owner's production key; 0.19.51 was signed with `CN=Solar DePin` |
+| 17 | dApp Store: signed release APK, not debug | C; N | PASS (box key) / OWNER | Release APK signed with a test key (not the production key). The store build must use the owner's production key; 0.19.51 was signed with `CN=Solar DePin` |
 | 18 | dApp Store icon 512×512 | L | PASS | `docs/store/icon-512.png`, rendered from the APK launcher drawable by `ComplianceTest.storeIcon512FromLauncherDrawable` |
 | 19 | Screenshots ≥ 1080 px both sides, same orientation and aspect; at least 4 for listing | L | PASS | `docs/store/screenshots/*.png`, 1080×2400 portrait |
 | 20 | Short description ≤ 30 chars | L | PASS | "Solar robot, daily CLOCK IN" (27) |

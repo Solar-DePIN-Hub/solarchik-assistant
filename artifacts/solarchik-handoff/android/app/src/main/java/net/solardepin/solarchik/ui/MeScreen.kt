@@ -139,11 +139,23 @@ class MeScreen(host: MainActivity) : Screen(host) {
 
     /** Send: to someone in your Circle with a saved address (the same one-approval transfer). */
     private fun send() {
-        val people = net.solardepin.solarchik.circle.CircleStore(ctx).all().filter { it.address.isNotBlank() }.sortedBy { it.name.lowercase() }
-        if (people.isEmpty()) { host.toast(ctx.getString(R.string.me_send_none)); host.select(MainActivity.Tab.CIRCLE, animate = true); return }
-        android.app.AlertDialog.Builder(ctx).setTitle(R.string.me_send_pick)
-            .setItems(people.map { it.name + " · " + Fmt.short(it.address) }.toTypedArray()) { _, i -> CirclePanel.sendTo(host, people[i]) { host.renderAll() } }
-            .setNegativeButton(android.R.string.cancel, null).show()
+        // 1.2.11 (Seeker report): with no saved address the old path only flashed a toast and jumped to Circle, which
+        // read as "Send does nothing". Now Send always opens a form: pick someone, or add a person + wallet and send.
+        runCatching {
+            val people = net.solardepin.solarchik.circle.CircleStore(ctx).all().filter { it.address.isNotBlank() }.sortedBy { it.name.lowercase() }
+            if (people.isEmpty()) { sendToNew(); return }
+            val items = people.map { it.name + " · " + Fmt.short(it.address) } + ctx.getString(R.string.me_send_new)
+            android.app.AlertDialog.Builder(ctx).setTitle(R.string.me_send_pick)
+                .setItems(items.toTypedArray()) { _, i -> if (i < people.size) CirclePanel.sendTo(host, people[i]) { host.renderAll() } else sendToNew() }
+                .setNegativeButton(android.R.string.cancel, null).show()
+        }.onFailure { host.toast(ctx.getString(R.string.me_send_error, it.message ?: it.javaClass.simpleName)) }
+    }
+
+    private fun sendToNew() {
+        CirclePanel.edit(host, net.solardepin.solarchik.circle.Contact("", ""), ctx.getString(R.string.me_send_new)) { saved ->
+            host.renderAll()
+            if (saved.address.isBlank()) host.toast(ctx.getString(R.string.me_send_none)) else CirclePanel.sendTo(host, saved) { host.renderAll() }
+        }
     }
 
     /** Live balances (SOL, and on mainnet USDC + SKR), at most every 30 s unless [force]. */

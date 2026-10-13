@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Solarchik Assistant</string>
-    <string name="brand">Solarchik</string>
+    <string name="app_name">Sol</string>
+    <string name="brand">Sol</string>
 
     <!-- Navigation -->
     <string name="nav_yard">Home</string>
@@ -172,7 +172,7 @@
     <string name="settings_run_music">Music volume</string>
     <string name="settings_run_sfx">Effects volume</string>
     <string name="settings_language">Language</string>
-    <string name="settings_language_body">Solarchik is in English by default. Pick Українська here, or Phone to follow your phone\'s language. This also changes Sol\'s chat and voice.</string>
+    <string name="settings_language_body">Sol is in English by default. Pick Українська here, or Phone to follow your phone\'s language. This also changes Sol\'s chat and voice.</string>
     <string name="settings_language_open">Change app language</string>
     <string name="settings_notes">Reminders</string>
     <string name="settings_about">About</string>
@@ -185,7 +185,7 @@
     <string name="err_failed">Wallet error: %1$s</string>
 
     <!-- Notifications (copy from the Grok export, scheduling lands in milestone B) -->
-    <string name="note_channel">Solarchik</string>
+    <string name="note_channel">Sol</string>
     <string name="note_streak_title">Daily check-in</string>
     <string name="note_streak_body">Today\'s check-in isn\'t signed yet. One tap in your wallet keeps the streak; the day ends in about 3 hours.</string>
     <string name="note_reward_title">Fee-free window</string>
@@ -260,7 +260,7 @@
     <string name="desk_log_empty">Start a strategy to see each decision here.</string>
     <string name="notes_how">Local reminders, checked about once an hour: if today\'s check-in isn\'t signed about 3 hours before the day ends (03:00 Kyiv = 00:00 UTC). The morning briefing, Watcher alerts and call reminders have their own settings.</string>
     <string name="notes_allowed">Notifications allowed</string>
-    <string name="notes_blocked">Notifications are off for Solarchik.</string>
+    <string name="notes_blocked">Notifications are off for Sol.</string>
     <string name="notes_allow">Allow notifications</string>
     <string name="report_title">Today\'s note · UTC day</string>
     <string name="report_none">No closed positions today.</string>
@@ -320,7 +320,7 @@
     <string name="settings_delete_done">All app data on this phone was deleted.</string>
     <!-- Call secretary (Settings) -->
     <string name="sec_title">Call secretary</string>
-    <string name="sec_body">Calls from numbers outside your contacts can be silenced or declined. Contacts always ring: Solarchik never reads your contacts. Each screened call is logged here, on this phone.</string>
+    <string name="sec_body">Calls from numbers outside your contacts can be silenced or declined. Contacts always ring: Sol never reads your contacts. Each screened call is logged here, on this phone.</string>
     <string name="sec_needs_android10">Needs Android 10 or newer.</string>
     <string name="sec_toggle">Screen unknown callers</string>
     <string name="sec_mode">When an unknown number calls</string>
@@ -346,8 +346,8 @@
     <string name="sec_voicemails">Voicemails</string>
     <string name="sec_voicemails_tap">Tap to load voicemails.</string>
     <string name="sec_voicemails_empty">No voicemails.</string>
-    <string name="sec_rationale_title">Make Solarchik your call screener?</string>
-    <string name="sec_rationale_body">Android will ask you to pick Solarchik as the call screening app. It only sees numbers that are not in your contacts and only the number itself, never the conversation. You can turn it off here or in system settings at any time.</string>
+    <string name="sec_rationale_title">Make Sol your call screener?</string>
+    <string name="sec_rationale_body">Android will ask you to pick Sol as the call screening app. It only sees numbers that are not in your contacts and only the number itself, never the conversation. You can turn it off here or in system settings at any time.</string>
     <string name="sec_rationale_go">Continue</string>
     <string name="sec_role_denied">Call screening was not enabled.</string>
     <string name="sec_paid">Payment received: %1$s added.</string>
@@ -410,7 +410,7 @@
     <string name="run_hearts_shield_a11y">%1$d of 3 hearts, shield on</string>
     <string name="run_score_a11y">Score %1$d</string>
     <string name="run_a11y_view">Roof run. Double tap to jump.</string>
-    <string name="run_mic_denied">Microphone is off for Solarchik.</string>
+    <string name="run_mic_denied">Microphone is off for Sol.</string>
     <string name="ch_sunrise">Golden hour</string>
     <string name="ch_village">Solar district</string>
     <string name="ch_storm">Storm line</string>

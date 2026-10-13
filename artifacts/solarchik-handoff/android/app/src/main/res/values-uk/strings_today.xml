@@ -86,7 +86,7 @@
     <string name="today_checkin_none">Почни серію</string>
     <string name="today_play_sub">Забіг дахами · рекорд %d м</string>
 
-    <string name="today_footer">Solarchik Assistant %1$s · Solana %2$s</string>
+    <string name="today_footer">Sol %1$s · Solana %2$s</string>
 
     <string name="onb_skip">Пропустити</string>
     <string name="onb_next">Далі</string>

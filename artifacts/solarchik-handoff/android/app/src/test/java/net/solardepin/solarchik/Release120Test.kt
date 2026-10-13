@@ -56,8 +56,8 @@ class Release120Test {
     @org.junit.After fun restore() { MainActivity.tickerEnabled = true }
 
     @Test fun version() {
-        assertEquals("1.2.10", BuildConfig.VERSION_NAME)
-        assertEquals(131, BuildConfig.VERSION_CODE)
+        assertEquals("1.2.11", BuildConfig.VERSION_NAME)
+        assertEquals(132, BuildConfig.VERSION_CODE)
     }
 
     @Test fun skrPaymentIsAnSplTransferWithSixDecimalsAndCreatesTheRecipientAccount() {

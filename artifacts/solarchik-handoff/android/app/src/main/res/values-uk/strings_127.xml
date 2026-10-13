@@ -147,7 +147,9 @@
     <string name="me_saved">Ти відклав %s USDC</string>
     <string name="me_notes">Сповіщення</string>
     <string name="me_send_pick">Надіслати комусь із Кола</string>
-    <string name="me_send_none">Спершу додай у Коло людину з гаманцем.</string>
+    <string name="me_send_none">Додай адресу гаманця Solana, щоб надіслати.</string>
+    <string name="me_send_new">Надіслати на новий гаманець…</string>
+    <string name="me_send_error">Не вдалося відкрити Надіслати: %1$s</string>
     <string name="voice_listening">Слухаю…</string>
     <string name="voice_heard">Зрозуміла</string>
     <string name="voice_adds">Додасть: %s</string>
@@ -271,4 +273,15 @@
     <string name="clock_sum_dismissed">Прибрано: %s</string>
     <string name="onb9_a_title">Твої агенти</string>
     <string name="onb9_a_body">Агент Season: стежить за завданнями Seeker Season і дропами партнерів, щодня з офіційних джерел. Sol: голосовий помічник за кнопкою мікрофона. Інші помічники в Я → Агенти й автопілот, лише в межах твоїх лімітів.</string>
+    <string name="sd_updated">Оновлено %1$s</string>
+    <string name="pm_title">Sol Premium</string>
+    <string name="pm_body">Власний номер для ІІ-секретаря. 7.99 USDC за 30 днів, оплата з твого гаманця через Solana Pay, перевірка в мережі Solana.</string>
+    <string name="pm_buy">Отримати Premium · 7.99 USDC</string>
+    <string name="pm_checking">Перевіряю оплату…</string>
+    <string name="pm_need_wallet">Спершу підключи гаманець mainnet з USDC.</string>
+    <string name="pm_active">Premium активний до %1$s</string>
+    <string name="pm_number_setup">Твій номер налаштовується.</string>
+    <string name="pm_invalid">Оплату не вдалося підтвердити. Напиши в підтримку з посиланням на транзакцію.</string>
+    <string name="pm_pending">Оплату надіслано, ще підтверджується. Відкрий Налаштування за хвилину.</string>
+    <string name="settings_terms_open">Умови</string>
 </resources>

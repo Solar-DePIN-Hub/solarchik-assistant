@@ -147,7 +147,9 @@
     <string name="me_saved">You saved %s USDC</string>
     <string name="me_notes">Notifications</string>
     <string name="me_send_pick">Send to someone in your Circle</string>
-    <string name="me_send_none">Add a person with a wallet in Circle first.</string>
+    <string name="me_send_none">Add a Solana wallet address to send.</string>
+    <string name="me_send_new">Send to a new wallet…</string>
+    <string name="me_send_error">Can\'t open Send: %1$s</string>
     <string name="voice_listening">Listening…</string>
     <string name="voice_heard">Got it</string>
     <string name="voice_adds">Adds %s</string>
@@ -269,4 +271,15 @@
     <string name="clock_sum_dismissed">Dismissed: %s</string>
     <string name="onb9_a_title">Your agents</string>
     <string name="onb9_a_body">Season agent: tracks Seeker Season tasks and partner drops, updated daily from official sources. Sol: the voice assistant behind the mic. More helpers live in Me → Agents and autopilot, only within limits you set.</string>
+    <string name="sd_updated">Updated %1$s</string>
+    <string name="pm_title">Sol Premium</string>
+    <string name="pm_body">Your own phone number for the AI secretary. 7.99 USDC for 30 days, paid from your wallet with Solana Pay and checked on Solana mainnet.</string>
+    <string name="pm_buy">Get Premium · 7.99 USDC</string>
+    <string name="pm_checking">Checking the payment…</string>
+    <string name="pm_need_wallet">Connect a mainnet wallet with USDC first.</string>
+    <string name="pm_active">Premium active until %1$s</string>
+    <string name="pm_number_setup">Your number is being set up.</string>
+    <string name="pm_invalid">The payment could not be verified. Contact support with your transaction link.</string>
+    <string name="pm_pending">Payment sent, still confirming. Open Settings again in a minute.</string>
+    <string name="settings_terms_open">Terms</string>
 </resources>

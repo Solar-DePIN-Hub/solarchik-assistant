@@ -103,7 +103,7 @@
     <string name="fw_unreachable">Unreachable</string>
     <string name="fw_off">Turn forwarding off (%1$s)</string>
     <string name="fw_carrier">Each button opens your dialer with a standard GSM code; you press call and your carrier sets it up. Your carrier may charge for forwarded calls. Some carriers (and CDMA networks) use their own app or codes instead.</string>
-    <string name="fw_how">How Sol knows a forwarded call is yours: if your carrier passes your number along with the call, it matches your verified number. If not, it matches the caller your phone just screened (Solarchik must be the call screening app; that covers numbers outside your contacts). A call the line can\'t match goes to the line owner\'s demo inbox, not to you.</string>
+    <string name="fw_how">How Sol knows a forwarded call is yours: if your carrier passes your number along with the call, it matches your verified number. If not, it matches the caller your phone just screened (Sol must be the call screening app; that covers numbers outside your contacts). A call the line can\'t match goes to the line owner\'s demo inbox, not to you.</string>
     <string name="stack_season_pill">SEASON TASK</string>
     <string name="stack_season_until">Until %1$s</string>
     <string name="stack_season_source">From an official Solana Mobile post. Opening it only opens the link.</string>

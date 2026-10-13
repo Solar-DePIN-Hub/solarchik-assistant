@@ -28,7 +28,7 @@
     <string name="sd_src_curated">Source: @solanamobile on X · %1$s (curated, checked %2$s)</string>
     <string name="sd_open">Open the announcement</string>
     <string name="sd_sources">Reads the official Solana Mobile blog and docs. X support is built in and turns on with the paid API.</string>
-    <string name="sd_no_points">Perks are as the partner announced them. Find the apps in the Solana dApp Store. Solarchik never promises points.</string>
+    <string name="sd_no_points">Perks are as the partner announced them. Find the apps in the Solana dApp Store. Sol never promises points.</string>
     <string name="br_skr">You hold %1$s SKR.</string>
     <string name="br_season_tasks">Season partner apps today: %1$s, on the Solana dApp Store.</string>
     <string name="sk_title">Verified Seeker</string>
@@ -36,7 +36,7 @@
     <string name="sk_not_verified">Not verified</string>
     <string name="sk_badge">✓ Verified</string>
     <string name="sk_optional">Optional</string>
-    <string name="sk_body">Everything in Solarchik works on any Android phone. If you own a Seeker, verify it with its Seeker Genesis Token for a Verified badge and +%1$d secretary minutes a day. You sign a sign-in message in your wallet; no transaction, nothing is paid.</string>
+    <string name="sk_body">Everything in Sol works on any Android phone. If you own a Seeker, verify it with its Seeker Genesis Token for a Verified badge and +%1$d secretary minutes a day. You sign a sign-in message in your wallet; no transaction, nothing is paid.</string>
     <string name="sk_verified_body">Your Seeker Genesis Token (%2$s) is verified: +%1$d secretary minutes a day. One token gives this perk to one account.</string>
     <string name="sk_verify">Verify with Seeker Genesis Token</string>
     <string name="sk_checking">Checking…</string>

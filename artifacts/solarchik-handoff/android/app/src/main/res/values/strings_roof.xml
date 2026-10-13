@@ -92,7 +92,7 @@
     <string name="tour_tools_t">Settings</string>
     <string name="tour_tools_b">The toolbox: wallet, language, my voice, the secretary. Lost? Tap ☰ for the full list, or ? to replay this tour.</string>
 
-    <string name="judge_intro_t">Solarchik in 60 seconds</string>
+    <string name="judge_intro_t">Sol in 60 seconds</string>
     <string name="judge_intro_b">A daily game for Solana phones: run the roofs, sign your day on-chain, and let AI agents and a phone secretary work while you’re busy. Everything here runs on devnet.</string>
     <string name="judge_clock_t">Run → CLOCK IN</string>
     <string name="judge_clock_b">%d m of running unlocks the day’s signature: a devnet memo transaction through Mobile Wallet Adapter or the built-in wallet. A streak of signed days earns fee-free windows.</string>

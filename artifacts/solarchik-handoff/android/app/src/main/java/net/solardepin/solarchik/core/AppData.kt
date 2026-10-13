@@ -14,6 +14,7 @@ import androidx.work.WorkManager
 object AppData {
     /** Every SharedPreferences file the app writes. Keep in sync when a new store is added. */
     val PREFS = listOf(
+        "sol.premium",
         "solarchik.circle",
         "solarchik.habits",
         "solarchik.payreq",
@@ -50,7 +51,8 @@ object AppData {
     /** Background jobs that would otherwise keep ticking with old state. */
     val WORKS = listOf("solarchik-desk", "solarchik-notes", "solarchik-calls-poll", "solarchik-season-auto", "solarchik-briefing")
 
-    const val PRIVACY_URL = "https://github.com/Solar-DePIN-Hub/solarchik-assistant/blob/main/PRIVACY.md"
+    const val PRIVACY_URL = "https://app.solardepin.net/privacy"
+    const val TERMS_URL = "https://app.solardepin.net/terms"
 
     // commit(), not apply(): the activity is recreated right after, so the wipe must be on disk first.
     @SuppressLint("ApplySharedPref")

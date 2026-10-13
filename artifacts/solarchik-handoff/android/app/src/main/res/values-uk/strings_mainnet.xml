@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="mn_install_title">Встанови гаманець Solana</string>
-    <string name="mn_install_body">Solarchik Assistant працює в Solana mainnet зі справжніми коштами, тож використовує твій власний гаманець через Mobile Wallet Adapter: Seed Vault на Seeker або Phantom / Solflare. Застосунок не зберігає твоїх ключів, і кожна транзакція відкривається в гаманці на підтвердження.</string>
+    <string name="mn_install_body">Sol працює в Solana mainnet зі справжніми коштами, тож використовує твій власний гаманець через Mobile Wallet Adapter: Seed Vault на Seeker або Phantom / Solflare. Застосунок не зберігає твоїх ключів, і кожна транзакція відкривається в гаманці на підтвердження.</string>
     <string name="mn_network_mainnet">Справжні кошти. Кожна транзакція відкривається в гаманці на підтвердження.</string>
     <string name="mn_network_devnet">Режим розробника: тестові SOL у devnet, можна вбудований тестовий гаманець.</string>
     <string name="mn_dev_unlocked">Параметри розробника увімкнено</string>
@@ -14,7 +14,7 @@
     <string name="mn_open_orb">Відкрити в Orb</string>
     <string name="mn_today_wallet_none">Гаманець не підключено. Підключи його, і Сол зможе готувати справжні дії в Solana mainnet; кожна чекає твого підтвердження в гаманці.</string>
     <string name="mn_mint_soon">Мінт у mainnet: скоро</string>
-    <string name="mn_mint_soon_body">NFT агентів у mainnet відкриються, щойно запрацює колекція Solarchik. Усі три агенти працюють уже зараз без NFT.</string>
+    <string name="mn_mint_soon_body">NFT агентів у mainnet відкриються, щойно запрацює колекція Sol. Усі три агенти працюють уже зараз без NFT.</string>
     <string name="mn_season_checkin_done">Сьогоднішня відмітка — справжня транзакція в mainnet.</string>
     <string name="mn_season_swap_done">Сьогодні був справжній обмін у mainnet.</string>
     <string name="mn_season_not_chain">Відмітку підписано, але не транзакцією в mainnet, тож цей пункт ще відкритий.</string>

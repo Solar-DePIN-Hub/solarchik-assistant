@@ -776,6 +776,8 @@ class TodayScreen(host: MainActivity) : Screen(host) {
         addView(Kit.primary(ctx, ctx.getString(R.string.clock_in_btn), R.drawable.lc_check) {
             MorningStack.settle(ctx)
             host.renderAll()
+            // 1.2.11 (Seeker report): "Clock in" only settled the stack, so the game never started. Clock in = the run.
+            host.playGame()
         }.apply { tag = "stack-clock-in" }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(60)).apply { topMargin = dp(20) })
     }
 

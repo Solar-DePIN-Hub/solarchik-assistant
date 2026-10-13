@@ -174,8 +174,15 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             r.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.settings_privacy_open), Ui.Btn.GHOST) {
                 host.openUrl(AppData.PRIVACY_URL)
             }.apply { maxLines = 2 }))
+            r.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.settings_terms_open), Ui.Btn.GHOST) { host.openUrl(AppData.TERMS_URL) }.apply { tag = "settings-terms"; maxLines = 2 }))
             r.addView(Ui.weight(Ui.button(ctx, ctx.getString(R.string.settings_delete_data), Ui.Btn.GHOST) { confirmWipe() }.apply { maxLines = 2 }))
             addView(Ui.top(r, 12))
+        })
+
+        // 1.2.11: Sol Premium (7.99 USDC / 30 days via Solana Pay, verified by app.solardepin.net)
+        addView(section(R.string.pm_title, R.drawable.ic_wallet, Ui.GOLD).apply {
+            tag = "settings-premium"
+            val pp = PremiumPanel(host); addView(pp.view); pp.render(); pp.refresh()
         })
 
         addView(section(R.string.settings_about, R.drawable.ic_launcher, Ui.GOLD, tint = false).apply {

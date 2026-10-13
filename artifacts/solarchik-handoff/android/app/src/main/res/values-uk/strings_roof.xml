@@ -91,7 +91,7 @@
     <string name="tour_tools_t">Налаштування</string>
     <string name="tour_tools_b">Ящик з інструментами: гаманець, мова, мій голос, секретар. Не знаєш, куди далі? Тисни «☰», там усе списком, або «?», щоб повторити екскурсію.</string>
 
-    <string name="judge_intro_t">Solarchik за 60 секунд</string>
+    <string name="judge_intro_t">Sol за 60 секунд</string>
     <string name="judge_intro_b">Щоденна гра для телефонів Solana: біжиш дахами, підписуєш день у блокчейні, а AI-агенти й телефонний секретар працюють, поки ти в справах. Усе тут працює на devnet.</string>
     <string name="judge_clock_t">Забіг → CLOCK IN</string>
     <string name="judge_clock_b">%d м забігу відкривають підпис дня: memo-транзакцію в devnet через Mobile Wallet Adapter або вбудований гаманець. Серія підписаних днів дає вікна без комісії.</string>

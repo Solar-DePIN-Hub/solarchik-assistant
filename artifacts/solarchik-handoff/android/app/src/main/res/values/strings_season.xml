@@ -11,7 +11,7 @@
     <string name="season_plan">Today\'s plan</string>
     <string name="season_use_title">Use your phone today</string>
     <string name="season_use_done">Opened today · %1$s</string>
-    <string name="season_use_todo">Open Solarchik once a day</string>
+    <string name="season_use_todo">Open Sol once a day</string>
     <plurals name="season_streak">
         <item quantity="one">%d day in a row</item>
         <item quantity="other">%d days in a row</item>

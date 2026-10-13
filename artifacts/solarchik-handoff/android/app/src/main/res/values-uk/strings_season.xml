@@ -11,7 +11,7 @@
     <string name="season_plan">План на сьогодні</string>
     <string name="season_use_title">Користуйся телефоном сьогодні</string>
     <string name="season_use_done">Відкрито сьогодні · %1$s</string>
-    <string name="season_use_todo">Відкривай Соларчика раз на день</string>
+    <string name="season_use_todo">Відкривай Sol раз на день</string>
     <plurals name="season_streak">
         <item quantity="one">%d день поспіль</item>
         <item quantity="few">%d дні поспіль</item>

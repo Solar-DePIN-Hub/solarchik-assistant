@@ -12,7 +12,7 @@
     <string name="aa_nft">Agent NFT (Metaplex Core)</string>
     <string name="aa_nft_free">Mint Free</string>
     <string name="aa_nft_pro">Mint Pro · %1$s SOL</string>
-    <string name="aa_nft_note">Free: one per wallet. Pro: 0.1 SOL to the Solarchik treasury, checked by the server. The agent works the same without an NFT.</string>
+    <string name="aa_nft_note">Free: one per wallet. Pro: 0.1 SOL to the Sol treasury, checked by the server. The agent works the same without an NFT.</string>
     <string name="aa_plan_label">Seeker Season plan</string>
     <string name="aa_plan_line">%1$d of %2$d done today · streak %3$d</string>
     <string name="aa_plan_open">Open the Season plan</string>
@@ -123,7 +123,7 @@
     <string name="ca_said_warning">The caller said this address. Anyone can claim to be someone else on the phone: use it only if you are sure it belongs to the person you know.</string>
     <string name="ca_said_use">Use this address</string>
     <string name="ca_sheet_check">I checked the recipient address myself</string>
-    <string name="ca_sheet_note">Your wallet app shows the transfer and asks you to approve it. Solarchik never signs payments.</string>
+    <string name="ca_sheet_note">Your wallet app shows the transfer and asks you to approve it. Sol never signs payments.</string>
     <string name="ca_sheet_confirm">Confirm in wallet</string>
     <string name="ca_err_token">Only SOL, USDC and SKR transfers are supported.</string>
     <string name="ca_err_amount">The amount is not valid.</string>

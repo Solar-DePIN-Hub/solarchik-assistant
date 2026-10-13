@@ -109,6 +109,8 @@ class Release114Test {
         val a = launch()
         // 1.2.7: the check-in is the optional "Sign on Solana" chip once the stack is clear
         StackKit.clear(a); idle()
+        // 1.2.11: "Clock in" now starts the run itself; that launch is expected, the Sign chip must not add another
+        assertEquals(RunActivity::class.java.name, shadowOf(a).nextStartedActivity?.component?.className)
         assertNotNull(find(a.window.decorView, "stack-clocked"))
         find(a.window.decorView, "stack-sign")!!.performClick(); idle()
         assertEquals(MainActivity.Tab.SHIFT, a.current)
@@ -135,7 +137,7 @@ class Release114Test {
     }
 
     @Test fun versionIs114() {
-        assertEquals("1.2.10", BuildConfig.VERSION_NAME) // 1.1.5 keeps every 1.1.4 rule
-        assertEquals(131, BuildConfig.VERSION_CODE)
+        assertEquals("1.2.11", BuildConfig.VERSION_NAME) // 1.1.5 keeps every 1.1.4 rule
+        assertEquals(132, BuildConfig.VERSION_CODE)
     }
 }

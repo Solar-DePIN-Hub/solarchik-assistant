@@ -28,7 +28,7 @@
     <string name="sd_src_curated">Джерело: @solanamobile в X · %1$s (добірка, перевірено %2$s)</string>
     <string name="sd_open">Відкрити оголошення</string>
     <string name="sd_sources">Читає офіційний блог і документацію Solana Mobile. Підтримка X вбудована й вмикається з платним API.</string>
-    <string name="sd_no_points">Бонуси такі, як їх оголосив партнер. Застосунки шукай у Solana dApp Store. Solarchik ніколи не обіцяє бали.</string>
+    <string name="sd_no_points">Бонуси такі, як їх оголосив партнер. Застосунки шукай у Solana dApp Store. Sol ніколи не обіцяє бали.</string>
     <string name="br_skr">У тебе %1$s SKR.</string>
     <string name="br_season_tasks">Партнерські застосунки Сезону сьогодні: %1$s, у Solana dApp Store.</string>
     <string name="sk_title">Підтверджений Seeker</string>
@@ -36,7 +36,7 @@
     <string name="sk_not_verified">Не підтверджено</string>
     <string name="sk_badge">✓ Підтверджено</string>
     <string name="sk_optional">Необов\'язково</string>
-    <string name="sk_body">Усе в Solarchik працює на будь-якому Android-телефоні. Якщо маєш Seeker, підтверди його токеном Seeker Genesis: отримаєш бейдж і +%1$d хв секретаря на день. Ти лише підписуєш повідомлення для входу в гаманці; без транзакції, нічого не платиш.</string>
+    <string name="sk_body">Усе в Sol працює на будь-якому Android-телефоні. Якщо маєш Seeker, підтверди його токеном Seeker Genesis: отримаєш бейдж і +%1$d хв секретаря на день. Ти лише підписуєш повідомлення для входу в гаманці; без транзакції, нічого не платиш.</string>
     <string name="sk_verified_body">Твій Seeker Genesis Token (%2$s) підтверджено: +%1$d хв секретаря на день. Один токен дає цей бонус лише одному акаунту.</string>
     <string name="sk_verify">Підтвердити токеном Seeker Genesis</string>
     <string name="sk_checking">Перевіряю…</string>

@@ -2,7 +2,7 @@
 <!-- 1.1.0: Solana mainnet (real funds), MWA-only wallet, real Jupiter swaps, mint "coming soon" -->
 <resources>
     <string name="mn_install_title">Install a Solana wallet</string>
-    <string name="mn_install_body">Solarchik Assistant runs on Solana mainnet with real funds, so it uses your own wallet app through Mobile Wallet Adapter: Seed Vault on Seeker, or Phantom / Solflare. The app never holds your keys and every transaction opens in the wallet for your approval.</string>
+    <string name="mn_install_body">Sol runs on Solana mainnet with real funds, so it uses your own wallet app through Mobile Wallet Adapter: Seed Vault on Seeker, or Phantom / Solflare. The app never holds your keys and every transaction opens in the wallet for your approval.</string>
     <string name="mn_network_mainnet">Real funds. Every transaction opens in your wallet app for approval.</string>
     <string name="mn_network_devnet">Developer mode: devnet test SOL, built-in test wallet allowed.</string>
     <string name="mn_dev_unlocked">Developer options on</string>
@@ -15,7 +15,7 @@
     <string name="mn_open_orb">Open in Orb</string>
     <string name="mn_today_wallet_none">No wallet connected. Connect your wallet app and Sol can prepare real Solana mainnet actions for you; each one waits for your approval in the wallet.</string>
     <string name="mn_mint_soon">Mainnet mint: coming soon</string>
-    <string name="mn_mint_soon_body">Agent NFTs on mainnet open once the Solarchik collection is live. All three agents work now without an NFT.</string>
+    <string name="mn_mint_soon_body">Agent NFTs on mainnet open once the Sol collection is live. All three agents work now without an NFT.</string>
     <string name="mn_season_checkin_done">Today\'s check-in is a real mainnet transaction.</string>
     <string name="mn_season_swap_done">You made a real swap on mainnet today.</string>
     <string name="mn_season_not_chain">Your check-in is signed, but not as a mainnet transaction, so this item stays open.</string>

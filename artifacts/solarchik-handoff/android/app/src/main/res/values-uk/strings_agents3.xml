@@ -11,7 +11,7 @@
     <string name="aa_nft">NFT агента (Metaplex Core)</string>
     <string name="aa_nft_free">Створити Free</string>
     <string name="aa_nft_pro">Створити Pro · %1$s SOL</string>
-    <string name="aa_nft_note">Free: один на гаманець. Pro: 0,1 SOL у скарбницю Solarchik, перевіряє сервер. Агент працює так само і без NFT.</string>
+    <string name="aa_nft_note">Free: один на гаманець. Pro: 0,1 SOL у скарбницю Sol, перевіряє сервер. Агент працює так само і без NFT.</string>
     <string name="aa_plan_label">План Seeker Season</string>
     <string name="aa_plan_line">Сьогодні виконано %1$d з %2$d · серія %3$d</string>
     <string name="aa_plan_open">Відкрити план сезону</string>
@@ -124,7 +124,7 @@
     <string name="ca_said_warning">Цю адресу назвав абонент. Телефоном будь-хто може видати себе за іншого: використовуй її, лише якщо впевнений, що вона належить знайомій тобі людині.</string>
     <string name="ca_said_use">Використати цю адресу</string>
     <string name="ca_sheet_check">Я сам перевірив адресу отримувача</string>
-    <string name="ca_sheet_note">Гаманець покаже переказ і попросить його схвалити. Solarchik ніколи не підписує оплати.</string>
+    <string name="ca_sheet_note">Гаманець покаже переказ і попросить його схвалити. Sol ніколи не підписує оплати.</string>
     <string name="ca_sheet_confirm">Підтвердити в гаманці</string>
     <string name="ca_err_token">Підтримуються лише перекази SOL, USDC і SKR.</string>
     <string name="ca_err_amount">Неправильна сума.</string>
