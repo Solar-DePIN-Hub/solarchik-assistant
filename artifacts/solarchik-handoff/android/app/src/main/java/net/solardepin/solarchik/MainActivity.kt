@@ -371,7 +371,7 @@ class MainActivity : ComponentActivity() {
      */
     fun navClearance(): Int {
         val measured = if (this::navWrap.isInitialized && navWrap.height > 0 && navWrap.visibility == View.VISIBLE) navWrap.height else 0
-        return maxOf(measured, dp(106) + bottomInset) + dp(20)
+        return maxOf(measured, dp(106) + bottomInset) + dp(32) // 1.2.14: +12 dp so the last row clears the raised mic
     }
 
     private fun renderCallsDot() {
@@ -560,6 +560,12 @@ class MainActivity : ComponentActivity() {
         bar.addView(nav, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(70)))
         val navWrap = FrameLayout(this).apply {
             tag = "nav-wrap"
+            // 1.2.14: content scrolling behind the floating bar fades into the page colour instead of showing between
+            // the bar and the screen edge (device test: a cut "Morning" row peeking under the bar and the mic)
+            background = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.TRANSPARENT, Ui.withAlpha(Ui.BG, 0xE6), Ui.BG),
+            )
             clipChildren = false
             clipToPadding = false
             addView(bar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(70)).apply {

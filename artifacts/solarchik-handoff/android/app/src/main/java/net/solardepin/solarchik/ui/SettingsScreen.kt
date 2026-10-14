@@ -144,7 +144,13 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                         net.solardepin.solarchik.core.AppLocale.set(ctx, code)
                         host.recreate()
                     }
-                }.apply { tag = "lang-" + code.ifEmpty { "phone" }; maxLines = 2 })) // 1.2.1: "Як у телефоні" wraps instead of "Як у теле…"
+                }.apply {
+                    tag = "lang-" + code.ifEmpty { "phone" }
+                    // 1.2.14: one line always ("Українська" wrapped on Seeker); shrink to fit instead of wrapping
+                    if (code == net.solardepin.solarchik.core.AppLocale.FOLLOW) maxLines = 2 else { maxLines = 1; isSingleLine = true } // "Як у телефоні" may still wrap
+                    setPadding(dp(6), paddingTop, dp(6), paddingBottom)
+                    androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(this, 10, textSize.let { (it / resources.displayMetrics.scaledDensity).toInt().coerceAtLeast(11) }, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+                })) // 1.2.1: "Як у телефоні" wraps instead of "Як у теле…"
             }
             addView(Ui.top(r, 12))
         })
