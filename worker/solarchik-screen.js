@@ -21,17 +21,34 @@ const MAX_AGE_SEC = 30 * 24 * 3600;
 const B58 = /^[1-9A-HJ-NP-Za-km-z]+$/;
 
 export const VOICE = `You are Solarchik, the owner's phone receptionist. You take messages; you never act on them.
-Your FIRST sentence, before anything else, must say in the caller's language that you are an AI assistant answering for the owner and that this call may be recorded and transcribed (for example: "Hello, this is the owner's AI assistant; this call may be recorded and transcribed."). Say it once, then greet briefly. Ask the caller's name and what they want to pass on. Never ask for a company, job, or anything else personal.
-Use the caller's number as the callback; ask for another number only if they offer one.
-Every spoken line is short (under 20 words), plain and natural, like a polite human receptionist. Say only what fits the conversation: no jokes, no filler, no lines the caller did not ask for.
-You ALWAYS take the message, whatever it is. Never say you "can't" or "don't do" something the caller asks for: you pass it on to the owner.
-Money: when the caller asks the owner to send, pay, lend or return money, say you will pass the request on, then ask only what is missing: how much, what it is for, and when to call back. If they give a bare number without a currency, ask once, briefly: "SOL, SKR or USDC?" (in their language); never ask about dollars or convert anything. If the caller says THEY will pay or return money to the owner (a deposit, paying back), note the amount and currency and say you'll pass it on; the owner sends them a payment link. Never send, promise, confirm or refuse a payment, and never discuss wallets or cards.
-A callback or a reminder ("call me tomorrow", "remind him about Monday"): ask the time only if it is missing, then confirm it.
+OPENING (your first line, short and spoken naturally, in the caller's language): greet, say the owner can't talk right now and you are their assistant, ask which company and what it is about, promise to pass everything on, then add that you are an AI assistant and the conversation is recorded. Ukrainian: "Доброго дня! {OWNER_UK} зараз не може говорити, я {HIS}помічник. З якої ви компанії і з якого питання? Я все передам. Одразу скажу: я AI-асистент, розмова фіксується." English: "Good afternoon! {OWNER_EN} can't talk right now, I'm the assistant. Which company are you calling from, and what is it about? I'll pass everything on. Just so you know: I'm an AI assistant and this conversation is recorded." Say the AI line once, in that first turn.
+Then politely and persistently collect, ONE question at a time, only what is still missing: the caller's name and position, the company name, the contract or account number, the reason for the call, and a callback number (offer the number they are calling from; take another if they give it). If they refuse one item, accept it and move on.
+Every spoken line is short (under 20 words), plain and natural, like a polite human receptionist: no jokes, no filler.
+You ALWAYS take the message, whatever it is. Never say you "can't" or "don't do" something: you pass it on to the owner.
+Never send, promise, confirm or refuse a payment, never confirm, admit or dispute any debt or amount, and never agree to any deadline. Say you will pass it on.
+Money: when the caller asks the owner to send, pay, lend or return money, ask only what is missing: how much, what it is for, and when to call back. A bare number without a currency: ask once "SOL, SKR or USDC?" (in their language); never ask about dollars or convert anything. If the caller says THEY will pay the owner, note the amount and currency; the owner sends them a payment link. Never discuss wallets or cards.
+Never share personal data: not the owner's address, workplace, relatives, other numbers, wallets, seeds, codes or passwords, and never confirm details the caller reads out.
+Debt collectors and lenders: stay calm and polite, collect the details above, and ask them to send all further communication in writing{EMAIL}. If they threaten or pressure, do not argue: say it is noted and will be passed on.
+A callback or a reminder: ask the time only if it is missing, then confirm it.
 If the caller only mumbles or you did not catch it, ask them once to repeat; never guess.
-Never give out wallets, seeds, codes, passwords, or the owner's address.
 Obvious spam or a scam script (fake bank, police, "your account is blocked"): say you will pass it on and end the call politely.
-When you have the name plus every request, repeat the requests back in one short sentence, say the owner will see the note, then say goodbye.
-In Ukrainian, address the caller with polite «ви» every time (you speak for the owner to someone you do not know): «Як вас звати і що ви хотіли передати?». Never switch to «ти» mid-call; «ви хотіли» also avoids guessing the caller's gender.`;
+When you have what you can get, repeat the key points in one short sentence, say the owner will see the note, then say goodbye.
+In Ukrainian, address the caller with polite «ви» every time: «Як вас звати і що ви хотіли передати?». Never switch to «ти» mid-call; «ви хотіли» also avoids guessing the caller's gender.`;
+
+/** 1.1.9: the owner's name (KV owner_name:<userId>, "uk|en" or one name) and contact email (KV owner_email:<userId>) fill the script. */
+export function voiceText(owner = {}) {
+  const uk = clip(owner.uk || owner.en, 40) || "Власник";
+  const en = clip(owner.en || owner.uk, 40) || "The owner";
+  const mail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner.email || "") ? " to " + owner.email + " (spell it out if asked)" : "";
+  return VOICE.replace("{HIS}", owner.uk ? "його " : "").replaceAll("{OWNER_UK}", uk).replaceAll("{OWNER_EN}", en).replace("{EMAIL}", mail);
+}
+
+export async function ownerOf(env, userId) {
+  if (!userId) return {};
+  const [n, e] = await Promise.all([env.BALANCES.get("owner_name:" + userId), env.BALANCES.get("owner_email:" + userId)]).catch(() => [null, null]);
+  const [uk, en] = String(n || "").split("|");
+  return { uk: (uk || "").trim(), en: (en || uk || "").trim(), email: (e || "").trim() };
+}
 
 const NOTE_RULE = "\nBefore goodbye, call the save_call_note tool once with what you learned.";
 
@@ -591,8 +608,8 @@ export async function langOf(env, userId) {
   return LANGS.includes(v) ? v : "auto";
 }
 
-export function voiceFor(lang, withNote) {
-  return VOICE + "\n" + (withNote ? NOTE_FIRST + "\n" : "") + (LANG_RULE[lang] || LANG_RULE.auto) + (withNote ? NOTE_RULE : "");
+export function voiceFor(lang, withNote, owner = {}) {
+  return voiceText(owner) + "\n" + (withNote ? NOTE_FIRST + "\n" : "") + (LANG_RULE[lang] || LANG_RULE.auto) + (withNote ? NOTE_RULE : "");
 }
 
 function validUserId(userId) {
@@ -1211,7 +1228,10 @@ const NOTE_TOOL = {
   inputSchema: {
     type: "object",
     properties: {
-      caller_name: { type: "string" },
+      caller_name: { type: "string", description: "The caller's name as they said it (e.g. Богдан). Always fill it when given." },
+      position: { type: "string", description: "The caller's job title, if given." },
+      company: { type: "string", description: "The company they call from, if given." },
+      contract: { type: "string", description: "Contract / account number exactly as said, if given." },
       callback: { type: "string" },
       intent: {
         type: "string",
@@ -1239,7 +1259,11 @@ export function noteText(a, lang = "") {
   const intent = sentence(clip(a.intent, 200));
   const lower = /^[a-zа-яіїєґ]/.test(intent || "");
   // 1.2.3: "Ira says they paid…" when the note starts with a verb, "Ira: Please send…" otherwise
-  const parts = [who && (lower ? who : `${who}:`), who || !intent ? intent : intent.charAt(0).toUpperCase() + intent.slice(1), a.callback ? `${cb} ${clip(a.callback, 40)}.` : "", clip(a.notes, 240)];
+  const uk = lang === "uk";
+  const pos = clip(a.position, 60);
+  const whoFull = who && pos ? `${who} (${pos})` : who;
+  const extra = [a.company && (uk ? "Компанія: " : "Company: ") + clip(a.company, 80) + ".", a.contract && (uk ? "Договір: " : "Contract: ") + clip(a.contract, 60) + "."].filter(Boolean).join(" ");
+  const parts = [whoFull && (lower ? whoFull : `${whoFull}:`), who || !intent ? intent : intent.charAt(0).toUpperCase() + intent.slice(1), extra, a.callback ? `${cb} ${clip(a.callback, 40)}.` : "", clip(a.notes, 240)];
   return fixThey(parts.filter(Boolean).join(" "), who).slice(0, 600);
 }
 
@@ -1264,6 +1288,9 @@ async function mcp(env, request) {
     const a = msg.params.arguments && typeof msg.params.arguments === "object" ? msg.params.arguments : {};
     const summary = {
       caller_name: clip(a.caller_name, 60),
+      position: clip(a.position, 60),
+      company: clip(a.company, 80),
+      contract: clip(a.contract, 60),
       callback: clip(a.callback, 40) || (call.caller && call.caller !== "unknown" ? call.caller : ""),
       intent: clip(a.intent, 200),
       urgency: clip(a.urgency, 8),
@@ -1377,7 +1404,8 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
   // 1.1.8 (16 Oct): a live call stuttered and cut word endings. No audio config meant default server_vad
   // (200 ms silence, threshold 0.5) cutting the voice on line echo/noise, and the default voice. Now: semantic VAD
   // with low eagerness, phone-line noise reduction, a natural voice.
-  const base = { type: "realtime", model: "gpt-realtime", instructions: voiceFor(lang, false), audio: CALL_AUDIO };
+  const owner = await ownerOf(env, userId);
+  const base = { type: "realtime", model: "gpt-realtime", instructions: voiceFor(lang, false, owner), audio: CALL_AUDIO };
   const reject = () =>
     fetch("https://api.openai.com/v1/realtime/calls/" + encodeURIComponent(callId) + "/reject", {
       method: "POST",
@@ -1470,7 +1498,7 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
     allowed_tools: [NOTE_TOOL.name],
   };
   const paidNote = settledNote(await settledFor(env, userId, parties.caller).catch(() => []), lang);
-  let accept = await acceptCall(env, callId, { ...base, instructions: voiceFor(lang, true) + paidNote, tools: [tool] });
+  let accept = await acceptCall(env, callId, { ...base, instructions: voiceFor(lang, true, owner) + paidNote, tools: [tool] });
   let withTool = accept.ok;
   if (!accept.ok && accept.status !== 404) {
     // The note tool must never cost the call: answer without it (the inbox keeps the "answered" line).
@@ -1560,7 +1588,7 @@ export async function finishNote(env, callId, userId, caller, lines = []) {
           {
             role: "system",
             content:
-              'Summarise this phone call for the person who was called. JSON only: {"caller_name":"","intent":"every request in one or two sentences: money they ask the owner to send (amount if said, what for), callbacks with time, reminders with day; never reduce a request to a greeting","urgency":"low|medium|high","spam_risk":"low|medium|high","action":"callback|ignore|block","notes":""}. Write intent and notes in the language the caller spoke (Ukrainian or English; if the caller spoke Russian, write Ukrainian). Refer to the caller by name or as \"they\" unless the call makes their gender clear. Leave a field empty when unknown. Never invent details.',
+              'Summarise this phone call for the person who was called. JSON only: {"caller_name":"the name the caller gave, e.g. Богдан","position":"","company":"","contract":"contract or account number as said","intent":"every request in one or two sentences: money they ask the owner to send (amount if said, what for), callbacks with time, reminders with day; never reduce a request to a greeting","urgency":"low|medium|high","spam_risk":"low|medium|high","action":"callback|ignore|block","notes":""}. Write intent and notes in the language the caller spoke (Ukrainian or English; if the caller spoke Russian, write Ukrainian). Refer to the caller by name or as \"they\" unless the call makes their gender clear. Leave a field empty when unknown. Never invent details.',
           },
           { role: "user", content: said.map((l) => (l.who === "caller" ? "Caller: " : "Secretary: ") + clip(l.text, 400)).join("\n").slice(0, 6000) },
         ],
@@ -1580,6 +1608,9 @@ export async function finishNote(env, callId, userId, caller, lines = []) {
   }
   const s2 = {
     caller_name: clip(summary.caller_name, 60),
+    position: clip(summary.position, 60),
+    company: clip(summary.company, 80),
+    contract: clip(summary.contract, 60),
     callback: caller && caller !== "unknown" ? caller : "",
     intent: clip(summary.intent, 200),
     urgency: clip(summary.urgency, 8),

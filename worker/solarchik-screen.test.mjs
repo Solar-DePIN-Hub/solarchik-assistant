@@ -229,25 +229,25 @@ test("/sip goes through the CALLS room when bound", async () => {
 
 // ---------------- the note ----------------
 
-test("instructions put the note tool first; the tool schema has no company field", async () => {
+test("instructions put the note tool first", async () => {
   const v = voiceFor("uk", true);
   assert.ok(v.includes(NOTE_FIRST));
   assert.ok(v.indexOf(NOTE_FIRST) < v.indexOf("Always speak Ukrainian."));
   assert.ok(!voiceFor("uk", false).includes("save_call_note"));
-  assert.ok(!/company/i.test(v.replace(/Never ask for a company/g, "")), "never asks for a company");
+  assert.match(v, /contract/, "1.1.9 asks for company and contract");
   const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER };
   await env.BALANCES.put(OWNER, "1");
   openai();
   await handleIncoming(env, "https://w", "rtc_t", ZADARMA);
   const { callToken } = await import("./solarchik-screen.js");
   const list = await call(env, "/mcp", { jsonrpc: "2.0", id: 1, method: "tools/list" }, "POST", { "x-solarchik-call": await callToken(env, "rtc_t") });
-  assert.equal(list.json.result.tools[0].inputSchema.properties.company, undefined);
+  assert.ok(list.json.result.tools[0].inputSchema.properties.company);
   // callback defaults to the caller's number
   const saved = await call(env, "/mcp", { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "save_call_note", arguments: { caller_name: "Оля", intent: "Передзвонити щодо замовлення" } } }, "POST", { "x-solarchik-call": await callToken(env, "rtc_t") });
   assert.equal(saved.json.result.content[0].text, "Saved. Say goodbye.");
   const line = JSON.parse(await env.BALANCES.get("inbox:" + OWNER))[0];
   assert.equal(line.summary.callback, "+380638500117");
-  assert.equal(line.summary.company, undefined);
+  assert.equal(line.summary.company, "");
   assert.equal(line.source, "tool");
 });
 
