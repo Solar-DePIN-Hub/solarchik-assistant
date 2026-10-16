@@ -1771,6 +1771,9 @@ export class CallRoom {
     ws.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio: { input: { transcription: transcriptionFor(this.lang) } } } }));
     // A capped call says its one line right away instead of waiting for the caller.
     if (this.capped) ws.send(JSON.stringify({ type: "response.create", response: { instructions: capInstructions(this.lang) } }));
+    // 1.1.9: the secretary speaks first. With semantic VAD (low eagerness) line noise no longer starts a reply,
+    // so without this Sol waited in silence for the caller.
+    else ws.send(JSON.stringify({ type: "response.create" })); // session instructions apply (a response-level instructions field would replace them)
     ws.addEventListener("message", (e) => {
       let ev = null;
       try {
