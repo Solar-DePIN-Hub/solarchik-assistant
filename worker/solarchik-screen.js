@@ -1573,8 +1573,9 @@ export async function finishNote(env, callId, userId, caller, lines = []) {
     summary = null;
   }
   if (!summary || typeof summary !== "object" || !clip(summary.intent, 200)) {
-    const first = said.find((l) => l.who === "caller");
-    await patchInbox(env, userId, callId, { caller, text: "Call answered (from the call transcript): " + clip(first?.text, 300), status: "done", source: "auto" });
+    // 1.1.8: the whole caller side, not only the first line ("Алё." told the owner nothing).
+    const heard = said.filter((l) => l.who === "caller" && l.text).map((l) => String(l.text).trim()).join(" / ");
+    await patchInbox(env, userId, callId, { caller, text: "Call answered (from the call transcript): " + clip(heard, 300), status: "done", source: "auto" });
     return "raw";
   }
   const s2 = {
