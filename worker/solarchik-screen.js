@@ -1277,7 +1277,26 @@ async function mcp(env, request) {
   return json({ jsonrpc: "2.0", id, error: { code: -32601, message: "method not found" } });
 }
 
+export const CALL_AUDIO = {
+  input: {
+    noise_reduction: { type: "far_field" },
+    turn_detection: { type: "semantic_vad", eagerness: "low", create_response: true, interrupt_response: true },
+  },
+  output: { voice: "marin" },
+};
+
 async function acceptCall(env, callId, body) {
+  const res = await acceptCallRaw(env, callId, body);
+  // The audio settings must never cost the call: a 400 on them answers with the old defaults.
+  if (res.status === 400 && body.audio) {
+    console.log(JSON.stringify({ event: "accept_audio_rejected", callId: String(callId).slice(-8), err: (await res.text().catch(() => "")).slice(0, 200) }));
+    const { audio, ...rest } = body;
+    return acceptCallRaw(env, callId, rest);
+  }
+  return res;
+}
+
+function acceptCallRaw(env, callId, body) {
   return fetch("https://api.openai.com/v1/realtime/calls/" + encodeURIComponent(callId) + "/accept", {
     method: "POST",
     headers: { Authorization: "Bearer " + env.OPENAI_API_KEY, "Content-Type": "application/json" },
@@ -1355,7 +1374,10 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
   const userId = route.userId;
   const own = isOwnLine(env, parties);
   const lang = await langOf(env, userId);
-  const base = { type: "realtime", model: "gpt-realtime", instructions: voiceFor(lang, false) };
+  // 1.1.8 (16 Oct): a live call stuttered and cut word endings. No audio config meant default server_vad
+  // (200 ms silence, threshold 0.5) cutting the voice on line echo/noise, and the default voice. Now: semantic VAD
+  // with low eagerness, phone-line noise reduction, a natural voice.
+  const base = { type: "realtime", model: "gpt-realtime", instructions: voiceFor(lang, false), audio: CALL_AUDIO };
   const reject = () =>
     fetch("https://api.openai.com/v1/realtime/calls/" + encodeURIComponent(callId) + "/reject", {
       method: "POST",
@@ -1370,7 +1392,7 @@ export async function handleIncoming(env, origin, callId, sipHeaders, dedupKeys 
     const say = await takeCapMessage(env, at);
     let accepted = false;
     if (say) {
-      const acc = await acceptCall(env, callId, { type: "realtime", model: "gpt-realtime", instructions: capInstructions(lang) }).catch(() => null);
+      const acc = await acceptCall(env, callId, { type: "realtime", model: "gpt-realtime", instructions: capInstructions(lang), audio: CALL_AUDIO }).catch(() => null);
       accepted = Boolean(acc?.ok);
     }
     if (!accepted) await reject();
