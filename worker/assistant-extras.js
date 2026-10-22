@@ -7,6 +7,8 @@
 //                         is returned only when the caller literally said one, and the app shows it in full with a
 //                         scam warning and makes the user confirm or type the recipient.
 
+import { providerChain, hasLlmKey, cleanText } from "./llm-provider.js";
+
 const MODELS = ["gpt-4.1-mini", "gpt-4o-mini"];
 export const ACTION_TYPES = ["payment", "callback", "reminder", "owed"];
 export const PAY_TOKENS = ["SOL", "USDC", "SKR"];
@@ -82,24 +84,24 @@ export function briefingSystem(lang) {
   ].join("\n");
 }
 
-export async function chat(env, body, timeoutMs) {
+export async function chat(env, body, timeoutMs, task = "actions") {
   const tried = [];
-  for (const model of MODELS) {
+  for (const p of providerChain(env, MODELS, task)) {
     const s = Date.now();
     try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      const res = await fetch(p.url, {
         method: "POST",
-        headers: { Authorization: "Bearer " + env.OPENAI_API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, ...body }),
+        headers: { Authorization: "Bearer " + p.key, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: p.model, ...body }),
         signal: AbortSignal.timeout(timeoutMs),
       });
-      tried.push({ model, status: res.status, ms: Date.now() - s });
+      tried.push({ provider: p.provider, model: p.model, status: res.status, ms: Date.now() - s });
       if (!res.ok) continue;
       const j = await res.json().catch(() => null);
-      const text = j?.choices?.[0]?.message?.content;
-      if (typeof text === "string" && text.trim()) return { text, model, tried };
+      const text = cleanText(j?.choices?.[0]?.message?.content);
+      if (text) return { text, model: p.model, provider: p.provider, tried };
     } catch (e) {
-      tried.push({ model, status: e?.name || "error", ms: Date.now() - s });
+      tried.push({ provider: p.provider, model: p.model, status: e?.name || "error", ms: Date.now() - s });
     }
   }
   return { text: "", model: "", tried };
@@ -114,7 +116,7 @@ export async function briefingRoute(env, request, rateOk, json) {
   const t0 = Date.now();
   const input = await request.json().catch(() => ({}));
   if (!rateOk(request.headers.get("cf-connecting-ip"))) return json({ ok: false, error: "rate" }, 429);
-  if (!env.OPENAI_API_KEY) return json({ ok: false, error: "no-key" }, 503);
+  if (!hasLlmKey(env)) return json({ ok: false, error: "no-key" }, 503);
   const lang = langOf(input.language ?? input.lang);
   const facts = JSON.parse(fixOwnerName(JSON.stringify(briefingFacts(input))));
   const r = await chat(env, {
@@ -124,7 +126,7 @@ export async function briefingRoute(env, request, rateOk, json) {
     ],
     temperature: 0.6,
     max_tokens: 380,
-  }, 12000);
+  }, 12000, "briefing");
   if (!r.text) return json({ ok: false, error: "unavailable", tried: r.tried, ms: Date.now() - t0 }, 503);
   // 1.2.10: the owner's profile spelling is "Vadym"; call notes heard it as "Vadim"
   const text = fixOwnerName(clip(r.text.replace(/[*#_`>]/g, ""), 1200));
@@ -357,7 +359,7 @@ export async function callActionsRoute(env, request, rateOk, json) {
   if (!rateOk(request.headers.get("cf-connecting-ip"))) return json({ ok: false, error: "rate" }, 429);
   const calls = actionCalls(input);
   if (!calls.length) return json({ ok: false, error: "calls" }, 400);
-  if (!env.OPENAI_API_KEY) return json({ ok: false, error: "no-key" }, 503);
+  if (!hasLlmKey(env)) return json({ ok: false, error: "no-key" }, 503);
   await withTranscripts(env, calls);
   const lang = langOf(input.language ?? input.lang);
   const r = await chat(env, {
@@ -368,7 +370,7 @@ export async function callActionsRoute(env, request, rateOk, json) {
     temperature: 0,
     max_tokens: 900,
     response_format: { type: "json_schema", json_schema: ACTIONS_SCHEMA },
-  }, 15000);
+  }, env.LLM_PROVIDER === "nebius" ? 25000 : 15000);
   if (!r.text) return json({ ok: false, error: "unavailable", tried: r.tried, ms: Date.now() - t0 }, 503);
   let raw = null;
   try {
