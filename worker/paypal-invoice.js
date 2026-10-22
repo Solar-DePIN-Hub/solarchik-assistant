@@ -26,7 +26,7 @@ export function invoiceInput(b) {
   const email = clip(b?.payerEmail, 120);
   return {
     amount: amount.toFixed(2),
-    currency: /^[A-Z]{3}$/.test(String(b?.currency || "")) ? b.currency : "",
+    currency: ["USD", "EUR"].includes(String(b?.currency || "")) ? b.currency : "USD",
     note: clip(b?.text || "Payment requested after our call", 120),
     payerName: clip(b?.payerName, 60),
     payerEmail: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : "",
@@ -60,7 +60,10 @@ export async function paypalInvoiceRoute(env, request, rateOk, json, f = fetch) 
   if (env.PAYPAL_ENABLED !== "1") return json({ ok: false, error: "disabled" }, 404);
   if (!rateOk(request.headers.get("cf-connecting-ip"))) return json({ ok: false, error: "rate" }, 429);
   if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) return json({ ok: false, error: "no-key" }, 503);
-  const inp = invoiceInput(await request.json().catch(() => ({})));
+  const body = await request.json().catch(() => ({}));
+  // The user must have confirmed the exact amount (owed cards in SOL/SKR/UAH are never converted silently).
+  if (body?.confirmed !== true) return json({ ok: false, error: "confirm" }, 400);
+  const inp = invoiceInput(body);
   if (!inp) return json({ ok: false, error: "amount" }, 400);
   try {
     const r = await createInvoice(env, inp, f);
@@ -68,4 +71,66 @@ export async function paypalInvoiceRoute(env, request, rateOk, json, f = fetch) 
   } catch (e) {
     return json({ ok: false, error: String(e.message || e) }, 502);
   }
+}
+
+// ------------------------------------------------------------------ paid status: poll + webhook
+
+/** Map PayPal invoice status to the card state the app shows. */
+export function cardState(status) {
+  if (status === "PAID" || status === "MARKED_AS_PAID") return "paid";
+  if (status === "PARTIALLY_PAID") return "partial";
+  if (status === "CANCELLED" || status === "REFUNDED" || status === "MARKED_AS_REFUNDED") return "cancelled";
+  return "sent";
+}
+
+export async function invoiceStatus(env, id, f = fetch) {
+  const token = await paypalToken(env, f);
+  const r = await f(paypalBase(env) + "/v2/invoicing/invoices/" + encodeURIComponent(id), { headers: { Authorization: "Bearer " + token } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error("paypal-get " + r.status);
+  const paid = j?.payments?.paid_amount;
+  return { id, status: j.status || "", state: cardState(j.status), paid: paid ? paid.value + " " + paid.currency_code : "" };
+}
+
+/** GET /paypal/invoice/status?id=INV2-...  : the app/demo polls this (KV webhook result first, then PayPal). */
+export async function paypalStatusRoute(env, request, rateOk, json, f = fetch) {
+  if (env.PAYPAL_ENABLED !== "1") return json({ ok: false, error: "disabled" }, 404);
+  if (!rateOk(request.headers.get("cf-connecting-ip"))) return json({ ok: false, error: "rate" }, 429);
+  const id = new URL(request.url).searchParams.get("id") || "";
+  if (!/^INV2(-[A-Z0-9]{4}){4}$/.test(id)) return json({ ok: false, error: "id" }, 400);
+  try {
+    const hook = env.BALANCES ? JSON.parse((await env.BALANCES.get("ppinv:" + id)) || "null") : null;
+    if (hook?.state === "paid") return json({ ok: true, source: "webhook", ...hook });
+    return json({ ok: true, source: "poll", ...(await invoiceStatus(env, id, f)) });
+  } catch (e) {
+    return json({ ok: false, error: String(e.message || e) }, 502);
+  }
+}
+
+/** POST /paypal/webhook : INVOICING.INVOICE.PAID etc. Verified with PayPal's verify-webhook-signature (needs PAYPAL_WEBHOOK_ID). */
+export async function paypalWebhookRoute(env, request, json, f = fetch) {
+  if (env.PAYPAL_ENABLED !== "1" || !env.PAYPAL_WEBHOOK_ID) return json({ ok: false, error: "disabled" }, 404);
+  const raw = await request.text();
+  let event;
+  try { event = JSON.parse(raw); } catch { return json({ ok: false, error: "json" }, 400); }
+  const h = (k) => request.headers.get(k) || "";
+  const token = await paypalToken(env, f);
+  const v = await f(paypalBase(env) + "/v1/notifications/verify-webhook-signature", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      auth_algo: h("paypal-auth-algo"), cert_url: h("paypal-cert-url"), transmission_id: h("paypal-transmission-id"),
+      transmission_sig: h("paypal-transmission-sig"), transmission_time: h("paypal-transmission-time"),
+      webhook_id: env.PAYPAL_WEBHOOK_ID, webhook_event: event,
+    }),
+  });
+  const vj = await v.json().catch(() => ({}));
+  if (vj.verification_status !== "SUCCESS") return json({ ok: false, error: "signature" }, 401);
+  const inv = event?.resource?.invoice || event?.resource || {};
+  const id = String(inv.id || "");
+  if (/^INV2/.test(id) && env.BALANCES) {
+    const rec = { id, status: inv.status || "", state: cardState(inv.status), event: event.event_type || "", at: Date.now() };
+    await env.BALANCES.put("ppinv:" + id, JSON.stringify(rec), { expirationTtl: 60 * 60 * 24 * 90 });
+  }
+  return json({ ok: true });
 }

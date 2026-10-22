@@ -12,6 +12,24 @@ import { providerChain, hasLlmKey, cleanText } from "./llm-provider.js";
 const MODELS = ["gpt-4.1-mini", "gpt-4o-mini"];
 export const ACTION_TYPES = ["payment", "callback", "reminder", "owed"];
 export const PAY_TOKENS = ["SOL", "USDC", "SKR"];
+/** Fiat currencies an "owed" card may carry (PayPal invoices); UAH is shown but PayPal invoices it in USD after the user confirms. */
+export const FIATS = ["USD", "EUR", "UAH"];
+/** The single fiat currency named in a card's own text/quote (used when the model left 'token' empty). */
+export function fiatIn(text) {
+  const t = String(text || "");
+  const found = new Set();
+  if (/\$|\b(usd|dollars?|bucks)\b|долар|бакс/iu.test(t)) found.add("USD");
+  if (/€|\b(eur|euros?)\b|євро/iu.test(t)) found.add("EUR");
+  if (/₴|\buah\b|грн|грив|hryvn/iu.test(t)) found.add("UAH");
+  return found.size === 1 ? [...found][0] : "";
+}
+export function fiatOf(w) {
+  const t = String(w || "").trim();
+  if (/^(USD|US\$|\$|DOLLARS?|BUCKS|ДОЛАР\w*|БАКС\w*)$/i.test(t)) return "USD";
+  if (/^(EUR|€|EUROS?|ЄВРО)$/i.test(t)) return "EUR";
+  if (/^(UAH|₴|ГРН|ГРИВ\w*|HRYVNIA?S?)$/iu.test(t)) return "UAH";
+  return "";
+}
 const BASE58_ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const YMD = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -173,7 +191,7 @@ export function actionsSystem(lang) {
   return [
     "You read notes and transcripts of phone calls that an AI phone secretary answered for the user, and list concrete requests the USER should act on.",
     "Types: payment (the caller asks the user to send or pay money or crypto: amount and currency as said), callback (the caller asks to be called back, optionally at a time), reminder (something the user should remember or do, with or without a time: 'remind me to ...', 'remind her/him/them about ...' (the user reminds that person), 'don't forget ...', a meeting, an appointment, a deadline; in Ukrainian e.g. 'нагадай мені/їй/йому ...', 'не забудь ...', зустріч, дедлайн).",
-    "Type owed (1.2.7): the CALLER says they will pay, return or send money TO THE USER, or that they owe the user (a deposit, paying back a loan, their share of a bill): e.g. 'I'll send you the 0.5 SOL deposit tomorrow', 'I owe you 10 USDC', 'поверну тобі 2 SOL'. Amount and currency as said; it only becomes a suggestion the user may turn into a payment request. Never mark it payment: payment is ONLY when the user should pay the caller. No amount said, or no SOL/USDC/SKR currency: no owed action. 'text' e.g. 'Andrii owes you 0.5 SOL for the deposit'.",
+    "Type owed (1.2.7): the CALLER says they will pay, return or send money TO THE USER, or that they owe the user (a deposit, paying back a loan, their share of a bill): e.g. 'I'll send you the 0.5 SOL deposit tomorrow', 'I owe you 10 USDC', 'поверну тобі 2 SOL'. Amount and currency as said; it only becomes a suggestion the user may turn into a payment request. Never mark it payment: payment is ONLY when the user should pay the caller. No amount said, or no currency (SOL, USDC, SKR, or money like dollars/USD/$, euros/EUR, гривні/UAH): no owed action; ALWAYS fill 'token' for owed: e.g. 'I'll pay you 150 dollars' gives token 'USD', '25 euros' gives 'EUR', '500 гривень' gives 'UAH'. 'text' e.g. 'Andrii owes you 0.5 SOL for the deposit'.",
     "Each distinct request is its own action: a call that asks for a payment, a callback AND a reminder gives three actions. Never merge a reminder into a payment or a callback, and never drop a reminder because the call also had other requests.",
     "Days: put the day that was said for the action into 'day' (today, tomorrow, or the weekday in English lowercase, e.g. 'на понеділок' / 'on Monday' = monday); an explicit calendar date goes into 'date' as YYYY-MM-DD. Each call has 'date' (the call's own date) and 'weekday'. Do not compute dates for weekdays yourself.",
     "Only include requests clearly present in the call. Never invent amounts, numbers, times, names or addresses. A recipient wallet address goes into 'recipient' only if it was literally said; otherwise describe the recipient in words or leave it empty.",
@@ -272,7 +290,7 @@ export function noAmountText(text, lang) {
 }
 
 /** Server-side rules on whatever the model returned: known call ids and types only, sane fields, no invented address. */
-export function sanitizeActions(raw, calls, lang = "") {
+export function sanitizeActions(raw, calls, lang = "", opts = {}) {
   const ids = new Set(calls.map((c) => c.id));
   const byId = new Map(calls.map((c) => [c.id, c]));
   const out = [];
@@ -299,9 +317,11 @@ export function sanitizeActions(raw, calls, lang = "") {
       // 1.2.7: the caller will pay the USER. Only with a real amount in a token the app can request; no address ever.
       const amount = Number(a.amount);
       const tokenWord = clip(a.token, 12).toUpperCase();
-      const token = PAY_TOKENS.includes(tokenWord) ? tokenWord : /^\$?SKR$|^SEEKER TOKENS?$/i.test(tokenWord) ? "SKR" : "";
+      const token = PAY_TOKENS.includes(tokenWord) ? tokenWord : /^\$?SKR$|^SEEKER TOKENS?$/i.test(tokenWord) ? "SKR" : opts.fiat ? fiatOf(tokenWord) || (tokenWord ? "" : fiatIn(a.text + " " + a.quote)) : "";
       if (!Number.isFinite(amount) || amount <= 0 || amount > 1e9 || !token) continue;
-      out.push({ callId: a.callId, type: "owed", amount, token, tokenWord, recipient: "", address: "", number: "", when: "", day: "", date: "", text, quote });
+      // PayPal (hackathon): a suggested USD amount the user must confirm before any invoice; never converted for volatile tokens.
+      const usdSuggested = token === "USD" || token === "USDC" ? amount : 0;
+      out.push({ callId: a.callId, type: "owed", amount, token, tokenWord, fiat: FIATS.includes(token), usdSuggested, recipient: "", address: "", number: "", when: "", day: "", date: "", text, quote });
       perCall.set(a.callId, n);
       continue;
     }
@@ -378,7 +398,7 @@ export async function callActionsRoute(env, request, rateOk, json) {
   } catch {
     return json({ ok: false, error: "parse", ms: Date.now() - t0 }, 502);
   }
-  const actions = sanitizeActions(raw, calls, lang);
+  const actions = sanitizeActions(raw, calls, lang, { fiat: input.fiat === true });
   console.log(JSON.stringify({ event: "call_actions", lang, calls: calls.length, actions: actions.length, model: r.model, ms: Date.now() - t0 }));
   return json({ ok: true, actions, processed: calls.map((c) => c.id), language: lang, model: r.model, ms: Date.now() - t0 });
 }

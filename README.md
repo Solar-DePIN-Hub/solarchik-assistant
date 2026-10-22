@@ -146,3 +146,27 @@ Optional env: `NEBIUS_MODEL`, `NEBIUS_FAST_MODEL`, `NEBIUS_BASE_URL`, `NEBIUS_TH
 - The call → action cards step and the daily briefing moved from a closed model to NVIDIA Nemotron (Super for reasoning, Nano for speech) on Nebius Token Factory, with a provider chain and fallback.
 - Nemotron output handling: reasoning-token budget, thinking toggle per task, cleanup of `<think>` blocks and code fences, strict JSON schema output.
 - Other work in the submission period, per this repo's git history (repo started Sep 19, 2026): the call → action cards and the spoken morning briefing (1.1.0, Oct 9), reminders with resolved dates and up to 3 actions per call (1.1.3, Oct 9), and the "owed" card type plus call transcripts in call detail (1.2.7, Oct 10).
+
+## PayPal: "owes you" call → PayPal invoice (PayPal AI Hackathon)
+
+**Try it without a phone:** https://solarchik-screen.davidbell1603.workers.dev/demo. Paste what a caller said, or tap an example. NVIDIA Nemotron turns it into action cards. On an "owes you" card, you confirm the amount, tap **Request via PayPal**, and get a sandbox invoice and pay link. The card switches to **✓ paid** once it's paid. Sandbox only, so no real money moves.
+
+Flow:
+1. `POST /call/actions` with `fiat:true` → an `owed` card with `amount`, `token` (USD/EUR/UAH or SOL/USDC/SKR) and `usdSuggested` (only for USD/USDC; SOL, SKR and UAH are never converted silently).
+2. The user confirms or types the amount. Then `POST /paypal/invoice {confirmed:true, amount, currency:"USD"|"EUR", text, payerName?, payerEmail?}`. The route refuses to run without `confirmed:true`. It calls PayPal Invoicing v2 to create and send the invoice and returns `{id, payLink}`.
+3. Paid status comes from `GET /paypal/invoice/status?id=INV2-…` (polls PayPal) and `POST /paypal/webhook` (`INVOICING.INVOICE.PAID/CANCELLED/REFUNDED`, verified with PayPal's verify-webhook-signature, stored in KV).
+
+Code: `worker/paypal-invoice.js`, `worker/paypal-demo.js`, and the fiat owed cards in `worker/assistant-extras.js`. Tests: `node --test worker/nebius-paypal.test.mjs`, with the network mocked.
+
+### Run it with your own PayPal sandbox
+1. Sign in at https://developer.paypal.com → Apps & Credentials → **Sandbox** → Create App. Copy the Client ID and Secret.
+2. Set the worker secrets:
+   ```bash
+   cd worker
+   npx wrangler secret put PAYPAL_CLIENT_ID -c wrangler.screen.toml
+   npx wrangler secret put PAYPAL_CLIENT_SECRET -c wrangler.screen.toml
+   printf 1 | npx wrangler secret put PAYPAL_ENABLED -c wrangler.screen.toml
+   npx wrangler deploy -c wrangler.screen.toml
+   ```
+3. Optional webhook: create one in the app's Webhooks section pointing at `https://<worker>/paypal/webhook` with the `INVOICING.INVOICE.PAID` event. Then save its ID with `npx wrangler secret put PAYPAL_WEBHOOK_ID`. Polling works without it.
+4. Open `https://<worker>/demo`. To pay an invoice, open the pay link and log in with a **sandbox Personal account** (Developer Dashboard → Testing Tools → Sandbox Accounts). Secrets never go in this repo.

@@ -1,6 +1,7 @@
 import { MINT_CLUSTER, MINT_TREASURY, PRO_LAMPORTS, mintConfig, mintCosign, verifyMint } from "./agent-mint.js";
 import { briefingRoute, callActionsRoute } from "./assistant-extras.js";
-import { paypalInvoiceRoute } from "./paypal-invoice.js";
+import { paypalInvoiceRoute, paypalStatusRoute, paypalWebhookRoute } from "./paypal-invoice.js";
+import { DEMO_HTML } from "./paypal-demo.js";
 import { checkRules, seasonRulesRoute } from "./season-rules.js";
 import { checkDrops, seasonDropsRoute } from "./season-drops.js";
 import { bonusMin, seekerRoute, seekerStatus } from "./seeker-verify.js";
@@ -2416,6 +2417,10 @@ export default {
     if (request.method === "POST" && url.pathname === "/sol/briefing") return briefingRoute(env, request, solRateOk, json);
     if (request.method === "POST" && url.pathname === "/call/actions") return callActionsRoute(env, request, solRateOk, json);
     if (request.method === "POST" && url.pathname === "/paypal/invoice") return paypalInvoiceRoute(env, request, solRateOk, json);
+    if (request.method === "GET" && url.pathname === "/paypal/invoice/status") return paypalStatusRoute(env, request, solRateOk, json);
+    if (request.method === "POST" && url.pathname === "/paypal/webhook") return paypalWebhookRoute(env, request, json);
+    if (request.method === "GET" && url.pathname === "/demo" && env.PAYPAL_ENABLED === "1")
+      return new Response(DEMO_HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
     if (request.method === "GET" && url.pathname === "/sol/tts") return solTtsRoute(env, request, ctx);
     // 1.1.0 Season rules watcher: official Solana Mobile sources -> versioned scoring signals (KV).
     if (url.pathname === "/season/rules" || url.pathname === "/season/rules/check") {

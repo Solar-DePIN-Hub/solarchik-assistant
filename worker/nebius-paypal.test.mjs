@@ -3,7 +3,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { chat } from "./assistant-extras.js";
 import { providerChain, cleanText } from "./llm-provider.js";
-import { paypalInvoiceRoute, invoiceInput } from "./paypal-invoice.js";
+import { paypalInvoiceRoute, invoiceInput, paypalStatusRoute, cardState } from "./paypal-invoice.js";
+import { sanitizeActions, fiatOf } from "./assistant-extras.js";
 
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json" } });
 
@@ -42,8 +43,25 @@ test("paypal invoice disabled by default, validates amount, creates sandbox invo
     if (String(u).endsWith("/send")) return json({ href: "https://www.sandbox.paypal.com/invoice/p/#INV2-X" });
     return json({ id: "INV2-X" }, 201);
   };
-  const r = await (await paypalInvoiceRoute(env, req({ amount: 200, text: "Andrii owes you $200" }), ok, json, f)).json();
+  const r = await (await paypalInvoiceRoute(env, req({ confirmed: true, amount: 200, text: "Andrii owes you $200" }), ok, json, f)).json();
   assert.equal(r.ok, true);
   assert.equal(r.payLink, "https://www.sandbox.paypal.com/invoice/p/#INV2-X");
   assert.ok(urls.every((u) => u.startsWith("https://api-m.sandbox.paypal.com")));
+});
+
+test("invoice needs the user's confirmation; status maps to card state; fiat owed only on opt-in", async () => {
+  const env = { PAYPAL_ENABLED: "1", PAYPAL_CLIENT_ID: "id", PAYPAL_CLIENT_SECRET: "sec" };
+  const r = await paypalInvoiceRoute(env, new Request("https://x", { method: "POST", body: JSON.stringify({ amount: 5 }) }), () => true, json);
+  assert.equal((await r.json()).error, "confirm");
+  assert.equal(cardState("PAID"), "paid");
+  assert.equal(cardState("SENT"), "sent");
+  const f = async (u) => (String(u).endsWith("/oauth2/token") ? json({ access_token: "t" }) : json({ status: "PAID", payments: { paid_amount: { value: "20.00", currency_code: "USD" } } }));
+  const s = await (await paypalStatusRoute(env, new Request("https://x/paypal/invoice/status?id=INV2-AAAA-BBBB-CCCC-DDDD"), () => true, json, f)).json();
+  assert.deepEqual([s.state, s.paid], ["paid", "20.00 USD"]);
+  assert.equal(fiatOf("dollars"), "USD");
+  const calls = [{ id: "c1", at: "10:00", date: "2026-10-22", intent: "x", notes: "", text: "" }];
+  const raw = { actions: [{ callId: "c1", type: "owed", amount: 150, token: "dollars", recipient: "", number: "", when: "", day: "", date: "", text: "Andrii owes you $150", quote: "" }] };
+  assert.equal(sanitizeActions(raw, calls).length, 0);
+  const a = sanitizeActions(raw, calls, "en", { fiat: true });
+  assert.deepEqual([a[0].token, a[0].fiat, a[0].usdSuggested], ["USD", true, 150]);
 });
