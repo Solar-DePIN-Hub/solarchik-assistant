@@ -13,7 +13,12 @@ export function providerChain(env, openaiModels, task = "actions") {
   if (String(env.LLM_PROVIDER || "").toLowerCase() === "nebius" && env.NEBIUS_API_KEY) {
     const base = String(env.NEBIUS_BASE_URL || NEBIUS_BASE_URL).replace(/\/+$/, "");
     const model = task === "briefing" ? env.NEBIUS_FAST_MODEL || NEBIUS_FAST_MODEL : env.NEBIUS_MODEL || NEBIUS_MODEL;
-    chain.push({ provider: "nebius", url: base + "/chat/completions", key: env.NEBIUS_API_KEY, model });
+    // Nemotron 3 reasons before answering and the reasoning tokens count against max_tokens (content came back empty
+    // at 900). Call -> actions keeps reasoning on with a bigger budget (NEBIUS_THINKING=0 turns it off); the spoken
+    // briefing never needs it.
+    const think = task === "actions" && env.NEBIUS_THINKING !== "0";
+    chain.push({ provider: "nebius", url: base + "/chat/completions", key: env.NEBIUS_API_KEY, model,
+      extra: { chat_template_kwargs: { enable_thinking: think } }, minTokens: think ? 4000 : 0 });
   }
   if (env.OPENAI_API_KEY) for (const model of openaiModels) chain.push({ provider: "openai", url: OPENAI_URL, key: env.OPENAI_API_KEY, model });
   return chain;

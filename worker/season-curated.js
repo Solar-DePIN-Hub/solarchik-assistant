@@ -1,12 +1,21 @@
 /**
- * Seeker Season partner drops, CURATED by hand (not read by the worker). Each one was checked on 2026-10-10
+ * Seeker Season partner drops, CURATED by hand (not read by the worker). Each one was checked on 2026-10-14
  * against the official @solanamobile post on X (or a partner post that @solanamobile reposted), with the link
  * below. The worker cannot read X for free, so this list is how those posts reach the app; it is labelled
  * "curated" in the API and in the app, with the date it was checked. No deadline was stated in any of them.
  */
-export const CURATED_CHECKED = "2026-10-10";
+export const CURATED_CHECKED = "2026-10-14";
 
 export const CURATED = [
+  {
+    app: "MegaCorp",
+    perk: "Seeker Season Cube event: send your Drone in, crack open the Cube; Seekers get free Vital Drone accessories in-game.",
+    perk_uk: "Подія Seeker Season Cube: запускай дрон, розбивай куб; власники Seeker отримують безкоштовні Vital Drone аксесуари в грі.",
+    deadline: "",
+    sourceUrl: "https://x.com/solanamobile/status/2109684319128256749",
+    sourceDate: "2026-10-12",
+    via: "@solanamobile",
+  },
   {
     app: "MattleFun",
     perk: "Turn One Up birthday event: quests, Cakes, milestone rewards, $30K+ in total rewards.",

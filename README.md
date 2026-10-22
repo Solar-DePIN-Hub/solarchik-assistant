@@ -117,3 +117,32 @@ The worker deploys with Wrangler; see [worker/DEPLOY.md](worker/DEPLOY.md).
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+## NVIDIA Nemotron on Nebius Token Factory (Nebius × NVIDIA Global AI Hackathon)
+
+Sol's "brain" for turning phone calls into action cards now runs on **NVIDIA Nemotron** through **Nebius Token Factory** (OpenAI-compatible API, `https://api.tokenfactory.nebius.com/v1`).
+
+| Step | Route | Model | Why |
+| --- | --- | --- | --- |
+| Call → action cards (payment, owed, callback, reminder) | `POST /call/actions` | `nvidia/nemotron-3-super-120b-a12b`, reasoning on | Reads the secretary's notes and the call transcript, then returns strict JSON (json_schema) with amounts, currency, day and time |
+| Spoken morning briefing | `POST /sol/briefing` | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`, reasoning off | Fast and cheap (~1 s), plain speech for TTS |
+
+Code: `worker/llm-provider.js` (provider chain, Nemotron settings, `<think>`/fence cleanup) and `worker/assistant-extras.js` (`chat()`). If Token Factory fails, OpenAI is the fallback.
+
+Nemotron 3 counts its reasoning tokens against `max_tokens`, and the answer came back empty at our old limit of 900. So the action step raises the budget to 4000, and the briefing sends `chat_template_kwargs: {enable_thinking: false}`.
+
+**Run it:**
+```bash
+cd worker
+npx wrangler secret put NEBIUS_API_KEY -c wrangler.screen.toml   # key from tokenfactory.nebius.com
+printf nebius | npx wrangler secret put LLM_PROVIDER -c wrangler.screen.toml
+npx wrangler deploy -c wrangler.screen.toml
+curl -X POST https://<worker>/call/actions -H 'content-type: application/json' \
+  -d '{"language":"en","calls":[{"id":"me|c1","name":"Olena","note":"Olena asks you to send her 10 USDC and call her back at 3 pm.","date":"2026-10-22"}]}'
+```
+Optional env: `NEBIUS_MODEL`, `NEBIUS_FAST_MODEL`, `NEBIUS_BASE_URL`, `NEBIUS_THINKING=0`. Tests: `node --test worker/nebius-paypal.test.mjs` (network mocked).
+
+### What changed since Aug 26, 2026 (start of the submission period)
+- The call → action cards step and the daily briefing moved from a closed model to NVIDIA Nemotron (Super for reasoning, Nano for speech) on Nebius Token Factory, with a provider chain and fallback.
+- Nemotron output handling: reasoning-token budget, thinking toggle per task, cleanup of `<think>` blocks and code fences, strict JSON schema output.
+- Other work in the submission period, per this repo's git history (repo started Sep 19, 2026): the call → action cards and the spoken morning briefing (1.1.0, Oct 9), reminders with resolved dates and up to 3 actions per call (1.1.3, Oct 9), and the "owed" card type plus call transcripts in call detail (1.2.7, Oct 10).

@@ -92,7 +92,7 @@ export async function chat(env, body, timeoutMs, task = "actions") {
       const res = await fetch(p.url, {
         method: "POST",
         headers: { Authorization: "Bearer " + p.key, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: p.model, ...body }),
+        body: JSON.stringify({ model: p.model, ...body, ...(p.extra || {}), ...(p.minTokens && body.max_tokens < p.minTokens ? { max_tokens: p.minTokens } : {}) }),
         signal: AbortSignal.timeout(timeoutMs),
       });
       tried.push({ provider: p.provider, model: p.model, status: res.status, ms: Date.now() - s });
