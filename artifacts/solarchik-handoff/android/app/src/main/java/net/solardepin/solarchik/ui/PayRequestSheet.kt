@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.solardepin.solarchik.MainActivity
 import net.solardepin.solarchik.R
+import net.solardepin.solarchik.circle.AnyChain
 import net.solardepin.solarchik.circle.Circle
 import net.solardepin.solarchik.circle.Debt
 import net.solardepin.solarchik.circle.PayRequest
@@ -56,6 +57,8 @@ object PayRequestSheet {
         }
         lastRequest = r
         PayWatch.schedule(ctx)
+        // 1.2.15: prepare the "pay from any network" page (Aurora Intents) in the background; Share waits for it briefly
+        if (AnyChain.supports(r) && r.anyUrl.isBlank()) host.scope.launch { AnyChain.ensure(ctx, r).let { if (it.anyUrl.isNotBlank() && lastRequest?.id == it.id) lastRequest = it } }
         val box = Ui.column(ctx).apply {
             tag = "payreq-sheet"
             background = android.graphics.drawable.GradientDrawable().apply {
@@ -88,6 +91,7 @@ object PayRequestSheet {
             cm.setPrimaryClip(android.content.ClipData.newPlainText("Solana Pay", r.url))
             if (android.os.Build.VERSION.SDK_INT < 33) host.toast(ctx.getString(R.string.payreq_copied))
         }.apply { tag = "payreq-copy" }, 10), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        if (AnyChain.supports(r)) box.addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.payreq_anychain), 13f, Kit.MUTED, 600).apply { gravity = Gravity.CENTER; tag = "payreq-anychain"; setLineSpacing(0f, 1.2f) }, 12))
         box.addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.payreq_safe), 13f, Kit.MUTED, 600).apply { gravity = Gravity.CENTER; setLineSpacing(0f, 1.2f) }, 12))
 
         val dlg = HabitsSheet.sheet(host, box)
@@ -114,6 +118,12 @@ object PayRequestSheet {
     }
 
     fun share(host: MainActivity, r: PayRequest, d: Debt) {
+        if (AnyChain.supports(r)) {
+            host.scope.launch { shareNow(host, AnyChain.ensure(host, PayRequestStore(host).byId(r.id) ?: r), d) }
+        } else shareNow(host, r, d)
+    }
+
+    private fun shareNow(host: MainActivity, r: PayRequest, d: Debt) {
         val text = SolanaPay.shareText(r)
         // EXTRA_TEXT for chat apps; sms_body prefills the SMS app (the person's number when the call left one)
         val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text).putExtra("sms_body", text)

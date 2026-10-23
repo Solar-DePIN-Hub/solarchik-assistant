@@ -196,6 +196,7 @@
     <string name="payreq_share">Share link</string>
     <string name="payreq_copy">Copy link</string>
     <string name="payreq_copied">Link copied</string>
+    <string name="payreq_anychain">No Solana wallet? Share adds a link to pay from any network (USDC on Base, USDT on Tron, ETH, BTC…). You still get exactly this amount on Solana.</string>
     <string name="payreq_safe">They pay from their own wallet. Nothing leaves yours, and Sol never holds money.</string>
     <string name="payreq_safe_short">They pay from their wallet. Nothing leaves yours.</string>
     <string name="payreq_paid_line">Paid ✓ %1$s %2$s · Solscan ↗</string>

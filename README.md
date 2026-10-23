@@ -28,6 +28,7 @@ The APK is signed with my own release key, not a store key. Package: `net.solard
 - **Calls.** When I can't pick up, my carrier forwards the call (standard GSM conditional forwarding) to a Zadarma number. The call goes over SIP to an OpenAI Realtime voice agent that talks to the caller like a receptionist. My Cloudflare Worker saves the transcript, writes a short note (who, why, how urgent) and pulls out action cards: call back, reminder, or payment. The Calls tab keeps the history.
 - **Today: the morning stack.** All of the day's cards in one stack: from calls, today's Seeker Season tasks, Circle debts and my habits. Each card says what it is and where it came from ("Call Ira back at 15:00, asked at 13:32"). Swipe right when it's done. Swipe left for Later (back to the end of today's stack), Tomorrow or Dismiss. Tapping a card does the action: opens the dialer, the payment, or the Season post. When every card is handled, I clock in and the streak grows. Signing a CLOCK IN memo on mainnet is optional.
 - **Circle.** People I save myself, with their wallet address. Every person has **Send** and **Request**. Request makes a Solana Pay link and QR and opens an SMS ("Hi Ira, here's my payment link for 0.01 SOL"). Each link carries a one-off Solana Pay reference key, so when the money lands the app finds that transaction on chain (read-only) and shows **Paid ✓**. If a caller says "send me 0.01 SOL for lunch", the call adds that debt to Circle, linked to the call.
+- **Pay from any chain (new, Encode hackathon).** A USDC or SOL request also gets a pay page: a friend without a Solana wallet pays from USDC on Base, USDT on Tron, ETH, BTC, NEAR and ~20 more networks, and I receive exactly the amount on Solana. Powered by [Aurora Intents](https://docs.intents.aurora.dev) (NEAR Intents), with refunds to the payer's own address and Paid ✓ only after the app checks the Solana transaction. Details: [docs/ANYCHAIN.md](docs/ANYCHAIN.md).
 - **Me.** Wallet with SOL / USDC / SKR balances, **Send** and **Receive** (QR with my address, or request an exact amount). Daily habits I pick myself, including an optional "Save 1 USDC". Settings and wallet diagnostics.
 - **Sol.** The mic button in the middle. Hold it and ask "who do I owe?" or "send Ira what I owe". Sol answers from my own data and opens the right card. He never sends anything by himself.
 - **Season agent.** Every day the worker reads Solana Mobile's official sources (blog and docs) plus a dated, hand-checked list of partner drops announced on X, and puts today's Seeker Season tasks into the stack. Each task opens the original announcement. It doesn't claim, farm or sign anything.
@@ -47,11 +48,22 @@ flowchart LR
     wallet -->|signed transaction| sol[(Solana mainnet)]
     app -->|simulate, confirm, detect Paid| sol
     app -->|Sol chat / voice / briefing| wk
+    app -->|USDC/SOL request| any[sol-anychain Worker]
+    friend([Friend on Base / Tron / ETH / BTC…]) -->|deposit| aur[Aurora Intents]
+    any -->|quote, status| aur
+    aur -->|exact USDC/SOL| sol
 ```
 
 - The Android app is native Kotlin, no WebView. It holds no API keys; every model call goes through the worker.
 - Worker source: [worker/solarchik-screen.js](worker/solarchik-screen.js) (calls, SIP, notes, Sol), [worker/assistant-extras.js](worker/assistant-extras.js) (call actions, briefing), [worker/season-drops.js](worker/season-drops.js) and [worker/season-rules.js](worker/season-rules.js) (Season), [worker/seeker-verify.js](worker/seeker-verify.js) (Genesis Token).
 - AI phone minutes are capped per call (3 min), per account and per day, so a stuck call can't run up a bill.
+
+## Encode Solana Hackathon 2026: what's new
+
+Sol existed before the Encode hackathon started (12 Oct 2026): calls, the morning stack, Circle with Solana Pay requests, the wallet and the Season agent above were built for Colosseum. Work during the hackathon:
+
+- 16 Oct: app 1.2.11–1.2.14 and worker 1.1.8–1.1.9 (branch `post-hackathon`).
+- From 23 Oct: **Pay from any chain** with Aurora Intents (branch `hackathons/encode-aurora`): `worker/aurora-intents.js`, `worker/anychain-page.js`, `worker/sol-anychain.js`, Android `circle/AnyChain.kt` and the Circle request changes, with tests. See [docs/ANYCHAIN.md](docs/ANYCHAIN.md).
 
 ## On-chain proof
 

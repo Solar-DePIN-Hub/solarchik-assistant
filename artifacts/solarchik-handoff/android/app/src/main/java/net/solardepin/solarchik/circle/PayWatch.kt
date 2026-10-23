@@ -37,7 +37,10 @@ object PayWatch {
         val store = PayRequestStore(ctx)
         val paid = mutableListOf<PayRequest>()
         for (r in store.open().filter { now - it.at < MAX_AGE_MS }) {
-            when (val c = runCatching { SolanaPay.check(rpc(), r) }.getOrElse { SolanaPay.Check.NotYet }) {
+            var c = runCatching { SolanaPay.check(rpc(), r) }.getOrElse { SolanaPay.Check.NotYet }
+            // 1.2.15: paid from another network through Aurora Intents (verified on Solana, see AnyChain.check)
+            if (c is SolanaPay.Check.NotYet && r.anyId.isNotBlank()) c = runCatching { AnyChain.check(rpc(), r) }.getOrElse { SolanaPay.Check.NotYet }
+            when (c) {
                 is SolanaPay.Check.Paid -> {
                     store.markPaid(ctx, r.id, c.signature)
                     paid += r.copy(status = PayRequest.PAID, signature = c.signature)

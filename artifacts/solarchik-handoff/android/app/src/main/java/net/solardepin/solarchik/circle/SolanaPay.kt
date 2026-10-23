@@ -44,6 +44,9 @@ data class PayRequest(
     val at: Long,
     val status: String = OPEN,
     val signature: String = "",
+    /** 1.2.15 Aurora Intents: the sol-anychain request id and its pay page ("" = none yet / not offered). */
+    val anyId: String = "",
+    val anyUrl: String = "",
 ) {
     val url: String get() = SolanaPay.url(recipient, amount, token, reference, SolanaPay.LABEL, message, memo)
 
@@ -105,7 +108,9 @@ object SolanaPay {
     /** 1.2.9: the SMS / share text: "Hi Ira, here's my payment link for 0.01 SOL: solana:…". */
     fun shareText(r: PayRequest): String {
         val who = r.who.trim().takeIf { it.isNotBlank() && !it.equals(SOMEONE, true) }
-        return (if (who != null) "Hi $who, " else "Hi, ") + "here's my payment link for ${Circle.amount(r.amount)} ${r.token}: ${r.url}"
+        val base = (if (who != null) "Hi $who, " else "Hi, ") + "here's my payment link for ${Circle.amount(r.amount)} ${r.token}: ${r.url}"
+        // 1.2.15: friends without a Solana wallet can pay from ~30 other networks (Aurora Intents page)
+        return if (r.anyUrl.isNotBlank()) "$base\nNo Solana wallet? Pay from any network (USDC on Base, USDT on Tron, ETH, BTC…): ${r.anyUrl}" else base
     }
 
     /** The name used when a request is made without a person (Me → Receive). */
@@ -136,7 +141,7 @@ object SolanaPay {
      * else why not. The reference must be one of the transaction's keys, the transaction must not have failed,
      * and the recipient (SOL) or the recipient's token account in the right mint (SPL) must have gained >= amount.
      */
-    fun validate(tx: JsonElement, r: PayRequest): String? {
+    fun validate(tx: JsonElement, r: PayRequest, requireReference: Boolean = true): String? {
         val o = tx as? JsonObject ?: return "not found"
         val meta = o["meta"] as? JsonObject ?: return "missing meta"
         meta["err"]?.let { if (it !is JsonNull) return "transaction failed" }
@@ -145,7 +150,9 @@ object SolanaPay {
         (meta["loadedAddresses"] as? JsonObject)?.let { la ->
             listOf("writable", "readonly").forEach { k -> (la[k] as? JsonArray)?.mapNotNullTo(keys) { keyOf(it) } }
         }
-        if (r.reference !in keys) return "reference not found"
+        // 1.2.15: an Aurora Intents settlement is sent by the solver, so it can't carry the Solana Pay reference; the
+        // app then checks the exact transaction the intent reported (recipient gained >= amount, in the right mint).
+        if (requireReference && r.reference !in keys) return "reference not found"
         val want = BigDecimal(amountText(r.amount, r.token)).movePointRight(decimals(r.token))
         val mint = mint(r.token)
         if (mint == null) {
@@ -192,7 +199,8 @@ class PayRequestStore(context: Context) {
         (0 until a.length()).map { i ->
             val o = a.getJSONObject(i)
             PayRequest(o.getString("id"), o.getString("action"), o.optString("who"), o.getString("to"), o.getDouble("amount"), o.getString("token"),
-                o.getString("ref"), o.optString("msg"), o.optString("memo"), o.getLong("at"), o.optString("status", PayRequest.OPEN), o.optString("sig"))
+                o.getString("ref"), o.optString("msg"), o.optString("memo"), o.getLong("at"), o.optString("status", PayRequest.OPEN), o.optString("sig"),
+                o.optString("any"), o.optString("anyUrl"))
         }
     }.getOrDefault(emptyList())
 
@@ -200,7 +208,8 @@ class PayRequestStore(context: Context) {
         val a = JSONArray()
         list.takeLast(50).forEach { r ->
             a.put(JSONObject().put("id", r.id).put("action", r.actionId).put("who", r.who).put("to", r.recipient).put("amount", r.amount).put("token", r.token)
-                .put("ref", r.reference).put("msg", r.message).put("memo", r.memo).put("at", r.at).put("status", r.status).put("sig", r.signature))
+                .put("ref", r.reference).put("msg", r.message).put("memo", r.memo).put("at", r.at).put("status", r.status).put("sig", r.signature)
+                .put("any", r.anyId).put("anyUrl", r.anyUrl))
         }
         p.edit().putString("list", a.toString()).apply()
     }
@@ -215,6 +224,9 @@ class PayRequestStore(context: Context) {
         save(all().filterNot { it.actionId == a.id && it.status == PayRequest.OPEN } + r)
         return r
     }
+
+    fun update(id: String, f: (PayRequest) -> PayRequest) { save(all().map { if (it.id == id) f(it) else it }) }
+    fun byId(id: String): PayRequest? = all().firstOrNull { it.id == id }
 
     fun markPaid(ctx: Context, id: String, sig: String) {
         val r = all().firstOrNull { it.id == id } ?: return

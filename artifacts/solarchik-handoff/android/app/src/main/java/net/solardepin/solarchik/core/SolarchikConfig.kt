@@ -65,6 +65,8 @@ object SolarchikConfig {
     val MAINNET_COLLECTION: String = BuildConfig.MAINNET_COLLECTION
     val MAINNET_COLLECTION_AUTHORITY: String = BuildConfig.MAINNET_COLLECTION_AUTHORITY
     /** The worker checks a mainnet mint (tier from the asset name, Pro/Combo payment, Combo paid-only) before co-signing. */
+    /** 1.2.15: "Pay from any chain" pages for Circle requests (worker/sol-anychain.js, Aurora Intents Swap API). */
+    const val ANYCHAIN_URL = "https://sol-anychain.davidbell1603.workers.dev"
     const val MINT_COSIGN_URL = "https://solarchik-screen.davidbell1603.workers.dev/agent/mint-cosign"
     const val AIRDROP_SOL = 1.0
     const val LAMPORTS_PER_SOL = 1_000_000_000L

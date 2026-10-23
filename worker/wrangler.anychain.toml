@@ -1,0 +1,17 @@
+# sol-anychain: "Pay from any chain" for Sol Circle payment requests (Encode Solana Hackathon 2026, Aurora Intents bounty).
+# Source: worker/sol-anychain.js + worker/aurora-intents.js + worker/anychain-page.js. Docs: docs/ANYCHAIN.md.
+# A separate Worker on purpose: the production call secretary (solarchik-screen) is not redeployed for this feature.
+# Secret (set by the owner, never in this file):  npx wrangler secret put AURORA_API_KEY --config worker/wrangler.anychain.toml
+#   (the Swap API key from https://studio.aurora.dev; without it /anychain/* answers 503 AURORA_NOT_CONFIGURED and the
+#   pay page offers only the Solana Pay option).
+# Deploy: npx wrangler deploy --config worker/wrangler.anychain.toml
+# Live f16b5ff5-e33c-4ffe-b20f-5a3ef3eac815 (23 Oct 2026, ~14:20 Kyiv; first deploy e76fb9cb ~14:03). No AURORA_API_KEY yet: quotes answer 503, the page offers Solana Pay only.
+name = "sol-anychain"
+main = "sol-anychain.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# Payment requests ac:req:<id> (30 days) and rate-limit counters.
+[[kv_namespaces]]
+binding = "ANYCHAIN"
+id = "3edebbaf992f4831a9a456e4edf441f9"

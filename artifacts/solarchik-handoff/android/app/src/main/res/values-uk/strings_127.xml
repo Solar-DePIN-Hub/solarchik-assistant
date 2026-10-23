@@ -196,6 +196,7 @@
     <string name="payreq_share">Поділитися посиланням</string>
     <string name="payreq_copy">Копіювати посилання</string>
     <string name="payreq_copied">Посилання скопійовано</string>
+    <string name="payreq_anychain">Немає гаманця Solana? Share додає посилання для оплати з будь-якої мережі (USDC на Base, USDT на Tron, ETH, BTC…). Ти все одно отримаєш саме цю суму на Solana.</string>
     <string name="payreq_safe">Оплата йде з їхнього гаманця. З твого нічого не списується, Sol не тримає гроші.</string>
     <string name="payreq_safe_short">Оплата з їхнього гаманця. З твого нічого не списується.</string>
     <string name="payreq_paid_line">Оплачено ✓ %1$s %2$s · Solscan ↗</string>
