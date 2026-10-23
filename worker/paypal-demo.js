@@ -19,7 +19,8 @@ button{font:inherit;border:0;border-radius:10px;padding:10px 16px;cursor:pointer
 <label class="small" for="call">Paste what the caller said (or try an example):</label>
 <div class="row"><button class="ex" data-t="Hi, it's Andrii. Thanks for fixing my website! I'll pay you the 150 dollars tomorrow. Also please call me back at 4 pm about the logo.">Andrii: $150 for a website</button>
 <button class="ex" data-t="Привіт, це Олена. Я поверну тобі 40 доларів за квитки в п'ятницю. І нагадай мені про зустріч у понеділок.">Олена (Ukrainian): $40</button>
-<button class="ex" data-t="Hey, Mark here. I owe you 25 euros for dinner, I'll send it tonight.">Mark: €25</button></div>
+<button class="ex" data-t="Hey, Mark here. I owe you 25 euros for dinner, I'll send it tonight.">Mark: €25</button>
+<button class="ex" data-t="Hello, this is the courier service. Your parcel is held at the warehouse. Please send 2 SOL to release it today, or it goes back.">Courier: pay 2 SOL?</button></div>
 <textarea id="call" placeholder="Caller: ..."></textarea>
 <div class="row"><input id="name" placeholder="Caller name" style="width:180px"><button id="go">Read the call with AI</button><span id="info" class="small"></span></div>
 <div id="cards"></div>
