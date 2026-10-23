@@ -290,7 +290,7 @@ export async function handleAnychain(request, env, url, json, fetchImpl = fetch)
       const dep = {
         depositAddress: qq.depositAddress, depositMemo: qq.depositMemo || null, chain: src.chain, symbol: src.symbol, originAsset: src.assetId,
         amountIn: qq.amountIn, amountInFormatted: qq.amountInFormatted, amountInUsd: qq.amountInUsd, minAmountIn: qq.minAmountIn, maxAmountIn: qq.maxAmountIn || null,
-        amountOut: qq.amountOut, deadline: qq.deadline || q?.quoteRequest?.deadline, timeEstimate: qq.timeEstimate, refundFee: qq.refundFee || null,
+        amountOut: qq.amountOut, deadline: earliest(q?.quoteRequest?.deadline, qq.deadline), timeWhenInactive: qq.timeWhenInactive || null, quoteDeadline: qq.deadline || null, timeEstimate: qq.timeEstimate, refundFee: qq.refundFee || null,
         refundTo: b.refundTo.trim(), status: "PENDING_DEPOSIT", createdAt: new Date().toISOString(),
       };
       // Never drop a deposit that could still be paid or settle: only quotes that expired over an hour ago unused.
@@ -327,7 +327,7 @@ export async function handleAnychain(request, env, url, json, fetchImpl = fetch)
       const body = await aurora(env, "/api/incidents", {}, fetchImpl);
       const chain = url.searchParams.get("chain");
       const list = (body?.incidents || []).filter((i) => i.status === "active" && (!chain || String(i.scopeValue || "").includes(chain)));
-      return json({ incidents: list.map((i) => ({ scope: i.scopeType, value: i.scopeValue, text: i.publicDescription || null })) });
+      return json({ incidents: list.map((i) => ({ scope: i.scopeType, value: i.scopeValue, text: i.publicDescription || (i.scopeType === "chain" ? `${CHAIN_NAMES[i.scopeValue] || i.scopeValue} has an active incident; transfers may be delayed.` : null) })).filter((i) => i.text) });
     }
   } catch (e) {
     if (e instanceof AuroraError) return json({ error: e.message === "AURORA_NOT_CONFIGURED" ? e.message : "AURORA_ERROR", detail: e.message, upstream: e.status }, e.status === 503 ? 503 : 502);
@@ -350,6 +350,15 @@ export function requirements(src, dep, r) {
 /** Polls Aurora for every non-final deposit; the first SUCCESS marks the request paid. */
 /** Quotes worth keeping: everything except unused quotes whose deadline passed over an hour ago. */
 export const MAX_LIVE_QUOTES = 12;
+/**
+ * The time we tell the payer: the earlier of the deadline we asked for (quoteRequest.deadline, "refunds begin if the swap
+ * is not completed by then") and quote.deadline. Live check 23 Oct 2026: Aurora answered quote.deadline = our deadline
+ * + 72 h, so showing quote.deadline would promise the payer three days instead of 30 minutes.
+ */
+export function earliest(...isos) {
+  const t = isos.map((x) => Date.parse(x)).filter((x) => !isNaN(x));
+  return t.length ? new Date(Math.min(...t)).toISOString() : null;
+}
 export function liveQuotes(r, now = Date.now()) {
   return (r.deposits || []).filter((d) => !(d.status === "PENDING_DEPOSIT" && !d.txHash && Date.parse(d.deadline) < now - 3600_000));
 }

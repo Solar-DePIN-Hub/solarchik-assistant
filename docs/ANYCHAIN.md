@@ -63,6 +63,16 @@ npx wrangler deploy --config wrangler.anychain.toml
 
 Without `AURORA_API_KEY`, `/anychain/*` answers `503 AURORA_NOT_CONFIGURED` and the page offers only the Solana Pay option.
 
+## Live check (23 Oct 2026, mainnet, no money moved)
+
+The Swap API key is set as a Cloudflare secret on `sol-anychain` (never in git). Quotes are live.
+
+- Test pay page: https://sol-anychain.davidbell1603.workers.dev/r/6aedyvu8t4 ("TEST - DO NOT PAY", 1 USDC to Solana). Choosing USDC on Base gave a real deposit address, a QR code, "Send exactly 1.286456 USDC (≈ $1.29)", a minimum of 1.276353 and a 30-minute send window. The status poll goes through Aurora (`PENDING`, "Waiting for your transfer"). The refund address on that quote is a dummy, so nobody should pay it.
+- Fees seen: a fixed ~0.28 USDC Solana withdraw fee (already inside the quote), plus a small spread and the 2 bps app fee and referral that Intents Studio adds to every quote for this key. 1 USDC out costs ~1.29 USDC on Base, Arbitrum or Ethereum; 2 USDC costs ~2.30.
+- Minimums: none seen for USDC on Base, Arbitrum or Ethereum (a 0.01 USDC quote works, but the fixed fee makes small amounts expensive). Other bridges have floors: USDT on Tron needs at least ~1.62 USDC out, BTC ~6.49 USDC out. The page turns Aurora's "Amount is too low" error into a plain message with that minimum.
+- A finding: Aurora's `quote.deadline` came back as our requested deadline + 72 h. The page shows the earlier of the two (`earliest()` in `aurora-intents.js`, with a test), so the payer sees the 30-minute window we asked for.
+- Active chain incidents with no public text now get a plain fallback line ("<Chain> has an active incident; transfers may be delayed.").
+
 ## Honest limits
 
 - Aurora Intents runs on mainnet only, so a real end-to-end test moves real money (a few dollars). There is no devnet path.

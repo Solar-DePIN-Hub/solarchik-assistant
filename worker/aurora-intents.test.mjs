@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  liveQuotes, MAX_LIVE_QUOTES, refresh,
+  liveQuotes, MAX_LIVE_QUOTES, refresh, earliest,
   validRefund, toUnits, fromUnits, pickSources, quoteBody, describe, settlementOf, handleAnychain, publicView, solanaPayUrl,
   requirements, isSolanaAddress, DEST, _resetCache,
 } from "./aurora-intents.js";
@@ -280,4 +280,22 @@ test("an earlier quote is never dropped while it can still settle; dead quotes s
   const n = fa.calls.length;
   await refresh(e, dead, fa.f, now);
   assert.equal(fa.calls.length, n, "a quote 7 h past its deadline is not polled");
+});
+
+test("the payer sees the deadline we asked for, not Aurora's later quote.deadline (live 23 Oct: +72 h)", async () => {
+  _resetCache();
+  const e = env(); const base = fakeAurora();
+  const f = async (url, init) => {
+    const res = await base.f(url, init);
+    if (!String(url).includes("/api/quote/")) return res;
+    const j = await res.json();
+    j.quote.deadline = new Date(Date.parse(j.quoteRequest.deadline) + 72 * 3600_000).toISOString();
+    return new Response(JSON.stringify(j), { status: 200 });
+  };
+  const { body } = await call(e, base, "/anychain/request", "POST", { to: WALLET, amount: 1, token: "USDC" });
+  const [r, u] = req("/anychain/quote", "POST", { id: body.id, origin: BASE_USDC, refundTo: EVM_ADDR });
+  const q = await (await handleAnychain(r, e, u, json, f)).json();
+  const mins = (Date.parse(q.deposit.deadline) - Date.now()) / 60000;
+  assert.ok(mins > 28 && mins <= 30, `deadline in ${mins} min`);
+  assert.equal(earliest("2026-10-26T11:50:00Z", "2026-10-23T11:50:00Z", "bad"), "2026-10-23T11:50:00.000Z");
 });

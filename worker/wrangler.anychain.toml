@@ -5,7 +5,7 @@
 #   (the Swap API key from https://studio.aurora.dev; without it /anychain/* answers 503 AURORA_NOT_CONFIGURED and the
 #   pay page offers only the Solana Pay option).
 # Deploy: npx wrangler deploy --config worker/wrangler.anychain.toml
-# Live f16b5ff5-e33c-4ffe-b20f-5a3ef3eac815 (23 Oct 2026, ~14:20 Kyiv; first deploy e76fb9cb ~14:03). No AURORA_API_KEY yet: quotes answer 503, the page offers Solana Pay only.
+# Live c4189bfb-cf65-4310-b28f-896109cc2019 (23 Oct 2026, ~14:30 Kyiv). AURORA_API_KEY set 23 Oct ~14:20 Kyiv; quotes are live.
 name = "sol-anychain"
 main = "sol-anychain.js"
 compatibility_date = "2026-10-01"
