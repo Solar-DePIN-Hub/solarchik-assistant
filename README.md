@@ -158,6 +158,9 @@ Flow:
 
 Code: `worker/paypal-invoice.js`, `worker/paypal-demo.js`, and the fiat owed cards in `worker/assistant-extras.js`. Tests: `node --test worker/nebius-paypal.test.mjs`, with the network mocked.
 
+### Optional: Tavily web check on payment cards
+When the worker has `TAVILY_API_KEY` set (`npx wrangler secret put TAVILY_API_KEY -c wrangler.screen.toml`), each **payment** card (someone asks you to pay) gets a web check. Tavily searches the *request pattern*, for example `Is this a scam: "Pay 2 SOL to unlock your delivery parcel"`, never the caller's number or name. The card shows Tavily's short answer and up to 3 source links. It runs at most twice per request with a 6 s timeout, and it never blocks the cards. Code: `worker/tavily-lookup.js`. Tests: `node --test worker/tavily-lookup.test.mjs` (network mocked). Without the key it does nothing.
+
 ### Run it with your own PayPal sandbox
 1. Sign in at https://developer.paypal.com → Apps & Credentials → **Sandbox** → Create App. Copy the Client ID and Secret.
 2. Set the worker secrets:

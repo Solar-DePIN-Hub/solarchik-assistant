@@ -37,6 +37,7 @@ let h='<span class="tag '+a.type+'">'+(a.type==="owed"?"owes you":a.type)+'</spa
 if(a.type==="owed"){const cur=a.token==="EUR"?"EUR":"USD";const sug=a.token==="EUR"?a.amount:(a.usdSuggested||"");
 h+='<div class="row"><span class="small">Heard: '+esc(a.amount+" "+a.tokenWord)+'. Confirm the amount to request:</span></div><div class="row"><input type="number" min="0.01" step="0.01" value="'+sug+'"> <b>'+cur+'</b>'+
 '<input type="email" placeholder="payer email (optional)" style="width:220px"><button class="pp">Request via PayPal</button></div><div class="row res"></div>'}
+if(a.check&&(a.check.answer||a.check.links.length))h+='<div class="q">🔎 Web check (Tavily): '+esc(a.check.answer)+' '+a.check.links.map(l=>'<a target="_blank" rel="noopener" href="'+esc(l.url)+'">'+esc(l.title||"source")+'</a>').join(" · ")+'</div>';
 el.innerHTML=h;$("#cards").appendChild(el);if(a.type!=="owed")return;
 const [amt,mail]=el.querySelectorAll("input");const btn=el.querySelector("button");const res=el.querySelector(".res");const cur=a.token==="EUR"?"EUR":"USD";
 btn.onclick=async()=>{const v=Number(amt.value);if(!(v>0)){res.textContent="Enter the amount first.";return}

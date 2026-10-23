@@ -7,6 +7,7 @@
 //                         is returned only when the caller literally said one, and the app shows it in full with a
 //                         scam warning and makes the user confirm or type the recipient.
 
+import { addPaymentChecks } from "./tavily-lookup.js";
 import { providerChain, hasLlmKey, cleanText } from "./llm-provider.js";
 
 const MODELS = ["gpt-4.1-mini", "gpt-4o-mini"];
@@ -399,6 +400,7 @@ export async function callActionsRoute(env, request, rateOk, json) {
     return json({ ok: false, error: "parse", ms: Date.now() - t0 }, 502);
   }
   const actions = sanitizeActions(raw, calls, lang, { fiat: input.fiat === true });
+  await addPaymentChecks(env, actions);
   console.log(JSON.stringify({ event: "call_actions", lang, calls: calls.length, actions: actions.length, model: r.model, ms: Date.now() - t0 }));
   return json({ ok: true, actions, processed: calls.map((c) => c.id), language: lang, model: r.model, ms: Date.now() - t0 });
 }
