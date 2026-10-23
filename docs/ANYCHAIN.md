@@ -63,6 +63,19 @@ npx wrangler deploy --config wrangler.anychain.toml
 
 Without `AURORA_API_KEY`, `/anychain/*` answers `503 AURORA_NOT_CONFIGURED` and the page offers only the Solana Pay option.
 
+## Live payment, end to end (23 Oct 2026, mainnet, real money)
+
+One real payment through the deployed Worker, paid by Vadym from his own Phantom wallet on Base, to his own Solana wallet. Nothing was signed by the app or the server; Vadym confirmed the transfer in Phantom himself.
+
+- Pay page: https://sol-anychain.davidbell1603.workers.dev/r/wh6yhcdkke (request for **1 USDC** on Solana to `8J3hxf1XSYV1HKVUJtwtQtVwSvSeaAyW5RmL8EqC67ic`). The page now shows **Paid ✓ 1.0 USDC arrived on Solana**.
+- Quote (USDC on Base, EXACT_OUTPUT): send 1.289655 USDC, deposit address `0xF9ECbaD16bE93a7Fe25357B5BEfCF3E949EcecA4`, 30-minute window.
+- **Base deposit** (18:01:01 Kyiv): 1.3 USDC from `0x148c…c2e1` to the deposit address. Phantom rounded the amount up to 1.3, so it was slightly above the quote. Tx [0x7567fb86…cba21f](https://basescan.org/tx/0x7567fb869ba779fe14b1296e7813559937b6c1f8f8d4c8118b04634967cba21f). Base gas: 0.00000045 ETH (about $0.001).
+- **Refund of the extra** (18:01:25 Kyiv, 24 s later): Aurora sent 0.018337 USDC back to the payer's own Base address, the refund address given on the page. Tx [0xdd674f6c…3fed8e](https://basescan.org/tx/0xdd674f6c89ef6f765f5c888cc4126287345b289d29260344a65df82fb83fed8e).
+- **Solana settlement** (18:01:33 Kyiv, 32 s after the deposit): exactly 1 USDC (`transferChecked`, 1,000,000 units of mint EPjF…Dt1v) to the requester. Tx [5CiB7UPz…7gJxaXH](https://solscan.io/tx/5CiB7UPzktqCM4TpZSdKpvbYTuhBYkVgKxXYC2nxesqRywU1j3mqMhqXsyH5rGYGYo5CFyGwvoFp57UsF7gJxaXH). This hash came from Aurora's `GET /api/status` (`destinationChainTxHashes`). The Worker stored it, and we re-read the transaction on Solana mainnet RPC.
+- **Token account creation was covered by the bridge side.** The receiving wallet had no USDC account before. The same Solana transaction creates its associated token account (`14crdz7G995umvSC6q1vBKsdpgxXAknCYB3EKudisW6z`). The relayer `DuSs7rCr…gkbn` paid the 0.00148844 SOL rent and the tx fee. The requester paid nothing on Solana and needed no SOL.
+- **Cost:** 1.281663 USDC net from Base (1.3 sent − 0.018337 refunded) for 1 USDC delivered on Solana. That is about 0.28 USDC: the fixed Solana withdraw fee shown in every quote, plus spread and the 2 bps Studio fee. Plus about $0.001 of Base gas.
+- **Checks done independently:** Worker `GET /anychain/status?id=wh6yhcdkke` returns `status: paid`, `SUCCESS`, the two Base txs and the Solana tx. Base receipts were read from `mainnet.base.org` (both status 1, USDC Transfer logs as above). Solana `getTokenAccountsByOwner` for `8J3h…67ic` now shows 1 USDC, up from no account before.
+
 ## Live check (23 Oct 2026, mainnet, no money moved)
 
 The Swap API key is set as a Cloudflare secret on `sol-anychain` (never in git). Quotes are live.
@@ -75,7 +88,7 @@ The Swap API key is set as a Cloudflare secret on `sol-anychain` (never in git).
 
 ## Honest limits
 
-- Aurora Intents runs on mainnet only, so a real end-to-end test moves real money (a few dollars). There is no devnet path.
+- Aurora Intents runs on mainnet only, so a real end-to-end test moves real money. There is no devnet path. One real 1 USDC payment was made on 23 Oct (see above).
 - Creating a pay page is unauthenticated (rate-limited per IP). The page shows the Solana address the money goes to and "only pay people you know".
 - Persistent deposit addresses (one reusable address per contact) need Aurora's approval; not used.
 - No Intents Connect (contract-level composability) or Confidential Intents yet.
