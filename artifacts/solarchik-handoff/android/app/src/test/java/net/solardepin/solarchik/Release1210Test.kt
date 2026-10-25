@@ -38,7 +38,7 @@ import java.io.File
 @Config(sdk = [34], qualifiers = "en-w411dp-h891dp-xxhdpi")
 class Release1210Test {
     private val app = ApplicationProvider.getApplicationContext<Context>()
-    private val dir = File(System.getProperty("solarchik.compare") ?: "/workspace/deliverables/redesign/compare-1.2.10/build").apply { mkdirs() }
+    private val dir = File(System.getProperty("solarchik.compare") ?: "/workspace/deliverables/redesign/compare-1.2.10/build").apply { mkdirs() }.let { if (it.canWrite()) it else File(System.getProperty("java.io.tmpdir"), "solarchik-shots").apply { mkdirs() } }
     private val realCluster = System.getProperty("solarchik.cluster")
 
     @Before fun setUp() {
