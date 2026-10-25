@@ -1,9 +1,9 @@
 # Solarchik privacy policy
 
-Last updated: 9 October 2026 · App: Solarchik Assistant (Android, package `net.solardepin.solarchik.assistant`; the CLOCK IN game is `net.solardepin.solarchik`) · Contact: open an issue at https://github.com/Solar-DePIN-Hub/Solarchik/issues
+Last updated: 25 October 2026 · App: Solarchik Assistant (Android, package `net.solardepin.solarchik.assistant`; the CLOCK IN game is `net.solardepin.solarchik`) · Contact: team.solardepinhub@gmail.com
 
 ## What stays on your phone
-Streak and CLOCK IN history, fee-free windows, your agents list, the fee ledger, the agent desk (paper/devnet positions), the 1.1.0 swap, autopilot, delegated-limit, Saver and Watcher ledgers and settings, the experimental agent key (encrypted with Android Keystore; deleted by "Delete my data"), action cards found in call notes and their reminders, the official Season rules the app last downloaded and which rule changes you approved or ignored, the morning briefing time, its last text and a wallet balance snapshot (to say how it changed since yesterday), Sol chat history (last 40 turns), the days you opened the app and the Season dApp suggestions you opened (Seeker Season plan), call follow-ups you ticked off, notification settings, a random account id, the Mobile Wallet Adapter session token, and (if you turn on the call secretary) its settings, the last 40 screened calls (number, time, silenced/declined, AI note), a pending payment reference and the secretary forwarding number you enter. Call forwarding is set by your carrier through codes you dial yourself; the app never places calls (no CALL_PHONE permission). Nothing of this is uploaded to a Solarchik server. Android cloud backup and device transfer are disabled for the app.
+Streak and CLOCK IN history, fee-free windows, your agents list, the fee ledger, the agent desk (paper/devnet positions), the 1.1.0 swap, autopilot, delegated-limit, Saver and Watcher ledgers and settings, the experimental agent key (encrypted with Android Keystore; deleted by "Delete my data"), action cards found in call notes and their reminders, the official Season rules the app last downloaded and which rule changes you approved or ignored, the morning briefing time, its last text and a wallet balance snapshot (to say how it changed since yesterday), Sol chat history (last 40 turns), the days you opened the app and the Season dApp suggestions you opened (Seeker Season plan), call follow-ups you ticked off, notification settings, a random account id, the Mobile Wallet Adapter session token, and (if you turn on the call secretary) its settings, the last 40 screened calls (number, time, silenced/declined, AI note), a pending payment reference and the secretary forwarding number you enter. Call forwarding is set by your carrier through codes you dial yourself; the app never places calls (no CALL_PHONE permission). Nothing of this is uploaded to a Solarchik server (calls answered by Sol on a secretary number are the exception, see below). Android cloud backup and device transfer are disabled for the app.
 
 ## What leaves your phone, and why
 | Data | Sent to | Why |
@@ -18,6 +18,17 @@ Streak and CLOCK IN history, fee-free windows, your agents list, the fee ledger,
 | Nothing personal (plain public GET requests) | Coinbase, Kraken, Backpack, Open-Meteo, Polymarket Gamma | live market data for the game's strategy agents |
 
 Voice input uses Android's on-device/system speech recognizer (`SpeechRecognizer`) and is asked for only when you tap the mic. Replies can be read aloud with the system text-to-speech engine.
+
+## Phone calls answered by Sol (call secretary)
+If you forward calls to a Sol secretary number (Ukraine +380 91 481 0885, United States +1 832 500 9920, Canada +1 581 689 9510, United Kingdom +44 20 4577 1829, Denmark +45 32 33 04 95), or someone dials one of them:
+- **What is recorded.** The call audio is streamed live to the AI and is **not** stored as a recording. What is kept is a text transcript of the conversation (what the caller and Sol said), a short AI note (who called and why), the caller's number, the number the call was for, the time and the duration.
+- **Who processes it.** Zadarma (virtual phone numbers, routes the call), OpenAI (realtime voice AI that answers, transcribes and writes the note) and Cloudflare (hosts the Solarchik worker and its storage). Each acts only to deliver the call service. We do not sell call data or use it for advertising.
+- **Where it is kept and for how long.** In the Solarchik worker's storage on Cloudflare: transcripts are deleted automatically after **60 days**; the call inbox keeps only your **last 20 calls** (older ones are dropped); translated notes expire after 30 days; anti-abuse counters after 2 days; diagnostic logs (numbers reduced to their last 4 digits) after 30 days.
+- **Who can see it.** Only the app install whose random account id the call was routed to. The worker returns a call and its transcript only to that account, and only for calls in its own inbox.
+- **Tell your callers.** Callers hear an AI assistant. Where the law requires it, you are responsible for telling people that your calls may be answered and transcribed by an AI.
+
+## Deleting your data on the server, and contact
+"Delete my data" in the app clears the phone. To delete your call inbox, transcripts, verified phone number, Seeker verification and balance from the Solarchik server, email **team.solardepinhub@gmail.com** from any address with the phone number your calls came to (or your account id, if you have it). We delete within 30 days and confirm by email. Payments and other records on Solana cannot be deleted by anyone. Questions about this policy: **team.solardepinhub@gmail.com**.
 
 ## Permissions
 - `RECORD_AUDIO`: voice input to Sol, asked on first mic tap.

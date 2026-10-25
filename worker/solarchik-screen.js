@@ -357,9 +357,14 @@ async function topup(env, body) {
       continue;
     }
     const added = Math.floor(usdcIn(tx, mint) * 100) / 100;
-    // Mark the signature spent before crediting, so a retry can never credit it twice.
+    // Claim the signature atomically before crediting: two concurrent requests with the same signature can
+    // never both pass (the KV "paid:" check above is eventually consistent and only catches old ones).
+    if (!(await claimOnce(env, "paid:" + s, userId)).first) {
+      last = "already_used";
+      continue;
+    }
     await env.BALANCES.put("paid:" + s, JSON.stringify({ userId, usd: added, at: Date.now() }));
-    const usd = await setUsd(env, userId, (await getUsd(env, userId)) + added);
+    const usd = await creditUsd(env, userId, added);
     return json({ userId, usd, added, sig: s });
   }
   if (last === "already_used") return json({ error: "ALREADY_USED" }, 409);
@@ -370,6 +375,41 @@ async function topup(env, body) {
 
 /** The secretary's own line. Calls diverted to it map to the owner/demo account unless KV maps them. */
 export const DEFAULT_NUMBER = "+380914810885";
+
+/** All Sol secretary lines (Zadarma -> same OpenAI SIP project): Ukraine, US, Canada, UK, Denmark. Extra via env SECRETARY_NUMBERS (comma-separated). */
+export const SECRETARY_LINES = ["+380914810885", "+18325009920", "+15816899510", "+442045771829", "+4532330495"];
+
+export function ownLines(env) {
+  const extra = String(env?.SECRETARY_NUMBERS || "").split(",").map((x) => e164(x)).filter(Boolean);
+  return [...new Set([ownLine(env), ...SECRETARY_LINES, ...extra])];
+}
+
+/**
+ * Atomic first-writer-wins: the first caller for `key` stores `value` and gets { first: true, value }; later
+ * callers get { first: false, value: <stored> }. Production uses the "__ledger__" Durable Object (requests are
+ * serialised, storage is strongly consistent), so two concurrent requests can never both win. Without the DO
+ * binding (unit tests, local) it falls back to KV get/put.
+ */
+export async function claimOnce(env, key, value) {
+  if (env.CALLS) {
+    const room = env.CALLS.get(env.CALLS.idFromName("__ledger__"));
+    return (await room.fetch("https://call-room/once", { method: "POST", body: JSON.stringify({ key, value }) })).json();
+  }
+  const prev = await env.BALANCES.get("once:" + key);
+  if (prev !== null && prev !== undefined) return { first: false, value: prev };
+  await env.BALANCES.put("once:" + key, String(value));
+  return { first: true, value: String(value) };
+}
+
+/** Adds `add` USD to a balance inside the ledger Durable Object, so concurrent credits never lose an update. */
+export async function creditUsd(env, userId, add) {
+  if (env.CALLS) {
+    const room = env.CALLS.get(env.CALLS.idFromName("__ledger__"));
+    const r = await (await room.fetch("https://call-room/credit", { method: "POST", body: JSON.stringify({ userId, add }) })).json();
+    return r.usd;
+  }
+  return setUsd(env, userId, (await getUsd(env, userId)) + add);
+}
 
 /**
  * One phone number as E.164. plus=true when the source had a leading "+". Ukrainian local numbers
@@ -479,7 +519,7 @@ export async function startVerify(env, body) {
   const userId = String(body.userId || "").trim();
   const n = e164(body.number);
   if (!validUserId(userId) || !n) return { status: 400, body: { error: "userId and number (E.164) required" } };
-  if (n === ownLine(env)) return { status: 400, body: { error: "that is the secretary line" } };
+  if (ownLines(env).includes(n)) return { status: 400, body: { error: "that is the secretary line" } };
   await env.BALANCES.put("verify:" + n, userId, { expirationTtl: 300 });
   return { status: 200, body: { ok: true, number: n, line: ownLine(env), expiresSec: 300 } };
 }
@@ -567,8 +607,7 @@ async function claimedPlayer(env, caller) {
 }
 
 export function isOwnLine(env, parties) {
-  const own = ownLine(env);
-  return parties.number === own || parties.to === own || (parties.candidates || []).includes(own);
+  return ownLines(env).some((own) => parties.number === own || parties.to === own || (parties.candidates || []).includes(own));
 }
 
 /**
@@ -1702,6 +1741,7 @@ export class CallRoom {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === "/lines") return this.linesRoute();
+    if (url.pathname === "/once" || url.pathname === "/credit") return this.ledgerRoute(url.pathname, await request.json().catch(() => ({})));
     if (url.pathname === "/claim" || url.pathname === "/claim-take") return this.claimRoute(url.pathname, await request.json().catch(() => ({})));
     // A session-only delivery (live_<x>, no call_id) cannot be accepted when its rtc_<x> twin exists: give the
     // twin a moment to claim this room (both arrive within ms); answer it only if no twin comes.
@@ -1870,6 +1910,23 @@ export class CallRoom {
     const startedAt = s.get("startedAt") || null;
     const endedAt = s.get("endedAt") || null;
     return json({ lines: orderLines(s.get("lines") || [], s.get("order") || {}), durationSec: startedAt && endedAt ? Math.max(1, Math.round((endedAt - startedAt) / 1000)) : null });
+  }
+
+  /** The "__ledger__" room: atomic once-only claims (payment signatures, SIWS nonces, SGT mints) and credits. */
+  async ledgerRoute(path, b) {
+    const s = this.state.storage;
+    if (path === "/once") {
+      const key = String(b.key || "");
+      if (!key) return json({ error: "key required" }, 400);
+      const prev = await s.get("once:" + key);
+      if (prev !== undefined) return json({ first: false, value: prev });
+      await s.put("once:" + key, String(b.value ?? ""));
+      return json({ first: true, value: String(b.value ?? "") });
+    }
+    const userId = String(b.userId || "");
+    const add = Number(b.add);
+    if (!validUserId(userId) || !(add > 0)) return json({ error: "userId and add required" }, 400);
+    return json({ usd: await setUsd(this.env, userId, (await getUsd(this.env, userId)) + add) });
   }
 
   /** The "__line_claims__" room: /claim arms the demo line for one player; /claim-take is read by the next call. */
@@ -2389,6 +2446,7 @@ async function readCached(ctx, cacheKey, ttl, produce) {
     payload = await produce();
   } catch (e) {
     if (e && e.code === 404) return json({ error: "not found" }, 404);
+    if (e && e.code === 503) return json({ error: "busy, retry" }, 503);
     const msg = String((e && e.message) || e);
     const limited = msg.includes("limit exceeded");
     return json({ error: limited ? "KV_LIMIT" : "READ_FAIL", detail: msg.slice(0, 200) }, limited ? 503 : 500);
@@ -2429,7 +2487,7 @@ export default {
     }
     // 1.2.0 Verified Seeker: SIWS challenge/verify + Seeker Genesis Token check (one mint = one perk).
     if (url.pathname.startsWith("/seeker/")) {
-      const r = await seekerRoute(env, request, json, (m, p) => rpc(env, m, p), solRateOk);
+      const r = await seekerRoute(env, request, json, (m, p) => rpc(env, m, p), solRateOk, (k, v) => claimOnce(env, k, v));
       if (r) return r;
     }
 
@@ -2528,7 +2586,7 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/inbox") {
       const userId = url.searchParams.get("userId") || "";
-      if (!userId) return json({ error: "userId required" }, 400);
+      if (!validUserId(userId)) return json({ error: "userId required" }, 400);
       const nl = noteLangOf(url.searchParams.get("lang"));
       return readCached(ctx, "inbox:" + userId + (nl ? ":" + nl : ""), 8, async () => {
         const raw = await env.BALANCES.get("inbox:" + userId);
@@ -2548,7 +2606,9 @@ export default {
           rawInbox = (await env.BALANCES.get("inbox:" + userId)) || "[]";
         } catch (e) {
           if (!String((e && e.message) || e).includes("limit exceeded")) throw e;
-          rawInbox = "[]";
+          const err = new Error("busy");
+          err.code = 503;
+          throw err;
         }
         const items = cleanInbox(JSON.parse(rawInbox));
         const found = items.find((it) => it.callId === callId) || null;
@@ -2559,7 +2619,7 @@ export default {
         } catch {
           rec = null;
         }
-        if (!rec && env.CALLS && item) {
+        if (!rec && env.CALLS) {
           // Calls before 0.21.9 kept their words only in the call room (named by the full id, now the canonical one).
           for (const name of [...new Set([callId, canonCallId(callId)])]) {
             try {
@@ -2573,7 +2633,8 @@ export default {
             }
           }
         }
-        if (!item && !(rec && rec.lines && rec.lines.length)) {
+        // Ownership: words are returned only for a call in this player's own inbox (no reads by callId alone).
+        if (!item) {
           const err = new Error("not found");
           err.code = 404;
           throw err;
@@ -2645,7 +2706,7 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/balance") {
       const userId = url.searchParams.get("userId") || "";
-      if (!userId) return json({ error: "userId required" }, 400);
+      if (!validUserId(userId)) return json({ error: "userId required" }, 400);
       return readCached(ctx, "balance:" + userId, 60, async () => {
         const paidUsd = await getUsd(env, userId);
         const t = await trialOf(env, userId);

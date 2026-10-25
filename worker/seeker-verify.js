@@ -96,13 +96,15 @@ export async function ed25519Ok(pk, msg, sig) {
  * Verifies a SIWS result for an issued nonce. Returns { address } or { error }.
  * `input` = { nonce, address, signedMessage, signature } (base64, as MWA's sign_in_result gives them).
  */
-export async function verifySiws(kv, userId, input) {
+export async function verifySiws(kv, userId, input, once) {
   const nonce = String(input?.nonce || "");
   if (!/^[0-9a-f]{32}$/.test(nonce)) return { error: "nonce" };
   const stored = await kv.get("siws:" + nonce, "json").catch(() => null);
   if (!stored) return { error: "nonce" };
   await kv.delete("siws:" + nonce).catch(() => {}); // single use, even when the rest fails
   if (stored.userId !== userId) return { error: "nonce" };
+  // Atomic single use: KV delete is eventually consistent, so two parallel verifies could both read the nonce.
+  if (once && !(await once("siws:" + nonce, userId)).first) return { error: "nonce" };
   let pk, msg, sig;
   try { pk = b64(input.address); msg = b64(input.signedMessage); sig = b64(input.signature); } catch { return { error: "format" }; }
   if (pk.length !== 32 || sig.length !== 64 || !msg.length) return { error: "format" };
@@ -119,9 +121,11 @@ export async function seekerStatus(kv, userId) {
 }
 
 /** Records a verified SGT for this account; one mint = one account. Returns { verified, reason? }. */
-export async function claimMint(kv, userId, mint, address, now = Date.now()) {
+export async function claimMint(kv, userId, mint, address, now = Date.now(), once) {
   const owner = await kv.get("sgt_mint:" + mint).catch(() => null);
   if (owner && owner !== userId) return { verified: false, reason: "mint_used" };
+  // Atomic: two accounts verifying the same Seeker Genesis Token at once cannot both get it.
+  if (once && (await once("sgt_mint:" + mint, userId)).value !== userId) return { verified: false, reason: "mint_used" };
   await kv.put("sgt_mint:" + mint, userId);
   const rec = { mint, address, at: now };
   await kv.put("seeker_user:" + userId, JSON.stringify(rec));
@@ -131,7 +135,7 @@ export async function claimMint(kv, userId, mint, address, now = Date.now()) {
 const USER = /^[A-Za-z0-9_-]{8,64}$/;
 
 /** /seeker/challenge, /seeker/verify, /seeker/status. `rpc(method, params)` is the worker's failover RPC. */
-export async function seekerRoute(env, request, json, rpc, rateOk) {
+export async function seekerRoute(env, request, json, rpc, rateOk, once) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/seeker/")) return null;
   const kv = env.BALANCES;
@@ -153,12 +157,12 @@ export async function seekerRoute(env, request, json, rpc, rateOk) {
     return json({ ok: true, payload });
   }
   if (url.pathname === "/seeker/verify") {
-    const v = await verifySiws(kv, userId, body);
+    const v = await verifySiws(kv, userId, body, once);
     if (v.error) return json({ ok: false, verified: false, error: v.error }, 400);
     let mint = null;
     try { mint = await findSgt(rpc, v.address); } catch (e) { return json({ ok: false, verified: false, error: "rpc", detail: String(e?.message || e).slice(0, 80) }, 502); }
     if (!mint) return json({ ok: true, verified: false, reason: "no_sgt", address: v.address, bonusMin: bonusMin(env) });
-    const r = await claimMint(kv, userId, mint, v.address);
+    const r = await claimMint(kv, userId, mint, v.address, Date.now(), once);
     console.log(JSON.stringify({ event: "seeker_verify", verified: r.verified, reason: r.reason || "", mint: mint.slice(0, 6) }));
     return json({ ok: true, ...r, address: v.address, bonusMin: bonusMin(env) });
   }
