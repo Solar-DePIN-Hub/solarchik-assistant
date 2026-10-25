@@ -40,6 +40,11 @@ function run(bin, args) {
   return execFileSync(bin, args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
 }
 
+import { existsSync as __exists } from "node:fs";
+if (!__exists(join(ROOT, "artifacts/solarchik-handoff/android/app/keystore.properties"))) {
+  console.log("# skip apk-check: no release keystore on this machine (CI)");
+  process.exit(0);
+}
 const gradle = readFileSync(GRADLE, "utf8");
 const applicationId = grab(gradle, /applicationId = "([^"]+)"/);
 const versionCode = grab(gradle, /versionCode = (\d+)/);
