@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 1.2.15: Sol's offline run banter (was hard-coded in RunBanter.kt) -->
+    <string-array name="banter_go"><item>Поїхали. Я з тобою на дахах.</item><item>Починай стрибати. Я поруч.</item></string-array>
+    <string-array name="banter_chapter"><item>Нові дахи попереду. Дивись під ноги.</item><item>Дахи змінились. Тримай рівновагу.</item></string-array>
+    <string-array name="banter_combo"><item>Гарний темп. Тримай його.</item><item>Добрий ритм. Не поспішай із наступним стрибком.</item></string-array>
+    <string-array name="banter_gold"><item>Золоте сонце! Чудово.</item></string-array>
+    <string-array name="banter_hurt"><item>Обережно, серця ще є.</item><item>Ой, влучило. Стрибай трохи раніше.</item></string-array>
+    <string-array name="banter_dead"><item>Нічого страшного. Пробіжимо ще раз.</item><item>Впали. Переведи подих — і ще раз.</item></string-array>
+    <string-array name="banter_bonus"><item>Летимо! Збирай сонечка.</item></string-array>
+    <string-array name="banter_grind"><item>Гарно ковзаєш по дроту. Тримай рівновагу.</item></string-array>
+    <string-array name="banter_shield"><item>Щит увімкнено — один удар витримаємо.</item></string-array>
+    <string name="banter_ch_village">Сонячний квартал. Скляні навіси тріскають, не зупиняйся.</string>
+    <string name="banter_ch_storm">Смуга шторму. Стеж за дротами й вітром.</string>
+    <string name="banter_ch_night">Нічне місто. Тримайся вогнів у вікнах.</string>
+    <string name="banter_ch_serpent">Високі дахи. Тут важить кожен стрибок.</string>
+    <string name="banter_context">%1$d м, комбо %2$d, сонечок %3$d, сердець %4$d</string>
+</resources>

@@ -13,4 +13,11 @@
     <string name="cs_need_premium">Premium для цього гаманця не активний</string>
     <string name="cs_failed">Не вдалося зберегти, спробуй ще раз</string>
     <string name="cs_loading">Завантажую налаштування дзвінків…</string>
+    <string name="fw_line_pick">Номер, на який переадресовувати дзвінки (за країною, щоб переадресація була місцевим дзвінком):</string>
+    <string name="fw_line_auto">Автоматично: %1$s</string>
+    <string name="fw_cdma_hint">Verizon та деякі інші оператори США/Канади не приймають коди **. Набери %1$s, щоб переадресовувати всі дзвінки, %2$s — лише без відповіді, %3$s — вимкнути.</string>
+    <string name="fw_sim_pick">Яка SIM переадресовує дзвінки Солу:</string>
+    <string name="fw_sim_note">Дві SIM: коли натиснеш код, телефон спитає, з якої SIM набрати. Обери ту SIM, дзвінки якої має приймати Сол (переадресація вмикається окремо для кожної SIM).</string>
+    <string name="cap_reset_local">Ліміти скидаються о 00:00 UTC (%1$s за твоїм часом).</string>
+    <string name="topup_pending_start">Платіж очікує підтвердження: ще чекаємо, поки мережа підтвердить поповнення.</string>
 </resources>

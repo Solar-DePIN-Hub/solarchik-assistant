@@ -158,21 +158,21 @@ class SecretaryTest {
     // ---- 0.20.6: carrier call forwarding to the Sol secretary ----
 
     @Test fun forwardNumberDefaultsToTheSecretaryAndIsValidated() {
-        assertEquals("+380914810885", Secretary.forwardNumber(ctx))
+        assertEquals(Secretary.autoLine(ctx).number, Secretary.forwardNumber(ctx))
         assertEquals(Secretary.DEFAULT_FORWARD_NUMBER, Secretary.cleanNumber(Secretary.DEFAULT_FORWARD_NUMBER))
         assertEquals("+380441234567", Secretary.cleanNumber(" +380 (44) 123-45-67 "))
         assertEquals("+12025550123", Secretary.cleanNumber("0012025550123"))
         listOf("", "0441234567", "+0441234567", "+38044", "+1234567890123456", "+38044*123#", "+380+441234567", "tel:+380441234567", "+38o441234567")
             .forEach { assertNull(it, Secretary.cleanNumber(it)) }
         assertNull(Secretary.setForwardNumber(ctx, "12345"))
-        assertEquals("invalid input keeps the old number", "+380914810885", Secretary.forwardNumber(ctx))
+        assertEquals("invalid input keeps the old number", Secretary.autoLine(ctx).number, Secretary.forwardNumber(ctx))
         assertEquals("+380441234567", Secretary.setForwardNumber(ctx, "+380 44 123 45 67"))
         assertEquals("+380441234567", Secretary.forwardNumber(ctx))
         assertEquals("", Secretary.setForwardNumber(ctx, "  "))
         assertEquals("cleared stays cleared", "", Secretary.forwardNumber(ctx))
         Secretary.setForwardNumber(ctx, "+380441234567")
         AppData.wipe(ctx)
-        assertEquals("wipe restores the default", "+380914810885", Secretary.forwardNumber(ctx))
+        assertEquals("wipe restores the default", Secretary.autoLine(ctx).number, Secretary.forwardNumber(ctx))
     }
 
     @Test fun gsmForwardingCodes() {
@@ -203,9 +203,9 @@ class SecretaryTest {
         tagged("fw-all").performClick()
         var dial = shadowOf(a).nextStartedActivity
         assertEquals(Intent.ACTION_DIAL, dial.action)
-        assertEquals("**004*+380914810885#", dial.data!!.schemeSpecificPart)
+        assertEquals("**004*" + Secretary.autoLine(a).number + "#", dial.data!!.schemeSpecificPart)
         tagged("fw-61").performClick()
-        assertEquals("**61*+380914810885#", shadowOf(a).nextStartedActivity.data!!.schemeSpecificPart)
+        assertEquals("**61*" + Secretary.autoLine(a).number + "#", shadowOf(a).nextStartedActivity.data!!.schemeSpecificPart)
         tagged("fw-off").performClick()
         assertEquals("##004#", shadowOf(a).nextStartedActivity.data!!.schemeSpecificPart)
         // a number that is not a phone number is refused before anything goes to the server

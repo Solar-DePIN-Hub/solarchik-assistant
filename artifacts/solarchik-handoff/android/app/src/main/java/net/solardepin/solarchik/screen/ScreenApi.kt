@@ -136,6 +136,9 @@ object ScreenApi {
         return if (code == 200) runCatching { JSONObject(body) }.getOrNull() else null
     }
 
+    /** 1.2.15: the secretary lines by country ({lines:[{country, number}]}); null offline. */
+    fun lines(): String? { val (code, body) = request("GET", "$BASE/lines", null); return if (code == 200) body else null }
+
     /** {number, verified, line} for this user. */
     fun phoneStatus(userId: String): JSONObject? {
         val (code, body) = request("GET", "$BASE/phone/status?userId=${enc(userId)}", null)

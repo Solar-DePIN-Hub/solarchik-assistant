@@ -234,6 +234,26 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleAssistantExtras(intent)
         runCatching { net.solardepin.solarchik.autopilot.AutoRunner.sync(this) }
         runCatching { net.solardepin.solarchik.sol.Briefing.schedule(this) }
+        recheckPendingPayment()
+    }
+
+    /** 1.2.15: a top-up left pending (app closed before the network confirmed) is re-checked on start. */
+    private fun recheckPendingPayment() {
+        val ref = net.solardepin.solarchik.screen.Secretary.pendingRef(this) ?: return
+        if (!tickerEnabled) return
+        val userId = net.solardepin.solarchik.screen.PlayerIds.get(this)
+        scope.launch {
+            val out = kotlinx.coroutines.withContext(Dispatchers.IO) { runCatching { net.solardepin.solarchik.screen.ScreenApi.topup(userId, ref = ref) }.getOrNull() }
+            when (out) {
+                is net.solardepin.solarchik.screen.ScreenApi.Topup.Credited -> {
+                    net.solardepin.solarchik.screen.Secretary.setPendingRef(this@MainActivity, null)
+                    net.solardepin.solarchik.screen.Secretary.setLastUsd(this@MainActivity, out.usd)
+                    toast(getString(R.string.sec_paid, "$" + net.solardepin.solarchik.ui.Fmt.sol(out.added, 2)))
+                }
+                net.solardepin.solarchik.screen.ScreenApi.Topup.AlreadyUsed -> net.solardepin.solarchik.screen.Secretary.setPendingRef(this@MainActivity, null)
+                else -> toast(getString(R.string.topup_pending_start))
+            }
+        }
     }
 
     /** 1.1.0: briefing and call-action notifications land on Today. */

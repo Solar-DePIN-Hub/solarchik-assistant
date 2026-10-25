@@ -177,7 +177,7 @@ class Release121Test {
             // a text field squeezed to nothing by its neighbour (1.2.1: the forwarding number field next to "Save")
             walk(root) { if (it is android.widget.EditText && shown(it) && it.width < 100) problems += "$screen: text field ${it.width}px wide '${it.hint}'" }
             // switches (checked listener), text fields and selectable text are clickable by nature; the onboarding layer swallows touches
-            clickables(root).filter { !it.hasOnClickListeners() && it !is ScrollView && it !is android.widget.CompoundButton && it !is android.widget.EditText &&
+            clickables(root).filter { !it.hasOnClickListeners() && it !is ScrollView && it !is android.widget.CompoundButton && it !is android.widget.EditText && it !is android.widget.Spinner &&
                 !((it as? TextView)?.isTextSelectable ?: false) && it.tag != "onboarding" }.forEach { noHandler += "$screen: ${name(it)}" }
             report.append("== $screen ($sfx): ${t.size} texts, ${clickables(root).size} clickables\n")
         }

@@ -27,7 +27,7 @@ object Phones {
 
     private fun known(ctx: Context): Set<String> =
         (CircleStore(ctx).all().map { Circle.phoneKey(it.phone) } +
-            Circle.phoneKey(Secretary.ownNumber(ctx)) + Circle.phoneKey(Secretary.forwardNumber(ctx)) + Circle.phoneKey(Secretary.DEFAULT_FORWARD_NUMBER))
+            Circle.phoneKey(Secretary.ownNumber(ctx)) + Circle.phoneKey(Secretary.forwardNumber(ctx)) + Secretary.lines(ctx).map { Circle.phoneKey(it.number) })
             .filter { it.isNotBlank() }.toSet()
 
     /** Masks every phone number in a display text, except the user's own contacts' numbers. */

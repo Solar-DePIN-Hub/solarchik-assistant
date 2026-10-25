@@ -9,51 +9,27 @@ enum class BanterKind { GO, CHAPTER, COMBO, GOLD, HURT, DEAD, BONUS, GRIND, SHIE
 enum class ScriptLine { CLOCK_READY, FIRST_ROOF, LAST_HEART }
 
 object RunBanter {
-    private val EN = mapOf(
-        BanterKind.GO to listOf("Let's go. I'm with you on the roofs.", "Start jumping. I've got your back."),
-        BanterKind.CHAPTER to listOf("New rooftops ahead. Watch your step.", "The roofs changed. Stay steady."),
-        BanterKind.COMBO to listOf("Nice streak. Keep that pace.", "Good rhythm. Don't rush the next jump."),
-        BanterKind.GOLD to listOf("You caught a gold sun. Well done."),
-        BanterKind.HURT to listOf("Careful. You still have hearts left.", "That hit hurt. Jump a little earlier."),
-        BanterKind.DEAD to listOf("That's okay. We can run it again.", "We fell. Take a breath, then retry."),
-        BanterKind.BONUS to listOf("We're flying. Grab the suns."),
-        BanterKind.GRIND to listOf("Nice grind on the wire. Keep balanced."),
-        BanterKind.SHIELD to listOf("Shield is on. You can take one hit."),
-        BanterKind.BOSS to listOf("Big one ahead. Jump and stomp it."),
-    )
-    private val UK = mapOf(
-        BanterKind.GO to listOf("Поїхали. Я з тобою на дахах.", "Починай стрибати. Я поруч."),
-        BanterKind.CHAPTER to listOf("Нові дахи попереду. Дивись під ноги.", "Дахи змінились. Тримай рівновагу."),
-        BanterKind.COMBO to listOf("Гарний темп. Тримай його.", "Добрий ритм. Не поспішай із наступним стрибком."),
-        BanterKind.GOLD to listOf("Золоте сонце! Чудово."),
-        BanterKind.HURT to listOf("Обережно, серця ще є.", "Ой, влучило. Стрибай трохи раніше."),
-        BanterKind.DEAD to listOf("Нічого страшного. Пробіжимо ще раз.", "Впали. Переведи подих — і ще раз."),
-        BanterKind.BONUS to listOf("Летимо! Збирай сонечка."),
-        BanterKind.GRIND to listOf("Гарно ковзаєш по дроту. Тримай рівновагу."),
-        BanterKind.SHIELD to listOf("Щит увімкнено — один удар витримаємо."),
-        BanterKind.BOSS to listOf("Попереду великий бос. Стрибни й придави його згори."),
-    )
-    private val CH_EN = mapOf(
-        ChapterId.VILLAGE to "Solar district. Glass canopies crack, keep moving.",
-        ChapterId.STORM to "Storm line. Watch the cables and the wind.",
-        ChapterId.NIGHT to "Night city. Follow the window lights.",
-        ChapterId.SERPENT to "High roofs now. Every gap counts.",
-    )
-    private val CH_UK = mapOf(
-        ChapterId.VILLAGE to "Сонячний квартал. Скляні навіси тріскають, не зупиняйся.",
-        ChapterId.STORM to "Смуга шторму. Стеж за дротами й вітром.",
-        ChapterId.NIGHT to "Нічне місто. Тримайся вогнів у вікнах.",
-        ChapterId.SERPENT to "Високі дахи. Тут важить кожен стрибок.",
-    )
+    private data class Pack(val kinds: Map<BanterKind, List<String>>, val chapters: Map<ChapterId, String>, val ctx: String)
+    private val packs = java.util.concurrent.ConcurrentHashMap<String, Pack>()
+
+    /** Lines live in res (strings_banter.xml, en + uk); loads the pack for [lang] once. */
+    fun load(context: android.content.Context, lang: String) {
+        val l = if (lang == "uk") "uk" else "en"
+        if (packs.containsKey(l)) return
+        val conf = android.content.res.Configuration(context.resources.configuration).apply { setLocale(java.util.Locale(l)) }
+        val r = context.createConfigurationContext(conf).resources
+        fun id(n: String, type: String) = r.getIdentifier(n, type, context.packageName)
+        val kinds = BanterKind.values().associateWith { k -> id("banter_" + k.name.lowercase(), "array").takeIf { it != 0 }?.let { r.getStringArray(it).toList() }.orEmpty() }
+        val ch = ChapterId.values().mapNotNull { c -> id("banter_ch_" + c.name.lowercase(), "string").takeIf { it != 0 }?.let { c to r.getString(it) } }.toMap()
+        packs[l] = Pack(kinds, ch, r.getString(id("banter_context", "string")))
+    }
 
     private var lastLine = ""
 
     fun pool(kind: BanterKind, lang: String, chapter: ChapterId?): List<String> {
-        val uk = lang == "uk"
-        if (kind == BanterKind.CHAPTER && chapter != null) {
-            (if (uk) CH_UK else CH_EN)[chapter]?.let { return listOf(it) }
-        }
-        return (if (uk) UK else EN)[kind].orEmpty()
+        val p = packs[if (lang == "uk") "uk" else "en"] ?: return emptyList()
+        if (kind == BanterKind.CHAPTER && chapter != null) p.chapters[chapter]?.let { return listOf(it) }
+        return p.kinds[kind].orEmpty()
     }
 
     fun pick(kind: BanterKind, lang: String, chapter: ChapterId?, rnd: Random = Random.Default): String {
@@ -78,8 +54,7 @@ object RunBanter {
     fun eventToBanter(ev: Ev): BanterKind? = if (ev == Ev.DEAD) BanterKind.DEAD else null
 
     fun context(meters: Int, chapter: ChapterId, combo: Int, suns: Int, hearts: Int, lang: String = "en"): String =
-        if (lang == "uk") "$meters м, комбо $combo, сонечок $suns, сердець $hearts"
-        else "$meters m, combo $combo, suns $suns, hearts $hearts"
+        (packs[if (lang == "uk") "uk" else "en"]?.ctx ?: "%1\$d m, combo %2\$d, suns %3\$d, hearts %4\$d").format(meters, combo, suns, hearts)
 
     fun periodicKind(bonus: Boolean, combo: Int, hearts: Int): BanterKind = when {
         bonus -> BanterKind.BONUS

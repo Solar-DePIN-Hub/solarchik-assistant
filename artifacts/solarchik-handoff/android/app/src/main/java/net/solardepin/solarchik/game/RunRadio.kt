@@ -53,6 +53,7 @@ class RunRadio(
     private val main = Handler(Looper.getMainLooper())
     internal var brain = SolBrain()
     private val store = SolChatStore(context)
+    init { net.solardepin.solarchik.game.run.RunBanter.load(context, lang) }
     private var voice: SolVoice? = null
     private var ears: SolEars? = null
     private var last: RunHud? = null

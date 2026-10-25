@@ -13,4 +13,11 @@
     <string name="cs_need_premium">Premium is not active for this wallet</string>
     <string name="cs_failed">Could not save, try again</string>
     <string name="cs_loading">Loading call settings…</string>
+    <string name="fw_line_pick">Line your calls forward to (by country, so forwarding stays a local call):</string>
+    <string name="fw_line_auto">Automatic: %1$s</string>
+    <string name="fw_cdma_hint">Verizon and some other US/CA carriers ignore ** codes. Dial %1$s to forward all calls, %2$s for no-answer only, %3$s to turn it off.</string>
+    <string name="fw_sim_pick">Which SIM forwards its calls to Sol:</string>
+    <string name="fw_sim_note">Two SIMs: when you tap a code, your dialer asks which SIM to use. Pick the SIM whose calls Sol should take (forwarding is set per SIM).</string>
+    <string name="cap_reset_local">Limits reset at 00:00 UTC (%1$s your time).</string>
+    <string name="topup_pending_start">Payment pending: we are still waiting for the network to confirm your top-up.</string>
 </resources>

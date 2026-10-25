@@ -56,18 +56,74 @@ class ForwardPanel(private val host: MainActivity) {
         view.addView(Ui.top(status, 8))
 
         view.addView(Ui.top(Ui.label(ctx, ctx.getString(R.string.fw_step2), Ui.GOLD), 16))
+        view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fw_line_pick), 12f), 8))
+        picker = android.widget.Spinner(ctx).apply { tag = "fw-line" }
+        fillPicker()
+        view.addView(Ui.top(picker, 4))
+        simRow()
+        if (Secretary.usesCdmaCodes(Secretary.detectCountry(ctx))) {
+            val n = Secretary.forwardNumber(ctx).removePrefix("+")
+            view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fw_cdma_hint, "*72$n", "*71$n", Secretary.CDMA_OFF), 11.5f).apply { tag = "fw-cdma"; setLineSpacing(0f, 1.25f) }, 8))
+        }
         view.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.fw_all), Ui.Btn.PRIMARY) {
-            Secretary.forwardAllCode(line)?.let { dial(it) }
+            Secretary.forwardAllCode(Secretary.forwardNumber(ctx))?.let { dial(it) }
         }.apply { tag = "fw-all"; maxLines = 2 }, 8))
         view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fw_one_case), 12f), 10))
         val row = Ui.row(ctx, gap = 8)
         listOf(Secretary.Forward.NO_ANSWER to R.string.fw_no_answer, Secretary.Forward.BUSY to R.string.fw_busy, Secretary.Forward.UNREACHABLE to R.string.fw_unreachable).forEach { (k, label) ->
-            row.addView(Ui.weight(Ui.button(ctx, ctx.getString(label), Ui.Btn.GHOST) { Secretary.forwardOnCode(k, line)?.let { dial(it) } }.apply { tag = "fw-" + k.code; textSize = 13f; maxLines = 2 }))
+            row.addView(Ui.weight(Ui.button(ctx, ctx.getString(label), Ui.Btn.GHOST) { Secretary.forwardOnCode(k, Secretary.forwardNumber(ctx))?.let { dial(it) } }.apply { tag = "fw-" + k.code; textSize = 13f; maxLines = 2 }))
         }
         view.addView(Ui.top(row, 6))
         view.addView(Ui.top(Ui.button(ctx, ctx.getString(R.string.fw_off, Secretary.FORWARD_ALL_OFF), Ui.Btn.GHOST) { dial(Secretary.FORWARD_ALL_OFF) }.apply { tag = "fw-off"; textSize = 14f }, 8))
         view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fw_carrier), 11.5f).apply { setLineSpacing(0f, 1.25f) }, 10))
         view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fw_how), 11.5f).apply { tag = "fw-how"; setLineSpacing(0f, 1.25f) }, 8))
+    }
+
+    /** Dual SIM: pick the SIM when Android lets us list them; otherwise a note (the dialer asks which SIM). */
+    private fun simRow() {
+        val subs = runCatching {
+            @Suppress("MissingPermission")
+            (ctx.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as android.telephony.SubscriptionManager).activeSubscriptionInfoList.orEmpty()
+        }.getOrDefault(emptyList())
+        val slots = runCatching { (ctx.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager).let {
+            if (android.os.Build.VERSION.SDK_INT >= 30) it.activeModemCount else @Suppress("DEPRECATION") it.phoneCount } }.getOrDefault(1)
+        if (subs.size > 1) {
+            view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fw_sim_pick), 12f), 8))
+            val sp = android.widget.Spinner(ctx).apply { tag = "fw-sim" }
+            sp.adapter = android.widget.ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item,
+                subs.map { "SIM ${it.simSlotIndex + 1} · ${it.displayName} · ${Secretary.flag(it.countryIso.orEmpty())}" })
+            sp.setSelection(subs.indexOfFirst { it.subscriptionId == Secretary.forwardSim(ctx) }.coerceAtLeast(0), false)
+            sp.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(p: android.widget.AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) {
+                    subs.getOrNull(pos)?.let { Secretary.setForwardSim(ctx, it.subscriptionId); fillPicker() }
+                }
+                override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+            }
+            view.addView(Ui.top(sp, 4))
+        } else if (slots > 1) {
+            view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.fw_sim_note), 11.5f).apply { tag = "fw-sim-note"; setLineSpacing(0f, 1.25f) }, 8))
+        }
+    }
+
+    private lateinit var picker: android.widget.Spinner
+    private var pickerLines: List<Secretary.Line> = emptyList()
+
+    /** Item 0 = automatic (by SIM/network country); then every line with its flag. Choosing saves fwdNumber. */
+    private fun fillPicker() {
+        val lines = Secretary.lines(ctx); pickerLines = lines
+        val auto = Secretary.autoLine(ctx)
+        val items = listOf(ctx.getString(R.string.fw_line_auto, Secretary.flag(auto.country) + " " + auto.number)) +
+            lines.map { Secretary.flag(it.country) + " " + it.number }
+        picker.onItemSelectedListener = null
+        picker.adapter = android.widget.ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, items)
+        val cur = Secretary.forwardNumber(ctx)
+        picker.setSelection(if (!Secretary.forwardChosen(ctx)) 0 else (lines.indexOfFirst { it.number == cur } + 1).coerceAtLeast(0), false)
+        picker.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) {
+                if (pos == 0) Secretary.clearForwardChoice(ctx) else pickerLines.getOrNull(pos - 1)?.let { Secretary.setForwardNumber(ctx, it.number) }
+            }
+            override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+        }
     }
 
     private fun render() {
@@ -88,6 +144,7 @@ class ForwardPanel(private val host: MainActivity) {
         host.scope.launch {
             val st = withContext(Dispatchers.IO) { runCatching { ScreenApi.phoneStatus(PlayerIds.get(ctx)) }.getOrNull() } ?: return@launch
             st.optString("line").takeIf { it.isNotBlank() }?.let { line = it }
+            withContext(Dispatchers.IO) { runCatching { ScreenApi.lines() }.getOrNull() }?.let { Secretary.saveLines(ctx, it); fillPicker() }
             val v = st.optBoolean("verified")
             if (v) Secretary.setOwn(ctx, st.optString("number"), true)
             else if (Secretary.ownVerified(ctx)) Secretary.setOwn(ctx, Secretary.ownNumber(ctx), false)
@@ -96,7 +153,7 @@ class ForwardPanel(private val host: MainActivity) {
     }
 
     private fun verify() {
-        val n = Secretary.e164(input.text?.toString().orEmpty())
+        val n = Secretary.e164(input.text?.toString().orEmpty(), Secretary.detectCountry(ctx))
         if (n.isBlank()) { host.toast(ctx.getString(R.string.fw_bad_number)); return }
         Secretary.setOwn(ctx, n, false)
         input.setText(n)

@@ -180,12 +180,19 @@ object CallText {
     /** The caller as shown: their name, else their number (masked unless they are in the user's Circle). */
     fun who(ctx: Context, item: CallItem): String = Phones.show(ctx, item.who)
 
+    /** "Limits reset at 00:00 UTC (03:00 your time)." in the phone's time zone. */
+    fun resetNote(ctx: Context, now: Long = System.currentTimeMillis()): String {
+        val midnight = (now / 86_400_000L + 1) * 86_400_000L
+        val local = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).apply { timeZone = java.util.TimeZone.getDefault() }.format(java.util.Date(midnight))
+        return ctx.getString(R.string.cap_reset_local, local)
+    }
+
     private fun rawSummary(ctx: Context, item: CallItem): String = when {
         item.blocked -> ctx.getString(R.string.calls_blocked_line)
         // 1.1.3: the worker's daily AI call minutes cap (the caller heard a short goodbye, nothing was charged)
-        item.reason == "CALL_MINUTES_GLOBAL" || item.reason == "CALL_MINUTES_ACCOUNT" -> ctx.getString(R.string.calls_missed_minutes_cap)
-        item.status == CallInbox.NEED_TOPUP && item.reason == "TRIAL_CALLER_CAP" -> ctx.getString(R.string.calls_missed_caller_cap)
-        item.status == CallInbox.NEED_TOPUP && item.reason == "TRIAL_DAILY_CAP" -> ctx.getString(R.string.calls_missed_daily_cap)
+        item.reason == "CALL_MINUTES_GLOBAL" || item.reason == "CALL_MINUTES_ACCOUNT" -> ctx.getString(R.string.calls_missed_minutes_cap) + " " + resetNote(ctx)
+        item.status == CallInbox.NEED_TOPUP && item.reason == "TRIAL_CALLER_CAP" -> ctx.getString(R.string.calls_missed_caller_cap) + " " + resetNote(ctx)
+        item.status == CallInbox.NEED_TOPUP && item.reason == "TRIAL_DAILY_CAP" -> ctx.getString(R.string.calls_missed_daily_cap) + " " + resetNote(ctx)
         item.status == CallInbox.NEED_TOPUP -> ctx.getString(R.string.calls_missed_topup)
         item.missed -> ctx.getString(R.string.calls_missed_line)
         item.status == CallInbox.PENDING -> ctx.getString(R.string.calls_pending_line)

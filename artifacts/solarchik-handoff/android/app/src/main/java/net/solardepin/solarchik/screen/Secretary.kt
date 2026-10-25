@@ -96,13 +96,79 @@ object Secretary {
     const val FORWARD_ALL_OFF = "##004#"
 
     /**
-     * The Sol secretary's Zadarma virtual number (owner-confirmed 2026-10-02; the number is paid until 21.10.2026).
+     * The UA Sol secretary line (Zadarma, auto-renew on; paid until 21.11.2026 per the Zadarma API on 25.10.2026). Other countries: DEFAULT_LINES.
      * Same default as the web app (src/lib/game/save.ts secNumber). The player can change or clear it in Settings.
      */
     const val DEFAULT_FORWARD_NUMBER = "+380914810885"
 
-    /** Saved number; the default until the player saves another one; "" once the player cleared it. */
-    fun forwardNumber(ctx: Context): String = prefs(ctx).getString("fwdNumber", null) ?: DEFAULT_FORWARD_NUMBER
+    /** 1.2.15: one Sol line per country so forwarding stays a local/cheap call. The worker's GET /lines can add more. */
+    data class Line(val country: String, val number: String)
+    val DEFAULT_LINES = listOf(
+        Line("UA", "+380914810885"), Line("US", "+18325009920"), Line("CA", "+15816899510"),
+        Line("GB", "+442045771829"), Line("DK", "+4532330495"),
+    )
+    private val AMERICAS = setOf("US", "CA", "MX", "BR", "AR", "CL", "CO", "PE", "VE", "EC", "BO", "PY", "UY", "GT", "CR",
+        "PA", "HN", "SV", "NI", "DO", "CU", "PR", "JM", "HT", "TT", "BS", "BB", "BZ", "GY", "SR")
+    private val EUROPE = setOf("GB", "IE", "DK", "SE", "NO", "FI", "IS", "DE", "FR", "NL", "BE", "LU", "AT", "CH", "IT", "ES",
+        "PT", "PL", "CZ", "SK", "HU", "RO", "BG", "GR", "HR", "SI", "RS", "BA", "ME", "MK", "AL", "EE", "LV", "LT", "MT",
+        "CY", "LI", "MC", "SM", "AD", "VA")
+
+    /** Exact country line, else US for the Americas, GB for Europe, UA otherwise (UA/MD/GE/… and the rest). */
+    fun lineFor(country: String?, lines: List<Line> = DEFAULT_LINES): Line {
+        val c = country.orEmpty().trim().uppercase()
+        fun pick(cc: String) = lines.firstOrNull { it.country == cc }
+        return pick(c) ?: when (c) {
+            in AMERICAS -> pick("US")
+            in EUROPE -> pick("GB")
+            else -> null
+        } ?: pick("UA") ?: lines.firstOrNull() ?: DEFAULT_LINES[0]
+    }
+
+    private val NANP = setOf("US", "CA", "PR", "DO", "JM", "TT", "BS", "BB")
+
+    /** US/CA carriers (Verizon and other ex-CDMA networks) ignore GSM ** codes: *72 + number on, *73 off. */
+    fun usesCdmaCodes(country: String): Boolean = country.uppercase() == "US" || country.uppercase() == "CA"
+    fun cdmaForwardCode(number: String): String? = cleanNumber(number)?.let { "*72" + it.removePrefix("+") }
+    fun cdmaNoAnswerCode(number: String): String? = cleanNumber(number)?.let { "*71" + it.removePrefix("+") }
+    const val CDMA_OFF = "*73"
+
+    /** Chosen SIM for forwarding (subscription id), -1 = default SIM. */
+    fun forwardSim(ctx: Context): Int = prefs(ctx).getInt("fwdSim", -1)
+    fun setForwardSim(ctx: Context, id: Int) = prefs(ctx).edit().putInt("fwdSim", id).apply()
+
+    /** Emoji flag for an ISO country code ("UA" -> 🇺🇦). */
+    fun flag(country: String): String =
+        country.uppercase().takeIf { it.length == 2 && it.all { c -> c in 'A'..'Z' } }
+            ?.map { String(Character.toChars(0x1F1E6 + (it - 'A'))) }?.joinToString("") ?: "🌐"
+
+    /** SIM country, then network country, then the phone's locale. */
+    fun detectCountry(ctx: Context): String {
+        val base = runCatching { ctx.getSystemService(Context.TELEPHONY_SERVICE) as? android.telephony.TelephonyManager }.getOrNull()
+        val sim = forwardSim(ctx)
+        val tm = if (sim >= 0 && Build.VERSION.SDK_INT >= 24) runCatching { base?.createForSubscriptionId(sim) }.getOrNull() ?: base else base
+        return listOf(runCatching { tm?.simCountryIso }.getOrNull(), runCatching { tm?.networkCountryIso }.getOrNull(),
+            java.util.Locale.getDefault().country).firstOrNull { !it.isNullOrBlank() && it.length == 2 }.orEmpty().uppercase()
+    }
+
+    /** Lines from the worker (cached JSON) when valid, else the built-in list. */
+    fun lines(ctx: Context): List<Line> = parseLines(prefs(ctx).getString("lines", null)).ifEmpty { DEFAULT_LINES }
+    fun saveLines(ctx: Context, json: String) { if (parseLines(json).isNotEmpty()) prefs(ctx).edit().putString("lines", json).apply() }
+    fun parseLines(json: String?): List<Line> = runCatching {
+        val a = org.json.JSONObject(json ?: return emptyList()).getJSONArray("lines")
+        (0 until a.length()).mapNotNull { i ->
+            val o = a.getJSONObject(i); val c = o.optString("country").uppercase(); val n = cleanNumber(o.optString("number"))
+            if (c.length == 2 && n != null) Line(c, n) else null
+        }
+    }.getOrDefault(emptyList())
+
+    /** Automatic line for this phone. */
+    fun autoLine(ctx: Context): Line = lineFor(detectCountry(ctx), lines(ctx))
+    /** True when the player picked a line (or typed one) instead of automatic. */
+    fun forwardChosen(ctx: Context): Boolean = prefs(ctx).contains("fwdNumber")
+    fun clearForwardChoice(ctx: Context) { prefs(ctx).edit().remove("fwdNumber").apply() }
+
+    /** Saved number; the automatic country line until the player picks another one; "" once the player cleared it. */
+    fun forwardNumber(ctx: Context): String = prefs(ctx).getString("fwdNumber", null) ?: autoLine(ctx).number
 
     /** Saves a valid number (returns it) or leaves the old one and returns null. Blank clears it. */
     fun setForwardNumber(ctx: Context, raw: String): String? {
@@ -147,8 +213,16 @@ object Secretary {
     }
 
     /** "+380 63 744 37 92" / "0637443792" -> "+380637443792" (Ukraine default for a leading 0), "" if not a number. */
-    fun e164(raw: String): String {
+    /** 1.2.15: national numbers are read in the SIM's country (US "2025550123" -> +12025550123); UA rules stay the fallback. */
+    fun e164(raw: String, country: String = "UA"): String {
         val d = raw.filter { it.isDigit() }
+        val c = country.trim().uppercase()
+        if (!raw.trim().startsWith("+") && c.length == 2 && c != "UA") {
+            runCatching { android.telephony.PhoneNumberUtils.formatNumberToE164(raw, c) }.getOrNull()
+                ?.takeIf { it.startsWith("+") && it.length in 9..16 }?.let { return it }
+            if (c in NANP && d.length == 10) return "+1$d"
+            if (c in NANP && d.length == 11 && d.startsWith("1")) return "+$d"
+        }
         return when {
             raw.trim().startsWith("+") && d.length in 8..15 -> "+$d"
             d.startsWith("380") && d.length == 12 -> "+$d"

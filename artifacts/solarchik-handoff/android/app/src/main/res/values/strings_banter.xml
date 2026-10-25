@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 1.2.15: Sol's offline run banter (was hard-coded in RunBanter.kt) -->
+    <string-array name="banter_go"><item>Let\'s go. I\'m with you on the roofs.</item><item>Start jumping. I\'ve got your back.</item></string-array>
+    <string-array name="banter_chapter"><item>New rooftops ahead. Watch your step.</item><item>The roofs changed. Stay steady.</item></string-array>
+    <string-array name="banter_combo"><item>Nice streak. Keep that pace.</item><item>Good rhythm. Don\'t rush the next jump.</item></string-array>
+    <string-array name="banter_gold"><item>You caught a gold sun. Well done.</item></string-array>
+    <string-array name="banter_hurt"><item>Careful. You still have hearts left.</item><item>That hit hurt. Jump a little earlier.</item></string-array>
+    <string-array name="banter_dead"><item>That\'s okay. We can run it again.</item><item>We fell. Take a breath, then retry.</item></string-array>
+    <string-array name="banter_bonus"><item>We\'re flying. Grab the suns.</item></string-array>
+    <string-array name="banter_grind"><item>Nice grind on the wire. Keep balanced.</item></string-array>
+    <string-array name="banter_shield"><item>Shield is on. You can take one hit.</item></string-array>
+    <string name="banter_ch_village">Solar district. Glass canopies crack, keep moving.</string>
+    <string name="banter_ch_storm">Storm line. Watch the cables and the wind.</string>
+    <string name="banter_ch_night">Night city. Follow the window lights.</string>
+    <string name="banter_ch_serpent">High roofs now. Every gap counts.</string>
+    <string name="banter_context">%1$d m, combo %2$d, suns %3$d, hearts %4$d</string>
+</resources>
