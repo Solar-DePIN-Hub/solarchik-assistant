@@ -12,6 +12,8 @@ class SolarchikApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // 1.2.15: per-install secret for the secretary worker (calls, transcripts, balance, settings)
+        runCatching { net.solardepin.solarchik.screen.ScreenApi.installKey = net.solardepin.solarchik.screen.PlayerIds.key(this) }
         runCatching { net.solardepin.solarchik.core.CrashReport.install(this) }
         Notes.createChannel(this)
         runCatching { Notes.schedule(this) }

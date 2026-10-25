@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cs_title">Налаштування дзвінків Premium</string>
+    <string name="cs_voice">Голос, яким відповідає Сол</string>
+    <string name="cs_preview">Прослухати</string>
+    <string name="cs_preview_text">Вітаю, це Сол, асистент власника. Чим можу допомогти?</string>
+    <string name="cs_greeting">Привітання на початку дзвінка</string>
+    <string name="cs_greeting_hint">напр. Привіт, це асистент Вадима, Сол.</string>
+    <string name="cs_greeting_help">До %1$d символів. Порожньо = стандартне привітання Сола.</string>
+    <string name="cs_lang">Мова дзвінка</string>
+    <string name="cs_save">Зберегти налаштування дзвінків</string>
+    <string name="cs_saved">Налаштування дзвінків збережено</string>
+    <string name="cs_need_premium">Premium для цього гаманця не активний</string>
+    <string name="cs_failed">Не вдалося зберегти, спробуй ще раз</string>
+    <string name="cs_loading">Завантажую налаштування дзвінків…</string>
+</resources>

@@ -72,6 +72,8 @@ class PremiumPanel(private val host: MainActivity) {
             val f = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, net.solardepin.solarchik.core.AppLocale.ui(ctx))
             view.addView(Ui.top(Ui.text(ctx, ctx.getString(R.string.pm_active, f.format(java.util.Date(Premium.until(ctx) * 1000))), 15f, Ui.GREEN, 800).apply { tag = "premium-active" }, 8))
             view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.pm_number_setup), 12.5f).apply { tag = "premium-number" }, 4))
+            // 1.2.15: Premium-only call settings (voice, greeting, language)
+            val cs = CallSettingsPanel(host); view.addView(cs.view); cs.load()
             return
         }
         view.addView(Ui.top(Ui.muted(ctx, ctx.getString(R.string.pm_body), 12.5f).apply { setLineSpacing(0f, 1.25f) }, 6))

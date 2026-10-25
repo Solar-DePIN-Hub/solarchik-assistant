@@ -201,8 +201,8 @@ class Release121Test {
     }
 
     @Test fun version() {
-        assertEquals("1.2.14", BuildConfig.VERSION_NAME)
-        assertEquals(135, BuildConfig.VERSION_CODE)
+        assertEquals("1.2.15", BuildConfig.VERSION_NAME)
+        assertEquals(136, BuildConfig.VERSION_CODE)
     }
 
     @Test fun everyScreenInEnglish() = auditScreens(uk = false)

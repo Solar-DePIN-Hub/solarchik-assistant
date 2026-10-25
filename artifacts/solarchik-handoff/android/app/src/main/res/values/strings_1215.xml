@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cs_title">Premium call settings</string>
+    <string name="cs_voice">Answering voice</string>
+    <string name="cs_preview">Preview</string>
+    <string name="cs_preview_text">Hi, this is Sol, the owner\'s assistant. How can I help?</string>
+    <string name="cs_greeting">Greeting at the start of the call</string>
+    <string name="cs_greeting_hint">e.g. Hello, you\'ve reached Vadym\'s assistant Sol.</string>
+    <string name="cs_greeting_help">Up to %1$d characters. Empty = Sol\'s standard greeting.</string>
+    <string name="cs_lang">Call language</string>
+    <string name="cs_save">Save call settings</string>
+    <string name="cs_saved">Call settings saved</string>
+    <string name="cs_need_premium">Premium is not active for this wallet</string>
+    <string name="cs_failed">Could not save, try again</string>
+    <string name="cs_loading">Loading call settings…</string>
+</resources>

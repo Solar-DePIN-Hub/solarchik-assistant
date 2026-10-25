@@ -8,6 +8,31 @@ import java.net.URL
 object ScreenApi {
     const val BASE = "https://solarchik-screen.davidbell1603.workers.dev"
 
+    /** 1.2.15: this install's secret (PlayerIds.key), set in SolarchikApp.onCreate; sent as X-Sol-Key to BASE. */
+    @Volatile var installKey: String = ""
+
+    data class CallSettings(val voice: String, val greeting: String, val lang: String, val until: Long)
+    data class CallOptions(val voices: List<String>, val langs: List<String>, val greetingMax: Int)
+
+    /** GET /premium/call-settings: saved Premium call settings (null = defaults) and the allowed options. */
+    fun callSettings(userId: String): Pair<CallSettings?, CallOptions>? {
+        val (code, body) = request("GET", "$BASE/premium/call-settings?userId=${enc(userId)}", null)
+        if (code != 200) return null
+        return runCatching {
+            val o = JSONObject(body)
+            val s = o.optJSONObject("settings")
+            val op = o.getJSONObject("options")
+            fun list(k: String) = op.getJSONArray(k).let { a -> (0 until a.length()).map { a.getString(it) } }
+            (s?.let { CallSettings(it.optString("voice"), it.optString("greeting"), it.optString("lang"), it.optLong("until")) }) to
+                CallOptions(list("voices"), list("langs"), op.optInt("greetingMax", 160))
+        }.getOrNull()
+    }
+
+    /** POST /premium/call-settings. Returns the HTTP code (200 saved, 402 no active Premium, 400 invalid, 401 key). */
+    fun saveCallSettings(userId: String, wallet: String, voice: String, greeting: String, lang: String): Int =
+        request("POST", "$BASE/premium/call-settings", JSONObject().put("userId", userId).put("wallet", wallet)
+            .put("voice", voice).put("greeting", greeting).put("lang", lang).toString()).first
+
     data class Screened(
         val reply: String,
         val summary: JSONObject,
@@ -202,6 +227,7 @@ object ScreenApi {
         c.connectTimeout = 12000
         c.readTimeout = 20000
         c.setRequestProperty("Accept", "application/json")
+        if (installKey.isNotEmpty() && url.startsWith(BASE)) c.setRequestProperty("X-Sol-Key", installKey)
         return try {
             if (body != null) {
                 c.doOutput = true

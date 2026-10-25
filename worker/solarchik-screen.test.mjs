@@ -26,7 +26,7 @@ async function call(env, path, body, method = "POST", headers = {}, ctx) {
   const res = await worker.fetch(
     new Request("https://solarchik-screen.example" + path, {
       method,
-      headers: { "content-type": "application/json", ...headers },
+      headers: { "content-type": "application/json", "x-sol-key": "cd".repeat(32), ...headers },
       body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
     }),
     env,
@@ -453,7 +453,7 @@ test("canonCallId strips rtc_/live_; cleanInbox drops the failed live_ twin of a
 });
 
 test("/sip: live_ (session only) and rtc_ deliveries of one call meet in one room; only rtc_ is accepted, one charge, one line", async () => {
-  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER, SESSION_WAIT_MS: 60 };
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER, SESSION_WAIT_MS: 60, ADMIN_BIND_UNTIL: String(Date.now() + 3600e3) };
   await env.BALANCES.put(OWNER, "1");
   roomsEnv(env);
   const calls = openai();
@@ -482,7 +482,7 @@ test("/sip: a session-only delivery with no twin is still answered after the sho
 });
 
 test("block list: POST/GET /block; a blocked caller is rejected, never charged, and gets a 'blocked' line", async () => {
-  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER };
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: OWNER, ADMIN_BIND_UNTIL: String(Date.now() + 3600e3) };
   await env.BALANCES.put(OWNER, "1");
   assert.equal((await call(env, "/block", { userId: OWNER, number: "nope" })).status, 400);
   const set = await call(env, "/block", { userId: OWNER, number: "+380 63 850 0117" });
@@ -589,8 +589,10 @@ test("phone secretary speaks to callers with one consistent polite form in Ukrai
 
 // ---- 0.22.0: owner exemption + trial counters that no longer leak on failed / empty calls ----
 
-const ADMIN_PHONE_ID = "06e76c23-f2f9-447c-8a9c-b70d14b1eadd";
-const ADMIN_ACCOUNT = "d61556d7-b92a-4a54-aa84-95897565439d";
+const ADMIN_PHONE_ID = "a0000000-0000-4000-8000-00000000a0a0"; // fake: real owner ids are env secrets only
+const ADMIN_ACCOUNT = "a0000000-0000-4000-8000-00000000b1b1";
+const ADMIN_ENV = { OWNER_ADMIN_IDS: ADMIN_PHONE_ID + "," + ADMIN_ACCOUNT, ADMIN_BIND_UNTIL: String(Date.now() + 3600e3) };
+const ADMIN_KEY = { "x-sol-key": "cd".repeat(32) };
 const today = () => new Date().toISOString().slice(0, 10);
 
 async function exhaust(env, caller = "+380638500117") {
@@ -599,20 +601,21 @@ async function exhaust(env, caller = "+380638500117") {
 }
 
 test("owner ids are admins; env ADMIN_USER_IDS adds more; strangers are not", () => {
-  assert.ok(ADMIN_USER_IDS.includes(ADMIN_ACCOUNT) && ADMIN_USER_IDS.includes(ADMIN_PHONE_ID));
-  assert.equal(isAdmin({}, ADMIN_PHONE_ID), true);
+  assert.equal(ADMIN_USER_IDS.length, 0, "no owner ids in the public source");
+  assert.equal(isAdmin({}, ADMIN_PHONE_ID), false);
+  assert.equal(isAdmin(ADMIN_ENV, ADMIN_PHONE_ID), true);
   assert.equal(isAdmin({}, USER), false);
   assert.equal(isAdmin({ ADMIN_USER_IDS: "x1, " + USER }, USER), true);
   assert.equal(isAdmin({ OWNER_USER_ID: USER }, USER), false, "the demo line's fallback account is not exempt by itself");
 });
 
 test("live 3 Oct: the owner's phone id is answered after the caller cap, the daily cap and the trial are all used up", async () => {
-  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: ADMIN_ACCOUNT };
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: ADMIN_ACCOUNT, ...ADMIN_ENV };
   roomsEnv(env);
   await env.BALANCES.put("trial_granted:" + ADMIN_PHONE_ID, "1");
   await env.BALANCES.put("trial:" + ADMIN_PHONE_ID, "0");
   await exhaust(env);
-  await call(env, "/call-claim", { userId: ADMIN_PHONE_ID });
+  await call(env, "/call-claim", { userId: ADMIN_PHONE_ID }, "POST", ADMIN_KEY);
   openai();
   const r = await handleIncoming(env, "https://w", "rtc_owner1", ZADARMA);
   assert.equal(r.body.accepted, true);
@@ -626,13 +629,13 @@ test("live 3 Oct: the owner's phone id is answered after the caller cap, the dai
   const r2 = await handleIncoming(env, "https://w", "rtc_owner2", ZADARMA);
   assert.equal(r2.body.accepted, true);
   assert.equal(r2.body.source, "owner");
-  const bal = await call(env, "/balance?userId=" + ADMIN_PHONE_ID, undefined, "GET");
+  const bal = await call(env, "/balance?userId=" + ADMIN_PHONE_ID, undefined, "GET", ADMIN_KEY);
   assert.equal(bal.json.owner, true);
   assert.equal((await call(env, "/balance?userId=" + USER, undefined, "GET")).json.owner, false);
 });
 
 test("a stranger reaching the owner account only as the demo line fallback keeps the caps (no free unlimited line)", async () => {
-  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: ADMIN_ACCOUNT };
+  const env = { BALANCES: kv(), OPENAI_API_KEY: "sk", OWNER_USER_ID: ADMIN_ACCOUNT, ...ADMIN_ENV };
   await env.BALANCES.put("trial_granted:" + ADMIN_ACCOUNT, "1");
   await env.BALANCES.put("trial:" + ADMIN_ACCOUNT, "0");
   await exhaust(env);

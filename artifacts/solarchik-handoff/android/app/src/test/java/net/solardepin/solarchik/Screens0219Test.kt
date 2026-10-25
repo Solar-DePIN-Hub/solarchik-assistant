@@ -184,7 +184,9 @@ class Screens0219Test {
         idle()
         shotRoot(a.window.decorView, "08-agents-builtin$sfx")
 
-        // Calls list + detail (transcript)
+        // Calls list + detail (transcript). 1.2.15: re-seed, the activities' background inbox refresh (offline in
+        // Robolectric, or keyed to this install's own id) may have replaced the seeded cache by now.
+        seedCalls()
         val calls = Robolectric.buildActivity(CallsActivity::class.java).create().start().visible().get()
         idle()
         shotRoot(calls.window.decorView, "09-calls-list$sfx", a.getString(R.string.calls_list_label))
