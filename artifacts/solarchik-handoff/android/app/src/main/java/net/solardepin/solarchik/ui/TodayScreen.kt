@@ -722,6 +722,7 @@ class TodayScreen(host: MainActivity) : Screen(host) {
 
     private var celebrated = false
 
+    @android.annotation.SuppressLint("MissingPermission") // no VIBRATE permission on purpose: runCatching makes it a no-op
     private fun celebrate(v: View) {
         val vib = if (android.os.Build.VERSION.SDK_INT >= 31) ctx.getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator else null
         if (vib != null && android.os.Build.VERSION.SDK_INT >= 31 && vib.areAllPrimitivesSupported(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, android.os.VibrationEffect.Composition.PRIMITIVE_THUD)) {

@@ -178,7 +178,7 @@ class SeasonScreen(host: MainActivity) : Screen(host) {
             p.mainnet && p.signedToday -> ctx.getString(R.string.mn_season_not_chain)
             p.signedToday -> ctx.getString(R.string.season_chain_signed)
             p.clockedToday -> ctx.getString(R.string.season_chain_sign)
-            else -> ctx.getString(R.string.season_chain_run, GameSave.GOAL_M)
+            else -> ctx.getString(R.string.season_chain_run)
         }
         return item("season-chain", p.done(SeasonItem.ONCHAIN), R.string.season_chain_title, body) {
             if (!p.signedToday) addView(Ui.top(Ui.button(ctx, ctx.getString(if (p.clockedToday) R.string.season_chain_btn_sign else R.string.season_chain_btn_run),
