@@ -104,3 +104,35 @@ test("an incoming call for a Premium user is answered with the chosen voice, gre
   assert.ok(b.instructions.includes("«Добрий день, це Сол»"));
   assert.ok(b.instructions.includes("Always speak Ukrainian") || b.instructions.toLowerCase().includes("ukrainian"));
 });
+
+test("GET /lines lists every country line and accepts env extras", async () => {
+  const { linesBody, LINE_COUNTRIES } = await import("./solarchik-screen.js");
+  const b = linesBody({});
+  assert.equal(b.lines.length, LINE_COUNTRIES.length);
+  assert.deepEqual(b.lines.find((l) => l.country === "DK"), { country: "DK", number: "+4532330495" });
+  const e = linesBody({ SECRETARY_LINE_COUNTRIES: "de:+4930123456, bad, gb:+442045771829" });
+  assert.equal(e.lines.find((l) => l.country === "DE").number, "+4930123456");
+});
+
+test("audit: paid accounts skip the global cap, trial is once per verified phone, line country sets auto language, notice after greeting, UTC reset", async () => {
+  const S = await import("./solarchik-screen.js");
+  const env = { BALANCES: kv() };
+  await S.addCallSeconds(env, "free-user-0001", 120 * 60);
+  assert.equal(await S.callCapReason(env, "free-user-0002"), "CALL_MINUTES_GLOBAL");
+  await env.BALANCES.put("paid-user-0001", "5");
+  assert.equal(await S.callCapReason(env, "paid-user-0001"), "", "paid balance is exempt from the global cap");
+  // trial per phone
+  const e2 = { BALANCES: kv() };
+  await e2.BALANCES.put("phoneof:first-user-001", "+15551230000");
+  const c1 = await S.chargeSession(e2, "first-user-001", "+15550000001");
+  assert.equal(c1.source, "trial");
+  await e2.BALANCES.put("phoneof:reinstall-0001", "+15551230000");
+  assert.equal((await S.trialOf(e2, "reinstall-0001")).usd, 0, "same SIM after reinstall: no second trial");
+  assert.ok((await S.trialOf(e2, "other-user-0001")).usd > 0);
+  assert.equal(S.lineLang({ to: "+18325009920" }), "en");
+  assert.equal(S.lineLang({ number: "+380914810885" }), "uk");
+  assert.equal(S.lineLang({ to: "+4532330495" }), "en");
+  assert.equal(S.lineLang({}), "");
+  assert.match(S.greetingRule("Hi, Vadym's line"), /AI assistant.*recorded/);
+  assert.equal(S.greetingRule(""), "");
+});

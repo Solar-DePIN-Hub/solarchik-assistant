@@ -810,8 +810,8 @@ function fakeSocket() {
   return { sent, handlers, send: (x) => sent.push(JSON.parse(x)), addEventListener: (t, f) => (handlers[t] = f), accept() {} };
 }
 
-test("call limits: defaults 2:45 wrap / 3:00 hang-up, 30 min/day global, 20 min/day per account; env overrides; 0 = off", () => {
-  assert.deepEqual([CALL_WRAP_SEC, CALL_MAX_SEC, CALL_DAILY_MIN_GLOBAL, CALL_DAILY_MIN_ACCOUNT], [165, 180, 30, 20]);
+test("call limits: defaults 2:45 wrap / 3:00 hang-up, 120 min/day global (free only), 20 min/day per account; env overrides; 0 = off", () => {
+  assert.deepEqual([CALL_WRAP_SEC, CALL_MAX_SEC, CALL_DAILY_MIN_GLOBAL, CALL_DAILY_MIN_ACCOUNT], [165, 180, 120, 20]);
   const d = callLimits({});
   assert.equal(d.wrapSec, 165);
   assert.equal(d.maxSec, 180);
@@ -941,7 +941,7 @@ test("daily AI minutes: under the cap calls are answered; at the global or accou
   assert.equal(line.chargedUsd, 0);
   // global cap (30 min) also stops other accounts and unmapped calls
   const env2 = { BALANCES: kv(), OPENAI_API_KEY: "sk" };
-  await addCallSeconds(env2, "someone-else-0001", 30 * 60);
+  await addCallSeconds(env2, "someone-else-0001", 120 * 60);
   assert.equal(await callCapReason(env2, ""), "CALL_MINUTES_GLOBAL");
   calls = openai();
   const u = await handleIncoming(env2, "https://w", "rtc_unmapped", ZADARMA);
